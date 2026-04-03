@@ -4,8 +4,8 @@
   "manifest_version": 1,
   "action": {
     "title": "Initiative Tracker",
-    "icon": "add.svg",
-    "popover": "index.html",
+    "icon": "https://cvierer.github.io/dsa-owlbear/add.svg",
+    "popover": "https://cvierer.github.io/dsa-owlbear/index.html",
     "height": 600,
     "width": 400
   }
