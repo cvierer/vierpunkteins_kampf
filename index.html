@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Meine Extension</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #242424;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h3 id="status">Verbinde...</h3>
+    <p>Deine Extension läuft!</p>
+
+    <script type="module">
+        // Importiere das Owlbear Rodeo SDK
+        import OBR from "https://owlbear.rodeo/sdk";
+
+        // Sobald Owlbear Rodeo bereit ist, ändere den Text
+        OBR.onReady(() => {
+            document.getElementById("status").innerText = "Mit Owlbear Rodeo verbunden!";
+        });
+    </script>
+</body>
+</html>
