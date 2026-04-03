@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Initiative Tracker</title>
     <style>
+        /* Das CSS bleibt exakt gleich wie vorher */
         body {
             font-family: sans-serif;
             padding: 15px;
@@ -59,9 +60,8 @@
             justify-content: space-between;
             align-items: center;
         }
-        /* Das ist die Markierung für den Spieler, der dran ist */
         .active-turn {
-            background: #d4af37; /* Gold */
+            background: #d4af37;
             color: black;
             font-weight: bold;
             border: 2px solid white;
@@ -83,77 +83,85 @@
 
     <button id="nextBtn" class="next-btn">Nächster Zug</button>
 
-    <ul id="trackerList">
-        </ul>
+    <ul id="trackerList"></ul>
 
     <script type="module">
         import OBR from "https://owlbear.rodeo/sdk";
 
-        let actors = [];
-        let currentTurnIndex = 0;
+        // Eine eindeutige ID, unter der wir unsere Daten im Raum speichern
+        const METADATA_PATH = "mein-projekt/initiative-tracker";
 
-        // HTML-Elemente abrufen
         const nameInput = document.getElementById("nameInput");
         const initInput = document.getElementById("initInput");
         const addBtn = document.getElementById("addBtn");
         const nextBtn = document.getElementById("nextBtn");
         const trackerList = document.getElementById("trackerList");
 
-        // Funktion: Charakter hinzufügen
-        function addActor() {
+        // HILFSFUNKTION: Lädt die aktuellen Daten aus dem Raum
+        async function getRoomData() {
+            const metadata = await OBR.room.getMetadata();
+            // Wenn der Raum ganz neu ist, gibt es noch keine Daten. Dann erstellen wir ein leeres Standard-Objekt.
+            return metadata[METADATA_PATH] || { actors: [], currentTurnIndex: 0 };
+        }
+
+        // HILFSFUNKTION: Speichert die veränderten Daten für alle sichtbar ab
+        async function updateRoomData(data) {
+            await OBR.room.setMetadata({ [METADATA_PATH]: data });
+        }
+
+        // AKTION: Charakter hinzufügen
+        async function addActor() {
             const name = nameInput.value.trim();
             const init = parseInt(initInput.value);
 
-            if (name === "" || isNaN(init)) return; // Abbrechen, wenn Felder leer sind
+            if (name === "" || isNaN(init)) return;
 
-            // Neuen Charakter zum Array hinzufügen
-            actors.push({ name: name, init: init });
+            const data = await getRoomData(); // Aktuellen Stand laden
             
-            // Liste absteigend sortieren (Höchste Initiative zuerst)
-            actors.sort((a, b) => b.init - a.init);
+            data.actors.push({ name: name, init: init });
+            data.actors.sort((a, b) => b.init - a.init);
             
-            // Eingabefelder leeren
+            await updateRoomData(data); // Neuen Stand hochladen
+
             nameInput.value = "";
             initInput.value = "";
-
-            renderList();
         }
 
-        // Funktion: Nächster Zug
-        function nextTurn() {
-            if (actors.length === 0) return;
-            // Erhöht den Index. Wenn das Ende der Liste erreicht ist, fängt es bei 0 wieder an.
-            currentTurnIndex = (currentTurnIndex + 1) % actors.length;
-            renderList();
+        // AKTION: Nächster Zug
+        async function nextTurn() {
+            const data = await getRoomData();
+            if (data.actors.length === 0) return;
+
+            data.currentTurnIndex = (data.currentTurnIndex + 1) % data.actors.length;
+            await updateRoomData(data);
         }
 
-        // Funktion: Einen Charakter entfernen
-        function removeActor(indexToRemove) {
-            actors.splice(indexToRemove, 1);
-            // Wenn der aktive Spieler gelöscht wurde, passe den Index an
-            if (currentTurnIndex >= actors.length) {
-                currentTurnIndex = 0;
+        // AKTION: Charakter löschen
+        async function removeActor(indexToRemove) {
+            const data = await getRoomData();
+            
+            data.actors.splice(indexToRemove, 1);
+            if (data.currentTurnIndex >= data.actors.length) {
+                data.currentTurnIndex = 0;
             }
-            renderList();
+            
+            await updateRoomData(data);
         }
 
-        // Funktion: Die Liste auf dem Bildschirm zeichnen
-        function renderList() {
-            trackerList.innerHTML = ""; // Alte Liste löschen
+        // UI: Die Liste auf dem Bildschirm zeichnen (braucht jetzt das 'data' Objekt)
+        function renderList(data) {
+            trackerList.innerHTML = ""; 
 
-            actors.forEach((actor, index) => {
+            data.actors.forEach((actor, index) => {
                 const li = document.createElement("li");
                 
-                // Wenn dieser Charakter dran ist, gib ihm die CSS-Klasse "active-turn"
-                if (index === currentTurnIndex) {
+                if (index === data.currentTurnIndex) {
                     li.classList.add("active-turn");
                 }
 
-                // Text für Name und Initiative
                 const textSpan = document.createElement("span");
                 textSpan.innerText = `${actor.name} (Init: ${actor.init})`;
                 
-                // Löschen-Button für jeden Eintrag
                 const deleteBtn = document.createElement("button");
                 deleteBtn.innerText = "X";
                 deleteBtn.classList.add("delete-btn");
@@ -165,18 +173,26 @@
             });
         }
 
-        // Event-Listener an die Buttons binden
+        // Event-Listener
         addBtn.addEventListener("click", addActor);
         nextBtn.addEventListener("click", nextTurn);
-
-        // Auch mit "Enter" im Initiative-Feld hinzufügen
         initInput.addEventListener("keypress", function(event) {
             if (event.key === "Enter") addActor();
         });
 
-        // Owlbear Rodeo Initialisierung
-        OBR.onReady(() => {
-            console.log("Initiative Tracker bereit!");
+        // INIT: Wenn Owlbear Rodeo bereit ist
+        OBR.onReady(async () => {
+            // 1. Lade den aktuellen Stand, falls du später in einen laufenden Raum kommst
+            const initialData = await getRoomData();
+            renderList(initialData);
+
+            // 2. DAS IST DER MAGISCHE MULTIPLAYER-TEIL: 
+            // Höre auf Änderungen im Raum. Wenn jemand anderes klickt, zeichne die Liste bei dir neu!
+            OBR.room.onMetadataChange((metadata) => {
+                if (metadata[METADATA_PATH]) {
+                    renderList(metadata[METADATA_PATH]);
+                }
+            });
         });
     </script>
 </body>
