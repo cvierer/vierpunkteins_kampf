@@ -16,59 +16,40 @@
     <script type="module">
         import OBR from "https://owlbear.rodeo/sdk";
 
-        // Die exakte ID aus dem offiziellen Tutorial
         const ID = "com.tutorial.initiative-tracker";
         const ICON_URL = "https://cvierer.github.io/dsa-owlbear/icon.svg";
 
-        // 1. Kontext-Menü Funktion aus contextMenu.js
+        // Kontext-Menü OHNE Filter
         function setupContextMenu() {
             OBR.contextMenu.create({
                 id: `${ID}/context-menu`,
                 icons: [
                     {
                         icon: ICON_URL,
-                        label: "Zur Initiative hinzufügen",
+                        label: "Initiative festlegen / löschen",
                         filter: {
-                            every: [
-                                { key: "layer", value: "CHARACTER" },
-                                { key: ["metadata", `${ID}/metadata`], value: undefined }
-                            ]
-                        }
-                    },
-                    {
-                        icon: ICON_URL,
-                        label: "Von Initiative entfernen",
-                        filter: {
-                            every: [{ key: "layer", value: "CHARACTER" }]
+                            every: [] // LEER! Der Button taucht jetzt ÜBERALL auf.
                         }
                     }
                 ],
                 onClick(context) {
-                    const addToInitiative = context.items.every(
-                        (item) => item.metadata[`${ID}/metadata`] === undefined
-                    );
-
-                    if (addToInitiative) {
-                        const initiative = window.prompt("Initiative eingeben:");
-                        if (initiative === null) return;
-                        
-                        OBR.scene.items.updateItems(context.items, (items) => {
-                            for (let item of items) {
-                                item.metadata[`${ID}/metadata`] = { initiative: parseInt(initiative) || 0 };
+                    // Ein simples Popup. Lässt du es leer, wird der Charakter gelöscht.
+                    const initiative = window.prompt("Initiative eintragen (Leer lassen zum Löschen):");
+                    
+                    OBR.scene.items.updateItems(context.items, (items) => {
+                        for (let item of items) {
+                            if (initiative === null || initiative.trim() === "") {
+                                delete item.metadata[`${ID}/metadata`]; // Löscht den Wert
+                            } else {
+                                item.metadata[`${ID}/metadata`] = { initiative: parseInt(initiative) || 0 }; // Setzt den Wert
                             }
-                        });
-                    } else {
-                        OBR.scene.items.updateItems(context.items, (items) => {
-                            for (let item of items) {
-                                delete item.metadata[`${ID}/metadata`];
-                            }
-                        });
-                    }
+                        }
+                    });
                 }
             });
         }
 
-        // 2. Listen Funktion aus initiativeList.js
+        // Listen-Funktion
         function setupInitiativeList(element) {
             const renderList = (items) => {
                 const initiativeItems = [];
@@ -82,7 +63,6 @@
                     }
                 }
 
-                // Sortieren (Höchste Zahl oben)
                 const sortedItems = initiativeItems.sort(
                     (a, b) => parseFloat(b.initiative) - parseFloat(a.initiative)
                 );
@@ -100,7 +80,6 @@
             OBR.scene.items.onChange(renderList);
         }
 
-        // 3. Start-Funktion aus main.js
         OBR.onReady(() => {
             setupContextMenu();
             setupInitiativeList(document.querySelector("#initiative-list"));
