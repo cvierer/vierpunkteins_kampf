@@ -2,195 +2,96 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Initiative Tracker</title>
     <style>
-        /* Das CSS bleibt exakt gleich wie vorher */
-        body {
-            font-family: sans-serif;
-            padding: 15px;
-            background-color: #242424;
-            color: white;
-            margin: 0;
-        }
-        .input-group {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-        input {
-            padding: 5px;
-            border: 1px solid #555;
-            border-radius: 4px;
-            background: #333;
-            color: white;
-        }
-        input[type="number"] {
-            width: 60px;
-        }
-        button {
-            padding: 6px 12px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .next-btn {
-            width: 100%;
-            background-color: #008CBA;
-            margin-bottom: 15px;
-        }
-        .next-btn:hover {
-            background-color: #007B9E;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-        }
-        li {
-            padding: 10px;
-            background: #333;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .active-turn {
-            background: #d4af37;
-            color: black;
-            font-weight: bold;
-            border: 2px solid white;
-        }
-        .delete-btn {
-            background: #f44336;
-            padding: 2px 8px;
-            font-size: 12px;
-        }
+        body { font-family: sans-serif; background: #242424; color: white; padding: 15px; margin: 0; }
+        .next-btn { background: #008CBA; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; margin-bottom: 15px; font-weight: bold;}
+        .next-btn:hover { background: #007B9E; }
+        .item-row { display: flex; justify-content: space-between; background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; align-items: center; }
+        .active-turn { border: 2px solid #d4af37; background: #443a15; }
+        .token-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+        input[type="number"] { width: 50px; background: #222; color: white; border: 1px solid #555; padding: 5px; text-align: center; border-radius: 4px;}
     </style>
 </head>
 <body>
-    
-    <div class="input-group">
-        <input type="text" id="nameInput" placeholder="Name (z.B. Goblin)">
-        <input type="number" id="initInput" placeholder="Init">
-        <button id="addBtn">Hinzufügen</button>
-    </div>
-
     <button id="nextBtn" class="next-btn">Nächster Zug</button>
-
-    <ul id="trackerList"></ul>
+    <div id="list"></div>
 
     <script type="module">
         import OBR from "https://owlbear.rodeo/sdk";
 
-        // Eine eindeutige ID, unter der wir unsere Daten im Raum speichern
-        const METADATA_PATH = "mein-projekt/initiative-tracker";
+        const METADATA_ID = "mein-projekt/initiative";
+        const ROOM_METADATA_ID = "mein-projekt/turn";
+        
+        let currentItems = [];
+        let currentTurnId = null;
 
-        const nameInput = document.getElementById("nameInput");
-        const initInput = document.getElementById("initInput");
-        const addBtn = document.getElementById("addBtn");
-        const nextBtn = document.getElementById("nextBtn");
-        const trackerList = document.getElementById("trackerList");
+        const listDiv = document.getElementById("list");
 
-        // HILFSFUNKTION: Lädt die aktuellen Daten aus dem Raum
-        async function getRoomData() {
-            const metadata = await OBR.room.getMetadata();
-            // Wenn der Raum ganz neu ist, gibt es noch keine Daten. Dann erstellen wir ein leeres Standard-Objekt.
-            return metadata[METADATA_PATH] || { actors: [], currentTurnIndex: 0 };
+        // Baut die Liste aus den Tokens auf der Karte
+        async function updateList(items) {
+            currentItems = items.filter(item => item.metadata[METADATA_ID] !== undefined);
+            currentItems.sort((a, b) => b.metadata[METADATA_ID] - a.metadata[METADATA_ID]);
+
+            const roomMeta = await OBR.room.getMetadata();
+            currentTurnId = roomMeta[ROOM_METADATA_ID] || null;
+
+            render();
         }
 
-        // HILFSFUNKTION: Speichert die veränderten Daten für alle sichtbar ab
-        async function updateRoomData(data) {
-            await OBR.room.setMetadata({ [METADATA_PATH]: data });
-        }
+        // Zeichnet die HTML-Elemente
+        function render() {
+            listDiv.innerHTML = "";
+            currentItems.forEach(item => {
+                const row = document.createElement("div");
+                row.className = "item-row";
+                // Markiert den aktiven Token
+                if (item.id === currentTurnId) row.classList.add("active-turn");
 
-        // AKTION: Charakter hinzufügen
-        async function addActor() {
-            const name = nameInput.value.trim();
-            const init = parseInt(initInput.value);
+                const nameSpan = document.createElement("span");
+                nameSpan.className = "token-name";
+                nameSpan.innerText = item.name || "Unbenannt";
 
-            if (name === "" || isNaN(init)) return;
+                // Eingabefeld für die Initiative
+                const input = document.createElement("input");
+                input.type = "number";
+                input.value = item.metadata[METADATA_ID];
+                input.onchange = (e) => updateInitiative(item.id, parseInt(e.target.value));
 
-            const data = await getRoomData(); // Aktuellen Stand laden
-            
-            data.actors.push({ name: name, init: init });
-            data.actors.sort((a, b) => b.init - a.init);
-            
-            await updateRoomData(data); // Neuen Stand hochladen
-
-            nameInput.value = "";
-            initInput.value = "";
-        }
-
-        // AKTION: Nächster Zug
-        async function nextTurn() {
-            const data = await getRoomData();
-            if (data.actors.length === 0) return;
-
-            data.currentTurnIndex = (data.currentTurnIndex + 1) % data.actors.length;
-            await updateRoomData(data);
-        }
-
-        // AKTION: Charakter löschen
-        async function removeActor(indexToRemove) {
-            const data = await getRoomData();
-            
-            data.actors.splice(indexToRemove, 1);
-            if (data.currentTurnIndex >= data.actors.length) {
-                data.currentTurnIndex = 0;
-            }
-            
-            await updateRoomData(data);
-        }
-
-        // UI: Die Liste auf dem Bildschirm zeichnen (braucht jetzt das 'data' Objekt)
-        function renderList(data) {
-            trackerList.innerHTML = ""; 
-
-            data.actors.forEach((actor, index) => {
-                const li = document.createElement("li");
-                
-                if (index === data.currentTurnIndex) {
-                    li.classList.add("active-turn");
-                }
-
-                const textSpan = document.createElement("span");
-                textSpan.innerText = `${actor.name} (Init: ${actor.init})`;
-                
-                const deleteBtn = document.createElement("button");
-                deleteBtn.innerText = "X";
-                deleteBtn.classList.add("delete-btn");
-                deleteBtn.onclick = () => removeActor(index);
-
-                li.appendChild(textSpan);
-                li.appendChild(deleteBtn);
-                trackerList.appendChild(li);
+                row.appendChild(nameSpan);
+                row.appendChild(input);
+                listDiv.appendChild(row);
             });
         }
 
-        // Event-Listener
-        addBtn.addEventListener("click", addActor);
-        nextBtn.addEventListener("click", nextTurn);
-        initInput.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") addActor();
-        });
+        // Speichert die neue Initiative direkt im Token
+        async function updateInitiative(tokenId, newValue) {
+            await OBR.scene.items.updateItems([tokenId], (items) => {
+                items[0].metadata[METADATA_ID] = newValue;
+            });
+        }
 
-        // INIT: Wenn Owlbear Rodeo bereit ist
+        // Logik für den nächsten Zug
+        document.getElementById("nextBtn").onclick = async () => {
+            if (currentItems.length === 0) return;
+            
+            let currentIndex = currentItems.findIndex(i => i.id === currentTurnId);
+            let nextIndex = (currentIndex + 1) % currentItems.length;
+            let nextId = currentItems[nextIndex].id;
+
+            await OBR.room.setMetadata({ [ROOM_METADATA_ID]: nextId });
+        };
+
+        // Start-Skript
         OBR.onReady(async () => {
-            // 1. Lade den aktuellen Stand, falls du später in einen laufenden Raum kommst
-            const initialData = await getRoomData();
-            renderList(initialData);
+            const items = await OBR.scene.items.getItems();
+            updateList(items);
 
-            // 2. DAS IST DER MAGISCHE MULTIPLAYER-TEIL: 
-            // Höre auf Änderungen im Raum. Wenn jemand anderes klickt, zeichne die Liste bei dir neu!
+            OBR.scene.items.onChange((items) => updateList(items));
+
             OBR.room.onMetadataChange((metadata) => {
-                if (metadata[METADATA_PATH]) {
-                    renderList(metadata[METADATA_PATH]);
+                if (metadata[ROOM_METADATA_ID] !== undefined) {
+                    currentTurnId = metadata[ROOM_METADATA_ID];
+                    render();
                 }
             });
         });
