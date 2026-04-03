@@ -5,13 +5,15 @@
         import OBR from "https://owlbear.rodeo/sdk";
 
         const METADATA_ID = "cvierer/initiative";
+        // Hier ist der feste Link zu deinem Icon!
+        const ICON_URL = "https://cvierer.github.io/dsa-owlbear/icon.svg";
 
         OBR.onReady(() => {
             OBR.contextMenu.create({
                 id: `${METADATA_ID}-menu`,
                 icons: [
                     {
-                        icon: "icon.svg", // Wir nutzen einfach dein Stern-Icon
+                        icon: ICON_URL, 
                         label: "Zur Initiative hinzufügen",
                         filter: {
                             every: [
@@ -21,7 +23,7 @@
                         }
                     },
                     {
-                        icon: "icon.svg", 
+                        icon: ICON_URL, 
                         label: "Von Initiative entfernen",
                         filter: {
                             every: [
@@ -36,18 +38,15 @@
                     );
 
                     if (addToInitiative) {
-                        // Fragt dich nach der gewürfelten Zahl
                         const initiative = window.prompt("Würfle Initiative (Wert eingeben):");
-                        if (initiative === null) return; // Abbruch, wenn man auf "Abbrechen" klickt
+                        if (initiative === null) return; 
                         
-                        // Speichert die Zahl unsichtbar direkt IM Token ab
                         await OBR.scene.items.updateItems(context.items, (items) => {
                             for (let item of items) {
                                 item.metadata[METADATA_ID] = { initiative: parseInt(initiative) || 0 };
                             }
                         });
                     } else {
-                        // Löscht den Token wieder aus der Liste
                         await OBR.scene.items.updateItems(context.items, (items) => {
                             for (let item of items) {
                                 delete item.metadata[METADATA_ID];
