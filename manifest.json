@@ -5,7 +5,7 @@
   "action": {
     "title": "Initiative Tracker",
     "icon": "https://cvierer.github.io/dsa-owlbear/add.svg",
-    "popover": "https://cvierer.github.io/dsa-owlbear/index.html",
+    "popover": "https://cvierer.github.io/dsa-owlbear/index.html?v=10",
     "height": 600,
     "width": 400
   }
