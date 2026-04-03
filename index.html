@@ -14,6 +14,100 @@
         <h1>Initiative Tracker</h1>
         <ul id="initiative-list"></ul>
     </div>
-    <script type="module" src="./main.js"></script>
+
+    <script type="module">
+        import OBR from "https://owlbear.rodeo/sdk";
+
+        const ID = "com.tutorial.initiative-tracker";
+        const ADD_ICON = "https://cvierer.github.io/dsa-owlbear/add.svg";
+        const REMOVE_ICON = "https://cvierer.github.io/dsa-owlbear/remove.svg";
+
+        // 1. Kontext-Menü
+        function setupContextMenu() {
+            OBR.contextMenu.create({
+                id: `${ID}/context-menu`,
+                icons: [
+                    {
+                        icon: ADD_ICON,
+                        label: "Zur Initiative hinzufügen",
+                        filter: {
+                            every: [
+                                // Taucht überall auf, außer das Token hat schon Initiative
+                                { key: ["metadata", `${ID}/metadata`], value: undefined }
+                            ]
+                        }
+                    },
+                    {
+                        icon: REMOVE_ICON,
+                        label: "Von Initiative entfernen",
+                        filter: {
+                            every: [] // Taucht immer auf
+                        }
+                    }
+                ],
+                onClick(context) {
+                    const addToInitiative = context.items.every(
+                        (item) => item.metadata[`${ID}/metadata`] === undefined
+                    );
+
+                    if (addToInitiative) {
+                        const initiative = window.prompt("Initiative eingeben:");
+                        if (initiative === null) return;
+                        
+                        OBR.scene.items.updateItems(context.items, (items) => {
+                            for (let item of items) {
+                                item.metadata[`${ID}/metadata`] = {
+                                    initiative: parseInt(initiative) || 0
+                                };
+                            }
+                        });
+                    } else {
+                        OBR.scene.items.updateItems(context.items, (items) => {
+                            for (let item of items) {
+                                delete item.metadata[`${ID}/metadata`];
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // 2. Liste aufbauen
+        function setupInitiativeList(element) {
+            const renderList = (items) => {
+                const initiativeItems = [];
+                for (const item of items) {
+                    const metadata = item.metadata[`${ID}/metadata`];
+                    if (metadata) {
+                        initiativeItems.push({
+                            initiative: metadata.initiative,
+                            name: item.name || "Unbenannt",
+                        });
+                    }
+                }
+
+                const sortedItems = initiativeItems.sort(
+                    (a, b) => parseFloat(b.initiative) - parseFloat(a.initiative)
+                );
+
+                const nodes = [];
+                for (const initiativeItem of sortedItems) {
+                    const node = document.createElement("li");
+                    node.innerHTML = `<strong>${initiativeItem.name}</strong> (${initiativeItem.initiative})`;
+                    nodes.push(node);
+                }
+                element.replaceChildren(...nodes);
+            };
+
+            OBR.scene.items.getItems().then(renderList);
+            OBR.scene.items.onChange(renderList);
+        }
+
+        // 3. Wenn Owlbear bereit ist, starte beides
+        OBR.onReady(() => {
+            setupContextMenu();
+            setupInitiativeList(document.querySelector("#initiative-list"));
+        });
+    </script>
 </body>
 </html>
