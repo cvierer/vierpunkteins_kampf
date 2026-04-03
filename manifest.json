@@ -4,10 +4,10 @@
   "manifest_version": 1,
   "action": {
     "title": "Initiative Liste",
-    "icon": "icon.svg",
-    "popover": "index.html",
+    "icon": "https://cvierer.github.io/dsa-owlbear/icon.svg",
+    "popover": "https://cvierer.github.io/dsa-owlbear/index.html",
     "width": 350,
     "height": 450
   },
-  "background_url": "background.html"
+  "background_url": "https://cvierer.github.io/dsa-owlbear/background.html"
 }
