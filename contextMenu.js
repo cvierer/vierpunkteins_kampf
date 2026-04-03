@@ -2,25 +2,29 @@ import OBR from "https://owlbear.rodeo/sdk";
 
 const ID = "com.tutorial.initiative-tracker";
 
+// Wir nutzen auch hier wieder die absoluten Links (Brechstange!)
+const ADD_ICON = "https://cvierer.github.io/dsa-owlbear/add.svg";
+const REMOVE_ICON = "https://cvierer.github.io/dsa-owlbear/remove.svg";
+
 export function setupContextMenu() {
     OBR.contextMenu.create({
         id: `${ID}/context-menu`,
         icons: [
             {
-                icon: "add.svg",
-                label: "Add to Initiative",
+                icon: ADD_ICON,
+                label: "Zur Initiative hinzufügen",
                 filter: {
                     every: [
-                        { key: "layer", value: "CHARACTER" },
+                        // Wir haben den Layer-Filter entfernt, der Button taucht jetzt ÜBERALL auf!
                         { key: ["metadata", `${ID}/metadata`], value: undefined }
                     ]
                 }
             },
             {
-                icon: "remove.svg",
-                label: "Remove from Initiative",
+                icon: REMOVE_ICON,
+                label: "Von Initiative entfernen",
                 filter: {
-                    every: [{ key: "layer", value: "CHARACTER" }]
+                    every: [] 
                 }
             }
         ],
@@ -30,7 +34,7 @@ export function setupContextMenu() {
             );
 
             if (addToInitiative) {
-                const initiative = window.prompt("Enter the initiative value:");
+                const initiative = window.prompt("Initiative eingeben:");
                 if (initiative === null) return;
                 
                 OBR.scene.items.updateItems(context.items, (items) => {
