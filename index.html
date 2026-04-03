@@ -16,45 +16,94 @@
     <script type="module">
         import OBR from "https://owlbear.rodeo/sdk";
 
-        const METADATA_ID = "cvierer/initiative";
-        const listElement = document.getElementById("initiative-list");
+        // Die exakte ID aus dem offiziellen Tutorial
+        const ID = "com.tutorial.initiative-tracker";
+        const ICON_URL = "https://cvierer.github.io/dsa-owlbear/icon.svg";
 
-        // Zeichnet die Liste neu
-        function renderList(items) {
-            const initiativeItems = [];
-            
-            for (const item of items) {
-                const metadata = item.metadata[METADATA_ID];
-                if (metadata) {
-                    initiativeItems.push({
-                        initiative: metadata.initiative,
-                        name: item.name || "Unbekannt"
-                    });
+        // 1. Kontext-Menü Funktion aus contextMenu.js
+        function setupContextMenu() {
+            OBR.contextMenu.create({
+                id: `${ID}/context-menu`,
+                icons: [
+                    {
+                        icon: ICON_URL,
+                        label: "Zur Initiative hinzufügen",
+                        filter: {
+                            every: [
+                                { key: "layer", value: "CHARACTER" },
+                                { key: ["metadata", `${ID}/metadata`], value: undefined }
+                            ]
+                        }
+                    },
+                    {
+                        icon: ICON_URL,
+                        label: "Von Initiative entfernen",
+                        filter: {
+                            every: [{ key: "layer", value: "CHARACTER" }]
+                        }
+                    }
+                ],
+                onClick(context) {
+                    const addToInitiative = context.items.every(
+                        (item) => item.metadata[`${ID}/metadata`] === undefined
+                    );
+
+                    if (addToInitiative) {
+                        const initiative = window.prompt("Initiative eingeben:");
+                        if (initiative === null) return;
+                        
+                        OBR.scene.items.updateItems(context.items, (items) => {
+                            for (let item of items) {
+                                item.metadata[`${ID}/metadata`] = { initiative: parseInt(initiative) || 0 };
+                            }
+                        });
+                    } else {
+                        OBR.scene.items.updateItems(context.items, (items) => {
+                            for (let item of items) {
+                                delete item.metadata[`${ID}/metadata`];
+                            }
+                        });
+                    }
                 }
-            }
-
-            // Höchste Zahl nach oben sortieren
-            initiativeItems.sort((a, b) => b.initiative - a.initiative);
-
-            // Altes HTML löschen und Token als Liste einfügen
-            listElement.innerHTML = "";
-            for (const initItem of initiativeItems) {
-                const li = document.createElement("li");
-                li.innerHTML = `<strong>${initItem.name}</strong> - Init: ${initItem.initiative}`;
-                listElement.appendChild(li);
-            }
+            });
         }
 
-        OBR.onReady(async () => {
-            // Beim Starten alle Token von der Karte scannen
-            const items = await OBR.scene.items.getItems();
-            renderList(items);
+        // 2. Listen Funktion aus initiativeList.js
+        function setupInitiativeList(element) {
+            const renderList = (items) => {
+                const initiativeItems = [];
+                for (const item of items) {
+                    const metadata = item.metadata[`${ID}/metadata`];
+                    if (metadata) {
+                        initiativeItems.push({
+                            initiative: metadata.initiative,
+                            name: item.name || "Unbenannt",
+                        });
+                    }
+                }
 
-            // Wartet im Hintergrund: Sobald du per Rechtsklick jemandem eine Initiative gibst,
-            // aktualisiert sich diese Liste hier vollautomatisch in Echtzeit!
-            OBR.scene.items.onChange((items) => {
-                renderList(items);
-            });
+                // Sortieren (Höchste Zahl oben)
+                const sortedItems = initiativeItems.sort(
+                    (a, b) => parseFloat(b.initiative) - parseFloat(a.initiative)
+                );
+
+                const nodes = [];
+                for (const initiativeItem of sortedItems) {
+                    const node = document.createElement("li");
+                    node.innerHTML = `<strong>${initiativeItem.name}</strong> (${initiativeItem.initiative})`;
+                    nodes.push(node);
+                }
+                element.replaceChildren(...nodes);
+            };
+
+            OBR.scene.items.getItems().then(renderList);
+            OBR.scene.items.onChange(renderList);
+        }
+
+        // 3. Start-Funktion aus main.js
+        OBR.onReady(() => {
+            setupContextMenu();
+            setupInitiativeList(document.querySelector("#initiative-list"));
         });
     </script>
 </body>
