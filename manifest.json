@@ -9,7 +9,5 @@
     "width": 350,
     "height": 450
   },
-  "background": {
-    "script": "background.html"
-  }
+  "background_url": "background.html"
 }
