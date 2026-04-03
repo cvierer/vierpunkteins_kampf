@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <script type="module">
+        import OBR from "https://owlbear.rodeo/sdk";
+
+        const METADATA_ID = "mein-projekt/initiative";
+
+        OBR.onReady(() => {
+            // Erstellt den Button im Rechtsklick-Menü
+            OBR.contextMenu.create({
+                id: `${METADATA_ID}-menu`,
+                icons: [
+                    {
+                        icon: "icon.svg",
+                        label: "Zur Initiative hinzufügen / entfernen",
+                        filter: {
+                            // Zeigt den Button nur an, wenn du auf einen Charakter-Token klickst
+                            every: [{ key: "layer", value: "CHARACTER" }]
+                        }
+                    }
+                ],
+                onClick: async (context) => {
+                    // Fügt den Token zur Liste hinzu (Init = 0) oder wirft ihn wieder raus
+                    await OBR.scene.items.updateItems(context.items, (items) => {
+                        for (let item of items) {
+                            if (item.metadata[METADATA_ID] === undefined) {
+                                item.metadata[METADATA_ID] = 0; // Hinzufügen
+                            } else {
+                                delete item.metadata[METADATA_ID]; // Entfernen
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</head>
+<body></body>
+</html>
