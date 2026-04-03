@@ -1,10 +1,15 @@
 {
-  "name": "DSA 4.1 Battle Board",
+  "name": "Token Initiative Tracker",
   "version": "1.0.0",
   "manifest_version": 1,
   "action": {
-    "title": "Initiative",
+    "title": "Initiative Liste",
     "icon": "icon.svg",
-    "popover": "index.html"
+    "popover": "index.html",
+    "width": 350,
+    "height": 450
+  },
+  "background": {
+    "script": "background.html"
   }
 }
