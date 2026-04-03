@@ -4,95 +4,56 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: sans-serif; background: #242424; color: white; padding: 15px; margin: 0; }
-        .next-btn { background: #008CBA; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; margin-bottom: 15px; font-weight: bold;}
-        .next-btn:hover { background: #007B9E; }
-        .item-row { display: flex; justify-content: space-between; background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; align-items: center; }
-        .active-turn { border: 2px solid #d4af37; background: #443a15; }
-        .token-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-        input[type="number"] { width: 50px; background: #222; color: white; border: 1px solid #555; padding: 5px; text-align: center; border-radius: 4px;}
+        h2 { margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 5px; }
+        ul { list-style-type: none; padding: 0; margin: 0; }
+        li { background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; font-size: 16px; }
     </style>
 </head>
 <body>
-    <button id="nextBtn" class="next-btn">Nächster Zug</button>
-    <div id="list"></div>
+    <h2>Initiative Liste</h2>
+    <ul id="initiative-list"></ul>
 
     <script type="module">
         import OBR from "https://owlbear.rodeo/sdk";
 
-        const METADATA_ID = "mein-projekt/initiative";
-        const ROOM_METADATA_ID = "mein-projekt/turn";
-        
-        let currentItems = [];
-        let currentTurnId = null;
+        const METADATA_ID = "cvierer/initiative";
+        const listElement = document.getElementById("initiative-list");
 
-        const listDiv = document.getElementById("list");
-
-        // Baut die Liste aus den Tokens auf der Karte
-        async function updateList(items) {
-            currentItems = items.filter(item => item.metadata[METADATA_ID] !== undefined);
-            currentItems.sort((a, b) => b.metadata[METADATA_ID] - a.metadata[METADATA_ID]);
-
-            const roomMeta = await OBR.room.getMetadata();
-            currentTurnId = roomMeta[ROOM_METADATA_ID] || null;
-
-            render();
-        }
-
-        // Zeichnet die HTML-Elemente
-        function render() {
-            listDiv.innerHTML = "";
-            currentItems.forEach(item => {
-                const row = document.createElement("div");
-                row.className = "item-row";
-                // Markiert den aktiven Token
-                if (item.id === currentTurnId) row.classList.add("active-turn");
-
-                const nameSpan = document.createElement("span");
-                nameSpan.className = "token-name";
-                nameSpan.innerText = item.name || "Unbenannt";
-
-                // Eingabefeld für die Initiative
-                const input = document.createElement("input");
-                input.type = "number";
-                input.value = item.metadata[METADATA_ID];
-                input.onchange = (e) => updateInitiative(item.id, parseInt(e.target.value));
-
-                row.appendChild(nameSpan);
-                row.appendChild(input);
-                listDiv.appendChild(row);
-            });
-        }
-
-        // Speichert die neue Initiative direkt im Token
-        async function updateInitiative(tokenId, newValue) {
-            await OBR.scene.items.updateItems([tokenId], (items) => {
-                items[0].metadata[METADATA_ID] = newValue;
-            });
-        }
-
-        // Logik für den nächsten Zug
-        document.getElementById("nextBtn").onclick = async () => {
-            if (currentItems.length === 0) return;
+        // Zeichnet die Liste neu
+        function renderList(items) {
+            const initiativeItems = [];
             
-            let currentIndex = currentItems.findIndex(i => i.id === currentTurnId);
-            let nextIndex = (currentIndex + 1) % currentItems.length;
-            let nextId = currentItems[nextIndex].id;
-
-            await OBR.room.setMetadata({ [ROOM_METADATA_ID]: nextId });
-        };
-
-        // Start-Skript
-        OBR.onReady(async () => {
-            const items = await OBR.scene.items.getItems();
-            updateList(items);
-
-            OBR.scene.items.onChange((items) => updateList(items));
-
-            OBR.room.onMetadataChange((metadata) => {
-                if (metadata[ROOM_METADATA_ID] !== undefined) {
-                    currentTurnId = metadata[ROOM_METADATA_ID];
-                    render();
+            for (const item of items) {
+                const metadata = item.metadata[METADATA_ID];
+                if (metadata) {
+                    initiativeItems.push({
+                        initiative: metadata.initiative,
+                        name: item.name || "Unbekannt"
+                    });
                 }
+            }
+
+            // Höchste Zahl nach oben sortieren
+            initiativeItems.sort((a, b) => b.initiative - a.initiative);
+
+            // Altes HTML löschen und Token als Liste einfügen
+            listElement.innerHTML = "";
+            for (const initItem of initiativeItems) {
+                const li = document.createElement("li");
+                li.innerHTML = `<strong>${initItem.name}</strong> - Init: ${initItem.initiative}`;
+                listElement.appendChild(li);
+            }
+        }
+
+        OBR.onReady(async () => {
+            // Beim Starten alle Token von der Karte scannen
+            const items = await OBR.scene.items.getItems();
+            renderList(items);
+
+            // Wartet im Hintergrund: Sobald du per Rechtsklick jemandem eine Initiative gibst,
+            // aktualisiert sich diese Liste hier vollautomatisch in Echtzeit!
+            OBR.scene.items.onChange((items) => {
+                renderList(items);
             });
         });
     </script>
