@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "manifest_version": 1,
   "action": {
-    "title": "Mein Tool",
-    "icon": "/icon.svg",
-    "popover": "/"
+    "title": "Initiative",
+    "icon": "icon.svg",
+    "popover": "index.html"
   }
 }
