@@ -4,86 +4,16 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: sans-serif; background: #242424; color: white; padding: 15px; margin: 0; }
-        h2 { margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 5px; }
-        ul { list-style-type: none; padding: 0; margin: 0; }
-        li { background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; font-size: 16px; }
+        h1 { font-size: 20px; border-bottom: 1px solid #555; padding-bottom: 5px; }
+        ul { list-style: none; padding: 0; margin: 0; }
+        li { background: #333; margin-bottom: 5px; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <h2>Initiative Liste</h2>
-    <ul id="initiative-list"></ul>
-
-    <script type="module">
-        import OBR from "https://owlbear.rodeo/sdk";
-
-        const ID = "com.tutorial.initiative-tracker";
-        const ICON_URL = "https://cvierer.github.io/dsa-owlbear/icon.svg";
-
-        // Kontext-Menü OHNE Filter
-        function setupContextMenu() {
-            OBR.contextMenu.create({
-                id: `${ID}/context-menu`,
-                icons: [
-                    {
-                        icon: ICON_URL,
-                        label: "Initiative festlegen / löschen",
-                        filter: {
-                            every: [] // LEER! Der Button taucht jetzt ÜBERALL auf.
-                        }
-                    }
-                ],
-                onClick(context) {
-                    // Ein simples Popup. Lässt du es leer, wird der Charakter gelöscht.
-                    const initiative = window.prompt("Initiative eintragen (Leer lassen zum Löschen):");
-                    
-                    OBR.scene.items.updateItems(context.items, (items) => {
-                        for (let item of items) {
-                            if (initiative === null || initiative.trim() === "") {
-                                delete item.metadata[`${ID}/metadata`]; // Löscht den Wert
-                            } else {
-                                item.metadata[`${ID}/metadata`] = { initiative: parseInt(initiative) || 0 }; // Setzt den Wert
-                            }
-                        }
-                    });
-                }
-            });
-        }
-
-        // Listen-Funktion
-        function setupInitiativeList(element) {
-            const renderList = (items) => {
-                const initiativeItems = [];
-                for (const item of items) {
-                    const metadata = item.metadata[`${ID}/metadata`];
-                    if (metadata) {
-                        initiativeItems.push({
-                            initiative: metadata.initiative,
-                            name: item.name || "Unbenannt",
-                        });
-                    }
-                }
-
-                const sortedItems = initiativeItems.sort(
-                    (a, b) => parseFloat(b.initiative) - parseFloat(a.initiative)
-                );
-
-                const nodes = [];
-                for (const initiativeItem of sortedItems) {
-                    const node = document.createElement("li");
-                    node.innerHTML = `<strong>${initiativeItem.name}</strong> (${initiativeItem.initiative})`;
-                    nodes.push(node);
-                }
-                element.replaceChildren(...nodes);
-            };
-
-            OBR.scene.items.getItems().then(renderList);
-            OBR.scene.items.onChange(renderList);
-        }
-
-        OBR.onReady(() => {
-            setupContextMenu();
-            setupInitiativeList(document.querySelector("#initiative-list"));
-        });
-    </script>
+    <div id="app">
+        <h1>Initiative Tracker</h1>
+        <ul id="initiative-list"></ul>
+    </div>
+    <script type="module" src="./main.js"></script>
 </body>
 </html>
