@@ -1,17 +1,14 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { assetUrl } from './assetUrl.js'
 
 const ID = 'dsa-owlbear.tracker'
-
-function iconUrl(file) {
-  return `${import.meta.env.BASE_URL}${file}`.replace(/\/{2,}/g, '/')
-}
 
 export function setupContextMenu() {
   OBR.contextMenu.create({
     id: `${ID}/context-menu`,
     icons: [
       {
-        icon: iconUrl('add.svg'),
+        icon: assetUrl('add.svg'),
         label: 'Zur Initiative hinzufügen',
         filter: {
           every: [
@@ -21,7 +18,7 @@ export function setupContextMenu() {
         },
       },
       {
-        icon: iconUrl('remove.svg'),
+        icon: assetUrl('remove.svg'),
         label: 'entfernen',
         filter: {
           every: [{ key: 'layer', value: 'CHARACTER' }],
