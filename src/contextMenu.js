@@ -33,11 +33,10 @@ export function setupContextMenu() {
         (item) => item.metadata[`${ID}/metadata`] === undefined
       )
       if (addToInitiative) {
-        const initiative = window.prompt('Initiative-Wert eingeben')
         OBR.scene.items.updateItems(context.items, (items) => {
           for (const item of items) {
             item.metadata[`${ID}/metadata`] = {
-              initiative,
+              initiative: '',
             }
           }
         })
