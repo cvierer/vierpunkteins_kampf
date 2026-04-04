@@ -11,13 +11,13 @@ export async function syncActionChrome(items) {
 
   if (!combat.started || !activeId) {
     await OBR.action.setBadgeText(undefined)
-    await OBR.action.setIcon(assetUrl('add.svg'))
+    await OBR.action.setIcon(assetUrl('action-sword-idle.svg'))
     await OBR.action.setTitle('Kampf')
     return
   }
 
   await OBR.action.setBadgeText(undefined)
-  await OBR.action.setIcon(assetUrl('action-combat.svg'))
+  await OBR.action.setIcon(assetUrl('action-sword-active.svg'))
   const label = activeRow?.name?.trim() || 'Zug'
   await OBR.action.setTitle(`${label} · Runde ${combat.round}`)
 }

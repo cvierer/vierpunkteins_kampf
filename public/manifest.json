@@ -5,7 +5,7 @@
   "description": "Kampfliste und Initiative für Charakter-Tokens (CHARACTER).",
   "action": {
     "title": "Kampf",
-    "icon": "/add.svg",
+    "icon": "/action-sword-idle.svg",
     "popover": "/index.html",
     "height": 600,
     "width": 400
