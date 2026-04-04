@@ -140,6 +140,42 @@ body {
   opacity: 1;
 }
 
+.kampf-list-section {
+  margin-top: 0.25rem;
+}
+
+.kampf-list-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0 0.45rem 0.25rem;
+  margin-bottom: 0.1rem;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.22);
+}
+
+.kampf-col-label {
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  opacity: 0.72;
+  line-height: 1;
+}
+
+.kampf-col-label--name {
+  flex: 1;
+  min-width: 0;
+}
+
+.kampf-col-label--ini {
+  width: 4.75rem;
+  flex-shrink: 0;
+  text-align: right;
+  box-sizing: border-box;
+}
+
 .initiative-list {
   margin: 0;
   padding: 0;

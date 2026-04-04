@@ -55,7 +55,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       input.autocomplete = 'off'
       input.spellcheck = false
       input.value = row.initiative
-      input.setAttribute('aria-label', 'Initiative')
+      input.setAttribute('aria-label', 'INI')
 
       const commit = () => {
         const next = input.value.trim()

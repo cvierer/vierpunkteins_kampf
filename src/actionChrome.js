@@ -12,7 +12,7 @@ export async function syncActionChrome(items) {
   if (!combat.started || !activeId) {
     await OBR.action.setBadgeText(undefined)
     await OBR.action.setIcon(assetUrl('add.svg'))
-    await OBR.action.setTitle('Initiative')
+    await OBR.action.setTitle('Kampf')
     return
   }
 

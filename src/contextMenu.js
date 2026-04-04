@@ -9,7 +9,7 @@ export function setupContextMenu() {
     icons: [
       {
         icon: assetUrl('add.svg'),
-        label: 'Zur Initiative hinzufügen',
+        label: 'Zum Kampf hinzufügen',
         filter: {
           every: [
             { key: 'layer', value: 'CHARACTER' },
@@ -19,7 +19,7 @@ export function setupContextMenu() {
       },
       {
         icon: assetUrl('remove.svg'),
-        label: 'entfernen',
+        label: 'Vom Kampf entfernen',
         filter: {
           every: [{ key: 'layer', value: 'CHARACTER' }],
         },

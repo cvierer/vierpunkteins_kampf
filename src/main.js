@@ -9,7 +9,7 @@ import { setupTurnMarkerSync } from './turnMarker.js'
 
 document.querySelector('#app').innerHTML = `
   <header class="app-header">
-    <h1 class="app-title">Initiative</h1>
+    <h1 class="app-title">Kampf</h1>
     <div class="combat-bar" data-combat-root>
       <div class="combat-toolbar">
         <button type="button" class="btn btn--primary" data-combat-toggle>Start</button>
@@ -22,7 +22,13 @@ document.querySelector('#app').innerHTML = `
     </div>
   </header>
   <p id="standalone-hint" class="standalone-hint" hidden></p>
-  <ul id="initiative-list" class="initiative-list" aria-label="Initiativeliste"></ul>
+  <div class="kampf-list-section">
+    <div class="kampf-list-head" aria-hidden="true">
+      <span class="kampf-col-label kampf-col-label--name">Name</span>
+      <span class="kampf-col-label kampf-col-label--ini">INI</span>
+    </div>
+    <ul id="initiative-list" class="initiative-list" aria-label="Kampf"></ul>
+  </div>
 `
 
 if (OBR.isAvailable) {
