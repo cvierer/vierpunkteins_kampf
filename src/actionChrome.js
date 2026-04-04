@@ -17,7 +17,7 @@ export async function syncActionChrome(items) {
   }
 
   await OBR.action.setBadgeText(undefined)
-  await OBR.action.setIcon(assetUrl('action-turn.svg'))
+  await OBR.action.setIcon(assetUrl('action-combat.svg'))
   const label = activeRow?.name?.trim() || 'Zug'
   await OBR.action.setTitle(`${label} · Runde ${combat.round}`)
 }

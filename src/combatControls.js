@@ -17,8 +17,7 @@ export async function setupCombatControls(root) {
   const isGm = role === 'GM'
 
   const elRound = root.querySelector('[data-combat-round]')
-  const btnStart = root.querySelector('[data-combat-start]')
-  const btnEnd = root.querySelector('[data-combat-end]')
+  const btnToggle = root.querySelector('[data-combat-toggle]')
   const btnPrev = root.querySelector('[data-combat-prev]')
   const btnNext = root.querySelector('[data-combat-next]')
 
@@ -32,32 +31,38 @@ export async function setupCombatControls(root) {
     const c = getCombat()
     const ids = getTrackedParticipantIds()
 
-    if (elRound) {
-      elRound.textContent = c.started ? `Runde ${c.round}` : 'Kampf aus'
+    if (btnToggle) {
+      btnToggle.textContent = c.started ? 'Beenden' : 'Start'
     }
 
-    const canRun = isGm && ids.length > 0
-    setGmDisabled(btnStart, !canRun || c.started)
-    setGmDisabled(btnEnd, !canRun || !c.started)
-    setGmDisabled(btnPrev, !canRun || !c.started)
-    setGmDisabled(btnNext, !canRun || !c.started)
+    if (elRound) {
+      elRound.textContent = c.started
+        ? `Kampfrunde ${c.round}`
+        : 'Kampfrunde —'
+    }
+
+    const canNav = isGm && c.started && ids.length > 0
+    setGmDisabled(btnToggle, !isGm || (!c.started && ids.length === 0))
+    setGmDisabled(btnPrev, !canNav)
+    setGmDisabled(btnNext, !canNav)
   }
 
-  btnStart?.addEventListener('click', async () => {
+  btnToggle?.addEventListener('click', async () => {
+    const c = getCombat()
+    if (c.started) {
+      await patchCombat({
+        started: false,
+        round: 1,
+        currentItemId: null,
+      })
+      return
+    }
     const ids = await sortedIds()
     if (ids.length === 0) return
     await patchCombat({
       started: true,
       round: 1,
       currentItemId: ids[0],
-    })
-  })
-
-  btnEnd?.addEventListener('click', async () => {
-    await patchCombat({
-      started: false,
-      round: 1,
-      currentItemId: null,
     })
   })
 

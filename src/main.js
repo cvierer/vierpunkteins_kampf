@@ -5,17 +5,19 @@ import { setupInitiativeList } from './initiativeList.js'
 import { initCombatRoom } from './combatRoom.js'
 import { setupCombatControls } from './combatControls.js'
 import { syncActionChrome } from './actionChrome.js'
+import { setupTurnMarkerSync } from './turnMarker.js'
 
 document.querySelector('#app').innerHTML = `
   <header class="app-header">
     <h1 class="app-title">Initiative</h1>
     <div class="combat-bar" data-combat-root>
-      <span class="combat-round" data-combat-round>Kampf aus</span>
-      <div class="combat-actions">
-        <button type="button" class="btn btn--primary" data-combat-start>Beginnen</button>
-        <button type="button" class="btn" data-combat-prev>Zurück</button>
-        <button type="button" class="btn" data-combat-next>Weiter</button>
-        <button type="button" class="btn btn--ghost" data-combat-end>Beenden</button>
+      <div class="combat-toolbar">
+        <button type="button" class="btn btn--primary" data-combat-toggle>Start</button>
+        <div class="combat-nav" role="group" aria-label="Zug und Runde">
+          <button type="button" class="btn btn--nav" data-combat-prev aria-label="Vorheriger Zug">&lt;</button>
+          <span class="combat-round-label" data-combat-round>Kampfrunde —</span>
+          <button type="button" class="btn btn--nav" data-combat-next aria-label="Nächster Zug">&gt;</button>
+        </div>
       </div>
     </div>
   </header>
@@ -28,6 +30,7 @@ if (OBR.isAvailable) {
     await initCombatRoom()
     const combatRoot = document.querySelector('[data-combat-root]')
     const { refreshBar } = await setupCombatControls(combatRoot)
+    setupTurnMarkerSync()
     setupContextMenu()
     setupInitiativeList(document.querySelector('#initiative-list'), {
       onListChange: (items) => {
