@@ -1,0 +1,13 @@
+{
+  "name": "DSA Initiative Tracker",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "description": "Initiative-Liste für Charakter-Tokens (CHARACTER).",
+  "action": {
+    "title": "Initiative",
+    "icon": "/add.svg",
+    "popover": "/index.html",
+    "height": 600,
+    "width": 400
+  }
+}
