@@ -39,6 +39,73 @@ function formatHookDisplay(hook) {
   return Number.isInteger(hook) ? String(hook) : String(hook)
 }
 
+function parseIniNumber(s) {
+  const n = Number(String(s ?? '').trim().replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+function formatDragIniValue(n) {
+  if (!Number.isFinite(n)) return ''
+  const rounded = Math.round(n * 1000) / 1000
+  const asInt = Math.round(rounded)
+  if (Math.abs(rounded - asInt) < 1e-4) return String(asInt)
+  const oneDec = Math.round(rounded * 10) / 10
+  return String(oneDec)
+}
+
+function buildIniKnotsExcluding(tokenEls, rowMap, excludeId) {
+  const knots = []
+  for (const el of tokenEls) {
+    const id = el.dataset.itemId
+    if (!id || id === excludeId) continue
+    const row = rowMap.get(id)
+    const v = parseIniNumber(row?.initiative)
+    if (v === null) continue
+    const r = el.getBoundingClientRect()
+    const mid = r.top + r.height / 2
+    knots.push({ y: mid, v })
+  }
+  knots.sort((a, b) => a.y - b.y)
+  return knots
+}
+
+function lerpIniFromClientY(clientY, knots) {
+  if (knots.length === 0) return null
+  if (knots.length === 1) return knots[0].v
+  if (clientY <= knots[0].y) {
+    const k0 = knots[0]
+    const k1 = knots[1]
+    const denom = Math.max(k1.y - k0.y, 1e-6)
+    const t = (clientY - k0.y) / denom
+    return k0.v + t * (k1.v - k0.v)
+  }
+  const last = knots.length - 1
+  if (clientY >= knots[last].y) {
+    const k0 = knots[last - 1]
+    const k1 = knots[last]
+    const denom = Math.max(k1.y - k0.y, 1e-6)
+    const t = (clientY - k1.y) / denom
+    return k1.v + t * (k1.v - k0.v)
+  }
+  for (let i = 0; i < last; i++) {
+    if (clientY <= knots[i + 1].y) {
+      const k0 = knots[i]
+      const k1 = knots[i + 1]
+      const denom = Math.max(k1.y - k0.y, 1e-6)
+      const t = (clientY - k0.y) / denom
+      return k0.v + t * (k1.v - k0.v)
+    }
+  }
+  return knots[last].v
+}
+
+function shouldCommitIniFromDrag(previewNum, currentIniStr) {
+  if (previewNum == null || !Number.isFinite(previewNum)) return false
+  const cur = parseIniNumber(currentIniStr)
+  if (cur == null) return true
+  return Math.abs(previewNum - cur) > 1e-3
+}
+
 function clientYToInsertSlot(clientY, tokenEls) {
   const n = tokenEls.length
   if (n === 0) return 0
@@ -85,8 +152,18 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   dropLine.setAttribute('aria-hidden', 'true')
   if (listHost) listHost.appendChild(dropLine)
 
+  const iniFloat = document.createElement('div')
+  iniFloat.className = 'init-drag-ini-float'
+  iniFloat.setAttribute('aria-hidden', 'true')
+  document.body.appendChild(iniFloat)
+
   const hideDropLine = () => {
     dropLine.classList.remove('init-list-drop-line--active')
+  }
+
+  const hideIniFloat = () => {
+    iniFloat.classList.remove('init-drag-ini-float--visible')
+    iniFloat.textContent = ''
   }
 
   const updateDropLine = (clientY, dragId) => {
@@ -110,6 +187,33 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     dropLine.classList.add('init-list-drop-line--active')
   }
 
+  const updateDragSession = (clientX, clientY, dragId) => {
+    const tokenEls = [
+      ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
+    ]
+    const rows = collectSortedParticipants(lastItems, getIniTieOrder())
+    const rowMap = new Map(rows.map((r) => [r.id, r]))
+    const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
+    const previewNum = lerpIniFromClientY(clientY, knots)
+    const dragRow = rowMap.get(dragId)
+    const curStr = dragRow?.initiative ?? ''
+
+    if (previewNum != null && knots.length > 0) {
+      iniFloat.textContent = formatDragIniValue(previewNum)
+      iniFloat.style.left = `${clientX + 14}px`
+      iniFloat.style.top = `${clientY + 14}px`
+      iniFloat.classList.add('init-drag-ini-float--visible')
+    } else {
+      hideIniFloat()
+    }
+
+    if (shouldCommitIniFromDrag(previewNum, curStr)) {
+      hideDropLine()
+    } else {
+      updateDropLine(clientY, dragId)
+    }
+  }
+
   const onHostDragOver = (e) => {
     if (!isTokenDragTransfer(e.dataTransfer)) return
     e.preventDefault()
@@ -118,7 +222,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
       e.dataTransfer.getData('text/plain')
     if (!dragId) return
-    updateDropLine(e.clientY, dragId)
+    updateDragSession(e.clientX, e.clientY, dragId)
   }
 
   const onHostDrop = (e) => {
@@ -128,14 +232,32 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
       e.dataTransfer.getData('text/plain')
     hideDropLine()
+    hideIniFloat()
     if (!dragId || !listHost) return
     const tokenEls = [
       ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
     ]
+    const clientY = e.clientY
     void OBR.scene.items.getItems().then((fresh) => {
+      const rows = collectSortedParticipants(fresh, getIniTieOrder())
+      const rowMap = new Map(rows.map((r) => [r.id, r]))
+      const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
+      const previewNum = lerpIniFromClientY(clientY, knots)
+      const curStr = rowMap.get(dragId)?.initiative ?? ''
+      if (shouldCommitIniFromDrag(previewNum, curStr)) {
+        const s = formatDragIniValue(previewNum)
+        restoreFocusItemId = dragId
+        OBR.scene.items.updateItems([dragId], (drafts) => {
+          for (const d of drafts) {
+            const m = d.metadata[TRACKER_ITEM_META_KEY]
+            if (m) m.initiative = s
+          }
+        })
+        return
+      }
       const { validSlots } = computeValidIniTieInsertSlots(dragId, fresh)
       if (validSlots.length === 0) return
-      const raw = clientYToInsertSlot(e.clientY, tokenEls)
+      const raw = clientYToInsertSlot(clientY, tokenEls)
       const slot = pickNearestValidSlot(raw, validSlots)
       if (slot == null) return
       void reorderIniTieToken(dragId, slot, fresh)
@@ -147,6 +269,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const rel = e.relatedTarget
     if (rel && listHost?.contains(rel)) return
     hideDropLine()
+    hideIniFloat()
   }
 
   if (listHost) {
@@ -195,7 +318,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         li.dataset.itemId = row.id
         li.draggable = true
         li.title =
-          'Zeile ziehen: goldene Linie zeigt die neue Position (nur innerhalb gleicher INI). Nicht von +/− oder INI-Feld ziehen.'
+          'Zeile ziehen: Zahl folgt dem Zeiger – zwischen zwei INIs interpolieren, loslassen übernimmt. Gleiche INI: goldene Linie = Reihenfolge. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
           if (e.target.closest('button, input, textarea, select')) {
             e.preventDefault()
@@ -204,11 +327,23 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
           e.dataTransfer.setData('text/plain', row.id)
           e.dataTransfer.effectAllowed = 'move'
+          const emptyImg = new Image()
+          emptyImg.src =
+            'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+          e.dataTransfer.setDragImage(emptyImg, 0, 0)
           li.classList.add('init-row--dragging')
+          requestAnimationFrame(() => {
+            updateDragSession(e.clientX, e.clientY, row.id)
+          })
+        })
+        li.addEventListener('drag', (e) => {
+          if (!li.classList.contains('init-row--dragging')) return
+          updateDragSession(e.clientX, e.clientY, row.id)
         })
         li.addEventListener('dragend', () => {
           li.classList.remove('init-row--dragging')
           hideDropLine()
+          hideIniFloat()
         })
 
         const main = document.createElement('div')
@@ -483,6 +618,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       listHost.removeEventListener('dragleave', onHostDragLeave)
     }
     dropLine.remove()
+    iniFloat.remove()
     renderList(lastItems)
   }
 }
