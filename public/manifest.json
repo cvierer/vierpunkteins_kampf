@@ -4,7 +4,7 @@
   "manifest_version": 1,
   "description": "Kampfliste und Initiative für Charakter-Tokens (CHARACTER).",
   "action": {
-    "title": "Kampf",
+    "title": "vierpunkteins_kampf",
     "icon": "/action-sword-idle.svg",
     "popover": "/index.html",
     "height": 600,

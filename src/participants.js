@@ -1,6 +1,6 @@
 import { compareInitiativeRows } from './initiativeSort.js'
 
-export const TRACKER_ID = 'dsa-owlbear.tracker'
+export const TRACKER_ID = 'vierpunkteins_kampf.tracker'
 export const TRACKER_ITEM_META_KEY = `${TRACKER_ID}/metadata`
 const META_KEY = TRACKER_ITEM_META_KEY
 

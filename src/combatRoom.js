@@ -1,6 +1,6 @@
 import OBR from '@owlbear-rodeo/sdk'
 
-const ID = 'dsa-owlbear.tracker'
+const ID = 'vierpunkteins_kampf.tracker'
 export const COMBAT_KEY = `${ID}/combat`
 
 const listeners = new Set()

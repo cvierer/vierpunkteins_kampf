@@ -1,7 +1,7 @@
 import OBR, { buildLabel } from '@owlbear-rodeo/sdk'
 import { getCombat, onCombatChange } from './combatRoom.js'
 
-const TRACKER = 'dsa-owlbear.tracker'
+const TRACKER = 'vierpunkteins_kampf.tracker'
 const TURN_MARKER_META = `${TRACKER}/turnMarker`
 
 let debounceTimer = null
@@ -77,11 +77,11 @@ async function applyTurnMarker() {
       .minViewScale(0.12)
       .disableHit(true)
       .metadata({ [TURN_MARKER_META]: true })
-      .name('Initiative: Zug')
+      .name('vierpunkteins_kampf: Zug')
       .build()
 
     await OBR.scene.items.addItems([label])
   } catch (e) {
-    console.warn('[dsa-owlbear] Zugmarker', e)
+    console.warn('[vierpunkteins_kampf] Zugmarker', e)
   }
 }

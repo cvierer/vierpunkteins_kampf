@@ -1,7 +1,7 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { assetUrl } from './assetUrl.js'
 
-const ID = 'dsa-owlbear.tracker'
+const ID = 'vierpunkteins_kampf.tracker'
 
 export function setupContextMenu() {
   OBR.contextMenu.create({

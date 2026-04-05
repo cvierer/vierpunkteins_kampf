@@ -12,7 +12,7 @@ export async function syncActionChrome(items) {
   if (!combat.started || !activeId) {
     await OBR.action.setBadgeText(undefined)
     await OBR.action.setIcon(assetUrl('action-sword-idle.svg'))
-    await OBR.action.setTitle('Kampf')
+    await OBR.action.setTitle('vierpunkteins_kampf')
     return
   }
 
