@@ -44,15 +44,6 @@ function parseIniNumber(s) {
   return Number.isFinite(n) ? n : null
 }
 
-function formatDragIniValue(n) {
-  if (!Number.isFinite(n)) return ''
-  const rounded = Math.round(n * 1000) / 1000
-  const asInt = Math.round(rounded)
-  if (Math.abs(rounded - asInt) < 1e-4) return String(asInt)
-  const oneDec = Math.round(rounded * 10) / 10
-  return String(oneDec)
-}
-
 function buildIniKnotsExcluding(tokenEls, rowMap, excludeId) {
   const knots = []
   for (const el of tokenEls) {
@@ -99,11 +90,29 @@ function lerpIniFromClientY(clientY, knots) {
   return knots[last].v
 }
 
-function shouldCommitIniFromDrag(previewNum, currentIniStr) {
-  if (previewNum == null || !Number.isFinite(previewNum)) return false
+/** Vertikale Rasterung: INI ändert sich in erkennbaren Schritten beim Ziehen. */
+const INI_DRAG_Y_STEP_PX = 14
+
+function snapClientYForIniStep(clientY, listUl) {
+  const ur = listUl.getBoundingClientRect()
+  const y = Math.max(ur.top, Math.min(ur.bottom, clientY))
+  const step = Math.max(INI_DRAG_Y_STEP_PX, 1)
+  const snapped =
+    ur.top + step * Math.round((y - ur.top) / step)
+  return Math.max(ur.top, Math.min(ur.bottom, snapped))
+}
+
+/** Ganzzahl-Vorschlag aus Lerp; Commit/Reorder nur darauf abstimmen (vermeidet Float-Flattern). */
+function iniPreviewIntegerFromLerp(continuous) {
+  if (continuous == null || !Number.isFinite(continuous)) return null
+  return Math.round(continuous)
+}
+
+function shouldCommitIniFromDragInteger(previewInt, currentIniStr) {
+  if (previewInt == null || !Number.isFinite(previewInt)) return false
   const cur = parseIniNumber(currentIniStr)
   if (cur == null) return true
-  return Math.abs(previewNum - cur) > 1e-3
+  return previewInt !== Math.round(cur)
 }
 
 function clientYToInsertSlot(clientY, tokenEls) {
@@ -132,14 +141,18 @@ function pickNearestValidSlot(rawSlot, validSlots) {
   return best
 }
 
-function insertSlotToLineTopPx(slot, tokenEls, listHost) {
+function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   const hr = listHost.getBoundingClientRect()
+  const ur = listUl.getBoundingClientRect()
   const n = tokenEls.length
-  if (n === 0) return Math.max(4, hr.height * 0.08)
+  const pad = 2
+  if (n === 0) {
+    return Math.max(pad, ur.top - hr.top + ur.height / 2)
+  }
   const rects = tokenEls.map((el) => el.getBoundingClientRect())
-  if (slot <= 0) return Math.max(0, rects[0].top - hr.top - 4)
-  if (slot >= n) return Math.max(0, rects[n - 1].bottom - hr.top + 4)
-  return Math.max(0, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
+  if (slot <= 0) return Math.max(pad, ur.top - hr.top + pad)
+  if (slot >= n) return Math.max(pad, ur.bottom - hr.top - pad)
+  return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
 export function setupInitiativeList(element, { onListChange } = {}) {
@@ -182,7 +195,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       hideDropLine()
       return
     }
-    const top = insertSlotToLineTopPx(slot, tokenEls, listHost)
+    const top = insertSlotToLineTopPx(slot, tokenEls, listHost, element)
     dropLine.style.top = `${top}px`
     dropLine.classList.add('init-list-drop-line--active')
   }
@@ -194,12 +207,14 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const rows = collectSortedParticipants(lastItems, getIniTieOrder())
     const rowMap = new Map(rows.map((r) => [r.id, r]))
     const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
-    const previewNum = lerpIniFromClientY(clientY, knots)
+    const yIni = snapClientYForIniStep(clientY, element)
+    const previewCont = lerpIniFromClientY(yIni, knots)
+    const previewInt = iniPreviewIntegerFromLerp(previewCont)
     const dragRow = rowMap.get(dragId)
     const curStr = dragRow?.initiative ?? ''
 
-    if (previewNum != null && knots.length > 0) {
-      iniFloat.textContent = formatDragIniValue(previewNum)
+    if (previewInt != null && knots.length > 0) {
+      iniFloat.textContent = `INI ${previewInt}`
       iniFloat.style.left = `${clientX + 14}px`
       iniFloat.style.top = `${clientY + 14}px`
       iniFloat.classList.add('init-drag-ini-float--visible')
@@ -207,7 +222,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       hideIniFloat()
     }
 
-    if (shouldCommitIniFromDrag(previewNum, curStr)) {
+    if (shouldCommitIniFromDragInteger(previewInt, curStr)) {
       hideDropLine()
     } else {
       updateDropLine(clientY, dragId)
@@ -242,10 +257,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       const rows = collectSortedParticipants(fresh, getIniTieOrder())
       const rowMap = new Map(rows.map((r) => [r.id, r]))
       const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
-      const previewNum = lerpIniFromClientY(clientY, knots)
+      const yIni = snapClientYForIniStep(clientY, element)
+      const previewCont = lerpIniFromClientY(yIni, knots)
+      const previewInt = iniPreviewIntegerFromLerp(previewCont)
       const curStr = rowMap.get(dragId)?.initiative ?? ''
-      if (shouldCommitIniFromDrag(previewNum, curStr)) {
-        const s = formatDragIniValue(previewNum)
+      if (shouldCommitIniFromDragInteger(previewInt, curStr)) {
+        const s = String(previewInt)
         restoreFocusItemId = dragId
         OBR.scene.items.updateItems([dragId], (drafts) => {
           for (const d of drafts) {
@@ -318,7 +335,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         li.dataset.itemId = row.id
         li.draggable = true
         li.title =
-          'Zeile ziehen: Zahl folgt dem Zeiger – zwischen zwei INIs interpolieren, loslassen übernimmt. Gleiche INI: goldene Linie = Reihenfolge. Nicht von +/− oder INI-Feld ziehen.'
+          'Zeile ziehen: INI-Vorschau folgt dem Zeiger (ganze Zahlen). Zwischen zwei Werten wird interpoliert und gerundet. Gleiche INI: goldene Linie = Reihenfolge auch ganz oben/unten. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
           if (e.target.closest('button, input, textarea, select')) {
             e.preventDefault()
