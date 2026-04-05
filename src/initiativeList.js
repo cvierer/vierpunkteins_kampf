@@ -4,14 +4,14 @@ import {
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
 import {
+  computeValidIniTieInsertSlots,
   getCombat,
   getIniTieOrder,
   onCombatChange,
   onIniTieOrderChange,
   patchCombat,
-  swapIniTiedPair,
+  reorderIniTieToken,
 } from './combatRoom.js'
-import { initiativeCompareOnlyIni } from './initiativeSort.js'
 import { setTrackedParticipantIds } from './listState.js'
 import {
   addPhaseChildLink,
@@ -39,9 +39,121 @@ function formatHookDisplay(hook) {
   return Number.isInteger(hook) ? String(hook) : String(hook)
 }
 
+function clientYToInsertSlot(clientY, tokenEls) {
+  const n = tokenEls.length
+  if (n === 0) return 0
+  let slot = 0
+  for (let i = 0; i < n; i++) {
+    const r = tokenEls[i].getBoundingClientRect()
+    const mid = r.top + r.height / 2
+    if (clientY >= mid) slot = i + 1
+  }
+  return slot
+}
+
+function pickNearestValidSlot(rawSlot, validSlots) {
+  if (validSlots.length === 0) return null
+  let best = validSlots[0]
+  let bestD = Math.abs(rawSlot - best)
+  for (const s of validSlots) {
+    const d = Math.abs(rawSlot - s)
+    if (d < bestD || (d === bestD && s < best)) {
+      best = s
+      bestD = d
+    }
+  }
+  return best
+}
+
+function insertSlotToLineTopPx(slot, tokenEls, listHost) {
+  const hr = listHost.getBoundingClientRect()
+  const n = tokenEls.length
+  if (n === 0) return Math.max(4, hr.height * 0.08)
+  const rects = tokenEls.map((el) => el.getBoundingClientRect())
+  if (slot <= 0) return Math.max(0, rects[0].top - hr.top - 4)
+  if (slot >= n) return Math.max(0, rects[n - 1].bottom - hr.top + 4)
+  return Math.max(0, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
+}
+
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
+
+  const listHost = element.parentElement
+  const dropLine = document.createElement('div')
+  dropLine.className = 'init-list-drop-line'
+  dropLine.setAttribute('aria-hidden', 'true')
+  if (listHost) listHost.appendChild(dropLine)
+
+  const hideDropLine = () => {
+    dropLine.classList.remove('init-list-drop-line--active')
+  }
+
+  const updateDropLine = (clientY, dragId) => {
+    if (!listHost) return
+    const { validSlots } = computeValidIniTieInsertSlots(dragId, lastItems)
+    if (validSlots.length === 0) {
+      hideDropLine()
+      return
+    }
+    const tokenEls = [
+      ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
+    ]
+    const raw = clientYToInsertSlot(clientY, tokenEls)
+    const slot = pickNearestValidSlot(raw, validSlots)
+    if (slot == null) {
+      hideDropLine()
+      return
+    }
+    const top = insertSlotToLineTopPx(slot, tokenEls, listHost)
+    dropLine.style.top = `${top}px`
+    dropLine.classList.add('init-list-drop-line--active')
+  }
+
+  const onHostDragOver = (e) => {
+    if (!isTokenDragTransfer(e.dataTransfer)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const dragId =
+      e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
+      e.dataTransfer.getData('text/plain')
+    if (!dragId) return
+    updateDropLine(e.clientY, dragId)
+  }
+
+  const onHostDrop = (e) => {
+    if (!isTokenDragTransfer(e.dataTransfer)) return
+    e.preventDefault()
+    const dragId =
+      e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
+      e.dataTransfer.getData('text/plain')
+    hideDropLine()
+    if (!dragId || !listHost) return
+    const tokenEls = [
+      ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
+    ]
+    void OBR.scene.items.getItems().then((fresh) => {
+      const { validSlots } = computeValidIniTieInsertSlots(dragId, fresh)
+      if (validSlots.length === 0) return
+      const raw = clientYToInsertSlot(e.clientY, tokenEls)
+      const slot = pickNearestValidSlot(raw, validSlots)
+      if (slot == null) return
+      void reorderIniTieToken(dragId, slot, fresh)
+    })
+  }
+
+  const onHostDragLeave = (e) => {
+    if (!isTokenDragTransfer(e.dataTransfer)) return
+    const rel = e.relatedTarget
+    if (rel && listHost?.contains(rel)) return
+    hideDropLine()
+  }
+
+  if (listHost) {
+    listHost.addEventListener('dragover', onHostDragOver)
+    listHost.addEventListener('drop', onHostDrop)
+    listHost.addEventListener('dragleave', onHostDragLeave)
+  }
 
   const reconcileCombat = async (rows) => {
     const c = getCombat()
@@ -58,12 +170,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
   const renderList = (items) => {
     lastItems = items
-
-    const clearDragOverHighlights = () => {
-      element.querySelectorAll('.init-row--drag-over').forEach((n) => {
-        n.classList.remove('init-row--drag-over')
-      })
-    }
     const tokenRows = collectSortedParticipants(items, getIniTieOrder())
     setTrackedParticipantIds(tokenRows.map((r) => r.id))
     void reconcileCombat(tokenRows)
@@ -84,41 +190,25 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const phases = normalizePhases(meta?.phases)
 
         const li = document.createElement('li')
-        li.className = 'init-row'
+        li.className = 'init-row init-row--token-draggable'
         if (row.id === activeId) li.classList.add('init-row--active')
         li.dataset.itemId = row.id
-
-        li.addEventListener('dragenter', (e) => {
-          if (!isTokenDragTransfer(e.dataTransfer)) return
-          e.preventDefault()
-          li.classList.add('init-row--drag-over')
+        li.draggable = true
+        li.title =
+          'Zeile ziehen: goldene Linie zeigt die neue Position (nur innerhalb gleicher INI). Nicht von +/− oder INI-Feld ziehen.'
+        li.addEventListener('dragstart', (e) => {
+          if (e.target.closest('button, input, textarea, select')) {
+            e.preventDefault()
+            return
+          }
+          e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
+          e.dataTransfer.setData('text/plain', row.id)
+          e.dataTransfer.effectAllowed = 'move'
+          li.classList.add('init-row--dragging')
         })
-        li.addEventListener('dragover', (e) => {
-          if (!isTokenDragTransfer(e.dataTransfer)) return
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'move'
-        })
-        li.addEventListener('dragleave', (e) => {
-          if (e.relatedTarget && li.contains(e.relatedTarget)) return
-          li.classList.remove('init-row--drag-over')
-        })
-        li.addEventListener('drop', (e) => {
-          if (!isTokenDragTransfer(e.dataTransfer)) return
-          e.preventDefault()
-          li.classList.remove('init-row--drag-over')
-          const dragId =
-            e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
-            e.dataTransfer.getData('text/plain')
-          if (!dragId || dragId === row.id) return
-          const itemsNow = lastItems
-          const rowsNow = collectSortedParticipants(
-            itemsNow,
-            getIniTieOrder()
-          )
-          const ra = rowsNow.find((r) => r.id === dragId)
-          const rb = rowsNow.find((r) => r.id === row.id)
-          if (!ra || !rb || initiativeCompareOnlyIni(ra, rb) !== 0) return
-          void swapIniTiedPair(dragId, row.id, itemsNow)
+        li.addEventListener('dragend', () => {
+          li.classList.remove('init-row--dragging')
+          hideDropLine()
         })
 
         const main = document.createElement('div')
@@ -158,33 +248,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         const gutter = document.createElement('div')
-        gutter.className = 'init-phase-gutter init-phase-gutter--dnd'
-
-        const handle = document.createElement('span')
-        handle.className = 'init-row-drag-handle'
-        handle.draggable = true
-        handle.title =
-          'Gleiche INI: auf andere Figur ziehen, um die Reihenfolge zu tauschen'
-        handle.setAttribute('aria-label', handle.title)
-        const g1 = document.createElement('span')
-        g1.className = 'init-row-drag-grip-col'
-        g1.textContent = '⋮'
-        const g2 = document.createElement('span')
-        g2.className = 'init-row-drag-grip-col'
-        g2.textContent = '⋮'
-        handle.append(g1, g2)
-        handle.addEventListener('dragstart', (e) => {
-          e.stopPropagation()
-          e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
-          e.dataTransfer.setData('text/plain', row.id)
-          e.dataTransfer.effectAllowed = 'move'
-          li.classList.add('init-row--dragging')
-        })
-        handle.addEventListener('dragend', () => {
-          li.classList.remove('init-row--dragging')
-          clearDragOverHighlights()
-        })
-        gutter.appendChild(handle)
+        gutter.className = 'init-phase-gutter init-phase-gutter--empty'
+        gutter.setAttribute('aria-hidden', 'true')
 
         const nameCol = document.createElement('div')
         nameCol.className = 'init-row-name-col'
@@ -412,6 +477,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   onIniTieOrderChange(() => renderList(lastItems))
 
   return () => {
+    if (listHost) {
+      listHost.removeEventListener('dragover', onHostDragOver)
+      listHost.removeEventListener('drop', onHostDrop)
+      listHost.removeEventListener('dragleave', onHostDragLeave)
+    }
+    dropLine.remove()
     renderList(lastItems)
   }
 }

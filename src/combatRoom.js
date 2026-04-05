@@ -1,6 +1,6 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
-import { initiativeCompareOnlyIni } from './initiativeSort.js'
+import { compareInitiativeRowsWithTieOrder } from './initiativeSort.js'
 
 const ID = 'vierpunkteins_kampf.tracker'
 export const COMBAT_KEY = `${ID}/combat`
@@ -108,24 +108,51 @@ function ensureFullTieOrder(existing, sortedIds) {
   return out
 }
 
-/**
- * Zwei Figuren mit gleicher INI in der Listenreihenfolge tauschen; Reihenfolge
- * bleibt im Raum gespeichert (u. a. über Kampfrunden).
- */
-export async function swapIniTiedPair(idA, idB, items) {
-  if (idA === idB) return
-  const sortedRows = collectSortedParticipants(items, tieOrderCache)
-  const rowA = sortedRows.find((r) => r.id === idA)
-  const rowB = sortedRows.find((r) => r.id === idB)
-  if (!rowA || !rowB) return
-  if (initiativeCompareOnlyIni(rowA, rowB) !== 0) return
+function orderRespectsIniAndTie(orderIds, rowMap) {
+  for (let i = 0; i < orderIds.length - 1; i++) {
+    const a = rowMap.get(orderIds[i])
+    const b = rowMap.get(orderIds[i + 1])
+    if (!a || !b) return false
+    if (compareInitiativeRowsWithTieOrder(a, b, orderIds) > 0) return false
+  }
+  return true
+}
 
+/**
+ * Für Drag&Drop: erlaubte Einfüge-Indizes (0 = vor erstem Token, length = nach letztem),
+ * wenn `dragId` dort eingefügt wird und die INI-Reihenfolge erhalten bleibt.
+ */
+export function computeValidIniTieInsertSlots(dragId, items) {
+  const sortedRows = collectSortedParticipants(items, tieOrderCache)
   const sortedIds = sortedRows.map((r) => r.id)
-  let order = ensureFullTieOrder([...tieOrderCache], sortedIds)
-  const ia = order.indexOf(idA)
-  const ib = order.indexOf(idB)
-  if (ia < 0 || ib < 0) return
-  ;[order[ia], order[ib]] = [order[ib], order[ia]]
+  if (!sortedIds.includes(dragId))
+    return { validSlots: [], sortedIds, without: [] }
+  const without = sortedIds.filter((id) => id !== dragId)
+  const rowMap = new Map(sortedRows.map((r) => [r.id, r]))
+  const validSlots = []
+  for (let slot = 0; slot <= without.length; slot++) {
+    const next = [...without.slice(0, slot), dragId, ...without.slice(slot)]
+    if (orderRespectsIniAndTie(next, rowMap)) validSlots.push(slot)
+  }
+  return { validSlots, sortedIds, without }
+}
+
+/**
+ * Token in der Listenreihenfolge verschieben (nur wenn INI-Rang gültig bleibt;
+ * gleiche INI = manuelle Reihenfolge über Raum-Metadaten).
+ */
+export async function reorderIniTieToken(dragId, insertBeforeIndex, items) {
+  const sortedRows = collectSortedParticipants(items, tieOrderCache)
+  const sortedIds = sortedRows.map((r) => r.id)
+  if (!sortedIds.includes(dragId)) return
+  const without = sortedIds.filter((id) => id !== dragId)
+  const slot = Math.max(0, Math.min(insertBeforeIndex, without.length))
+  const next = [...without.slice(0, slot), dragId, ...without.slice(slot)]
+  const rowMap = new Map(sortedRows.map((r) => [r.id, r]))
+  if (!orderRespectsIniAndTie(next, rowMap)) return
+  if (next.length === sortedIds.length && next.every((id, i) => id === sortedIds[i]))
+    return
+  const order = ensureFullTieOrder(next, sortedIds)
   await OBR.room.setMetadata({ [INI_TIE_ORDER_KEY]: order })
   await pullIniTieOrderFromRoom()
 }

@@ -183,8 +183,30 @@ body {
 }
 
 .initiative-list-host {
+  position: relative;
   margin: 0;
   padding: 0;
+}
+
+.init-list-drop-line {
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.28),
+    0 0 10px rgba(201, 162, 39, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity 0.1s ease;
+}
+
+.init-list-drop-line--active {
+  opacity: 1;
 }
 
 .initiative-list {
@@ -272,42 +294,8 @@ body {
   min-height: 2.35rem;
 }
 
-.init-phase-gutter--dnd {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.1rem;
-  flex-shrink: 0;
-}
-
-.init-row-drag-handle {
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  display: flex;
-  flex-direction: row;
-  gap: 1px;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 1px;
-  color: var(--color-ink-muted);
-  opacity: 0.62;
-  line-height: 0.85;
-  font-size: 0.62rem;
-}
-
-.init-row-drag-handle:hover {
-  opacity: 0.95;
-  color: var(--color-accent);
-}
-
-.init-row-drag-handle:active {
-  cursor: grabbing;
-}
-
-.init-row-drag-grip-col {
-  display: block;
-  pointer-events: none;
+.init-phase-gutter--empty {
+  min-height: 0;
 }
 
 .phase-spine {
@@ -383,11 +371,25 @@ body {
   border-color: rgba(200, 100, 100, 0.55);
 }
 
-.init-row--drag-over {
-  border-color: rgba(201, 162, 39, 0.72);
-  box-shadow:
-    inset 0 0 0 1px rgba(201, 162, 39, 0.32),
-    0 0 0 2px rgba(201, 162, 39, 0.22);
+.init-row--token-draggable {
+  cursor: grab;
+}
+
+.init-row--token-draggable:active {
+  cursor: grabbing;
+}
+
+.init-row--token-draggable .init-row-name {
+  cursor: default;
+}
+
+.init-row--token-draggable .init-row-init {
+  cursor: text;
+}
+
+.init-row--token-draggable .init-row-phase-plus,
+.init-row--token-draggable .init-row-phase-minus {
+  cursor: pointer;
 }
 
 .init-row--dragging {
@@ -398,12 +400,6 @@ body {
   background: var(--color-active);
   border-color: var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);
-}
-
-.init-row--active.init-row--drag-over {
-  box-shadow:
-    inset 0 0 0 1px rgba(201, 162, 39, 0.22),
-    0 0 0 2px rgba(201, 162, 39, 0.26);
 }
 
 .init-row--active .init-row-name {
