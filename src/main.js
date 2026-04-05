@@ -27,7 +27,10 @@ document.querySelector('#app').innerHTML = `
       <span class="kampf-col-label kampf-col-label--name">Name</span>
       <span class="kampf-col-label kampf-col-label--ini">INI</span>
     </div>
-    <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
+    <div class="initiative-list-host" id="initiative-list-host">
+      <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
+      <div class="phase-overlay" id="phase-overlay"></div>
+    </div>
   </div>
 `
 

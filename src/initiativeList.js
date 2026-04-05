@@ -5,10 +5,43 @@ import {
 } from './participants.js'
 import { getCombat, onCombatChange, patchCombat } from './combatRoom.js'
 import { setTrackedParticipantIds } from './listState.js'
+import {
+  bindPhaseOverlayHandlers,
+  layoutPhaseOverlay,
+  onNamePhasePlusClick,
+} from './phaseLinks.js'
 
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
+  const host = document.getElementById('initiative-list-host')
+  const overlay = document.getElementById('phase-overlay')
+
+  let layoutFrame = 0
+  const schedulePhaseLayout = (rows, items) => {
+    if (!host || !overlay) return
+    cancelAnimationFrame(layoutFrame)
+    layoutFrame = requestAnimationFrame(() => {
+      layoutFrame = 0
+      const itemMetaById = new Map()
+      for (const item of items) {
+        const m = item.metadata?.[TRACKER_ITEM_META_KEY]
+        if (m) itemMetaById.set(item.id, m)
+      }
+      layoutPhaseOverlay(host, overlay, element, rows, itemMetaById)
+      overlay.style.height = `${element.offsetHeight}px`
+    })
+  }
+
+  if (host && overlay) {
+    bindPhaseOverlayHandlers(overlay)
+    const ro = new ResizeObserver(() => {
+      const rows = collectSortedParticipants(lastItems)
+      schedulePhaseLayout(rows, lastItems)
+    })
+    ro.observe(host)
+    ro.observe(element)
+  }
 
   const reconcileCombat = async (rows) => {
     const c = getCombat()
@@ -40,6 +73,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       if (row.id === activeId) li.classList.add('init-row--active')
       li.dataset.itemId = row.id
 
+      const main = document.createElement('div')
+      main.className = 'init-row-main'
+
+      const nameCol = document.createElement('div')
+      nameCol.className = 'init-row-name-col'
+
       const nameEl = document.createElement('span')
       nameEl.className = 'init-row-name'
       nameEl.textContent = row.name
@@ -47,6 +86,25 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       nameEl.addEventListener('dblclick', () => {
         void OBR.player.select([row.id], true)
       })
+
+      const phasePlus = document.createElement('button')
+      phasePlus.type = 'button'
+      phasePlus.className = 'init-row-phase-plus'
+      phasePlus.textContent = '+'
+      phasePlus.title =
+        'INI-Phasen (4.1): Klick öffnen / weitere Wurzel · Shift+Klick schließen'
+      phasePlus.setAttribute('aria-label', 'INI-Phasen')
+      phasePlus.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void onNamePhasePlusClick(row.id, { shiftKey: e.shiftKey })
+      })
+
+      const rootAnchor = document.createElement('span')
+      rootAnchor.className = 'phase-root-anchor'
+      rootAnchor.setAttribute('aria-hidden', 'true')
+
+      nameCol.append(nameEl, phasePlus, rootAnchor)
 
       const input = document.createElement('input')
       input.className = 'init-row-init'
@@ -77,7 +135,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       })
       input.addEventListener('blur', commit)
 
-      li.append(nameEl, input)
+      main.append(nameCol, input)
+      li.appendChild(main)
       frag.appendChild(li)
     }
 
@@ -85,7 +144,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     if (restoreFocusItemId) {
       const inp = element.querySelector(
-        `li[data-item-id="${restoreFocusItemId}"] .init-row-init`
+        `li[data-item-id="${CSS.escape(restoreFocusItemId)}"] .init-row-init`
       )
       if (inp) {
         inp.focus()
@@ -95,6 +154,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       restoreFocusItemId = null
     }
 
+    schedulePhaseLayout(rows, items)
     onListChange?.(items)
   }
 
