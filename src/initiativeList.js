@@ -255,6 +255,47 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
+/**
+ * Drag-Ghost: optisch wie die echte Zeile (Klone + gleiche Breite).
+ * setDragImage synchron in dragstart; Hülle kurz im DOM lassen, dann entfernen.
+ */
+function createRowDragPreviewShell(li, clientX, clientY) {
+  const rect = li.getBoundingClientRect()
+  const shell = document.createElement('div')
+  shell.className = 'initiative-list init-row-drag-preview-shell'
+  shell.setAttribute('aria-hidden', 'true')
+  shell.style.cssText = [
+    'position:fixed',
+    'left:-12000px',
+    'top:0',
+    `width:${rect.width}px`,
+    'margin:0',
+    'padding:0',
+    'list-style:none',
+    'pointer-events:none',
+    'box-sizing:border-box',
+    'z-index:2147483646',
+  ].join(';')
+  const clone = li.cloneNode(true)
+  clone.removeAttribute('draggable')
+  clone.classList.remove('init-row--dragging')
+  clone.style.boxSizing = 'border-box'
+  clone.style.width = '100%'
+  clone.querySelectorAll('input, button').forEach((el) => {
+    el.setAttribute('disabled', 'disabled')
+    el.setAttribute('tabindex', '-1')
+  })
+  shell.appendChild(clone)
+  document.body.appendChild(shell)
+  const ox = Math.round(clientX - rect.left)
+  const oy = Math.round(clientY - rect.top)
+  return {
+    shell,
+    ox: Math.max(0, Math.min(ox, Math.max(1, rect.width - 1))),
+    oy: Math.max(0, Math.min(oy, Math.max(1, rect.height - 1))),
+  }
+}
+
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
@@ -275,6 +316,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let activeDragRowId = null
   let lastDragClientX = 0
   let lastDragClientY = 0
+  /** Feste X-Position der INI-Vorschau (nur Y folgt dem Zeiger). */
+  let dragFloatAnchorX = 0
 
   const hideDropLine = () => {
     dropLine.classList.remove(
@@ -342,8 +385,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ? 'Loslassen: neuen Wert übernehmen'
         : 'Loslassen: Reihenfolge tauschen'
       iniFloat.append(main, mode)
-      iniFloat.style.left = `${clientX + 14}px`
-      iniFloat.style.top = `${clientY + 14}px`
+      iniFloat.style.left = `${dragFloatAnchorX}px`
+      iniFloat.style.top = `${clientY + 12}px`
       iniFloat.classList.add('init-drag-ini-float--visible')
     } else {
       hideIniFloat()
@@ -368,28 +411,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     }
   }
 
-  const onHostDragOver = (e) => {
-    if (!isTokenDragTransfer(e.dataTransfer)) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    const dragId =
-      e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
-      e.dataTransfer.getData('text/plain')
-    if (!dragId) return
-    updateDragSession(e.clientX, e.clientY, dragId)
-  }
-
-  const onHostDrop = (e) => {
-    if (!isTokenDragTransfer(e.dataTransfer)) return
-    e.preventDefault()
-    const dragId =
-      e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
-      e.dataTransfer.getData('text/plain')
+  const applyTokenDragRelease = (dragId, clientY, wheelAtDrop) => {
     hideDropLine()
     hideIniFloat()
     if (!dragId || !listHost) return
-    const clientY = e.clientY
-    const wheelAtDrop = dragWheelNudge
     void OBR.scene.items.getItems().then((fresh) => {
       const tokenElsFresh = [
         ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
@@ -421,29 +446,47 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     })
   }
 
-  const onHostWheel = (e) => {
+  const wheelListenerOpts = { passive: false }
+
+  const onDocumentDragOverWhileRow = (e) => {
     if (!rowDragActive || activeDragRowId == null) return
-    if (!listHost.contains(e.target)) return
+    if (!isTokenDragTransfer(e.dataTransfer)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    updateDragSession(e.clientX, e.clientY, activeDragRowId)
+  }
+
+  const onDocumentDropWhileRow = (e) => {
+    if (!rowDragActive || activeDragRowId == null) return
+    if (!isTokenDragTransfer(e.dataTransfer)) return
+    e.preventDefault()
+    e.stopPropagation()
+    const dragId =
+      e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
+      e.dataTransfer.getData('text/plain')
+    if (dragId !== activeDragRowId) return
+    const wheelAtDrop = dragWheelNudge
+    applyTokenDragRelease(dragId, e.clientY, wheelAtDrop)
+  }
+
+  const onDocumentWheelWhileRow = (e) => {
+    if (!rowDragActive || activeDragRowId == null) return
     e.preventDefault()
     e.stopPropagation()
     dragWheelNudge += e.deltaY < 0 ? 1 : -1
     updateDragSession(lastDragClientX, lastDragClientY, activeDragRowId)
   }
 
-  const onHostDragLeave = (e) => {
-    if (!isTokenDragTransfer(e.dataTransfer)) return
-    const rel = e.relatedTarget
-    if (rel && listHost?.contains(rel)) return
-    hideDropLine()
-    hideIniFloat()
+  const attachGlobalDragListeners = () => {
+    document.addEventListener('dragover', onDocumentDragOverWhileRow, true)
+    document.addEventListener('drop', onDocumentDropWhileRow, true)
+    document.addEventListener('wheel', onDocumentWheelWhileRow, wheelListenerOpts)
   }
 
-  const wheelListenerOpts = { passive: false }
-  if (listHost) {
-    listHost.addEventListener('dragover', onHostDragOver)
-    listHost.addEventListener('drop', onHostDrop)
-    listHost.addEventListener('dragleave', onHostDragLeave)
-    listHost.addEventListener('wheel', onHostWheel, wheelListenerOpts)
+  const detachGlobalDragListeners = () => {
+    document.removeEventListener('dragover', onDocumentDragOverWhileRow, true)
+    document.removeEventListener('drop', onDocumentDropWhileRow, true)
+    document.removeEventListener('wheel', onDocumentWheelWhileRow, wheelListenerOpts)
   }
 
   const reconcileCombat = async (rows) => {
@@ -486,7 +529,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         li.dataset.itemId = row.id
         li.draggable = true
         li.title =
-          'Zeile ziehen: vertikal INI (Nachkommastellen bleiben), Mausrad ±1. Linie = Loslass-Position. Text: Wert vs. Reihenfolge. Nicht von +/− oder INI-Feld ziehen.'
+          'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
           if (e.target.closest('button, input, textarea, select')) {
             e.preventDefault()
@@ -500,7 +543,17 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           activeDragRowId = row.id
           lastDragClientX = e.clientX
           lastDragClientY = e.clientY
+          const hr = listHost?.getBoundingClientRect()
+          dragFloatAnchorX = hr
+            ? Math.round(hr.left + 8)
+            : Math.round(li.getBoundingClientRect().left)
+          const preview = createRowDragPreviewShell(li, e.clientX, e.clientY)
+          e.dataTransfer.setDragImage(preview.shell, preview.ox, preview.oy)
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => preview.shell.remove())
+          })
           li.classList.add('init-row--dragging')
+          attachGlobalDragListeners()
           requestAnimationFrame(() => {
             updateDragSession(e.clientX, e.clientY, row.id)
           })
@@ -510,6 +563,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           updateDragSession(e.clientX, e.clientY, row.id)
         })
         li.addEventListener('dragend', () => {
+          detachGlobalDragListeners()
           rowDragActive = false
           dragWheelNudge = 0
           activeDragRowId = null
@@ -784,12 +838,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   onIniTieOrderChange(() => renderList(lastItems))
 
   return () => {
-    if (listHost) {
-      listHost.removeEventListener('dragover', onHostDragOver)
-      listHost.removeEventListener('drop', onHostDrop)
-      listHost.removeEventListener('dragleave', onHostDragLeave)
-      listHost.removeEventListener('wheel', onHostWheel, wheelListenerOpts)
-    }
+    detachGlobalDragListeners()
     dropLine.remove()
     iniFloat.remove()
     renderList(lastItems)
