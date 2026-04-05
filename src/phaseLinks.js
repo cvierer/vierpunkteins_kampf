@@ -1,5 +1,8 @@
 import OBR from '@owlbear-rodeo/sdk'
-import { compareInitiativeRows } from './initiativeSort.js'
+import {
+  compareInitiativeRows,
+  compareInitiativeRowsWithTieOrder,
+} from './initiativeSort.js'
 import { TRACKER_ITEM_META_KEY } from './participants.js'
 
 export const DEFAULT_PHASE_OFFSET = 8
@@ -273,12 +276,16 @@ export function formatIniForSort(n) {
 
 /**
  * Token-Zeilen + Phasen-Zeilen, nach INI sortiert (wie Kampfliste).
+ * @param {string[]} tieOrderIds manuelle Reihenfolge bei gleicher INI (Token-Zeilen)
  */
-export function buildMergedDisplayRows(tokenRows, items) {
+export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
   const metaOf = (id) => {
     const it = items.find((i) => i.id === id)
     return it?.metadata?.[TRACKER_ITEM_META_KEY]
   }
+
+  const tokenIds = new Set(tokenRows.map((r) => r.id))
+  const tieFiltered = tieOrderIds.filter((id) => tokenIds.has(id))
 
   const entries = []
 
@@ -303,6 +310,21 @@ export function buildMergedDisplayRows(tokenRows, items) {
   }
 
   entries.sort((a, b) => {
+    if (a.kind === 'token' && b.kind === 'token') {
+      return compareInitiativeRowsWithTieOrder(
+        {
+          id: a.row.id,
+          initiative: a.row.initiative,
+          name: a.row.name,
+        },
+        {
+          id: b.row.id,
+          initiative: b.row.initiative,
+          name: b.row.name,
+        },
+        tieFiltered
+      )
+    }
     const sa =
       a.kind === 'token'
         ? { initiative: a.row.initiative, name: a.row.name }

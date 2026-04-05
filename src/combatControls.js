@@ -1,11 +1,16 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
-import { getCombat, onCombatChange, patchCombat } from './combatRoom.js'
+import {
+  getCombat,
+  getIniTieOrder,
+  onCombatChange,
+  patchCombat,
+} from './combatRoom.js'
 import { getTrackedParticipantIds } from './listState.js'
 
 async function sortedIds() {
   const items = await OBR.scene.items.getItems()
-  return collectSortedParticipants(items).map((r) => r.id)
+  return collectSortedParticipants(items, getIniTieOrder()).map((r) => r.id)
 }
 
 export async function setupCombatControls(root) {

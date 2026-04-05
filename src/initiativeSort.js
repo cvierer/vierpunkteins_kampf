@@ -31,3 +31,35 @@ export function compareInitiativeRows(a, b) {
     sensitivity: 'base',
   })
 }
+
+/** Nur INI-Rang (Ganzzahl + Bruch), 0 = gleiche Kampfstufe. */
+export function initiativeCompareOnlyIni(a, b) {
+  const ra = initiativeRank(a.initiative)
+  const rb = initiativeRank(b.initiative)
+  if (ra === null && rb === null) return 0
+  if (ra === null) return 1
+  if (rb === null) return -1
+  if (ra.intPart !== rb.intPart) return rb.intPart - ra.intPart
+  if (ra.frac !== rb.frac) return ra.frac - rb.frac
+  return 0
+}
+
+function tieBreakIndex(id, tieOrderIds) {
+  const i = tieOrderIds.indexOf(id)
+  return i === -1 ? 1e9 : i
+}
+
+/**
+ * Wie compareInitiativeRows, aber bei gleicher INI zuerst die manuelle
+ * Reihenfolge aus tieOrderIds (Raum-Metadaten), dann Name.
+ */
+export function compareInitiativeRowsWithTieOrder(a, b, tieOrderIds) {
+  const iniCmp = initiativeCompareOnlyIni(a, b)
+  if (iniCmp !== 0) return iniCmp
+  const ia = tieBreakIndex(a.id, tieOrderIds)
+  const ib = tieBreakIndex(b.id, tieOrderIds)
+  if (ia !== ib) return ia - ib
+  return (a.name || '').localeCompare(b.name || '', undefined, {
+    sensitivity: 'base',
+  })
+}

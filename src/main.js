@@ -32,19 +32,6 @@ document.querySelector('#app').innerHTML = `
     <div class="initiative-list-host" id="initiative-list-host">
       <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
     </div>
-    <details class="kampf-flow-hint">
-      <summary class="kampf-flow-hint__summary">Ablauf am Tisch (DSA&nbsp;4 / INI)</summary>
-      <div class="kampf-flow-hint__body">
-        <ul class="kampf-flow-hint__list">
-          <li>Zu Beginn einer Kampfrunde legt jede Figur fest, wie sie die Runde nutzt (z.&nbsp;B. normal kämpfen oder etwas länger Dauerndes beginnen). Nachträglich umdisponieren ist in der Regel nicht vorgesehen.</li>
-          <li>Wer zuerst verkündet, was er tut, hängt von der Spielleitung ab; üblich ist, mit den <strong>langsamen</strong> INI-Werten zu beginnen, damit <strong>schnelle</strong> Figuren darauf reagieren können.</li>
-          <li>In der Runde wird in der Reihenfolge der <strong>INI</strong> abgearbeitet (hoch nach niedrig). Beim Herunterzählen spricht man von Initiativphasen.</li>
-          <li>Die <strong>+</strong>-Verknüpfungen in der Liste markieren zusätzliche Momente derselben Figur bei einer späteren INI-Stufe (typisch um acht Phasen versetzt); genaue Zahl ist im kleinen Feld einstellbar.</li>
-          <li>Sehr kurze Nebenhandlungen (Warnruf, Gegenstand fallen lassen, …) sind begrenzt: üblicherweise höchstens eine solche pro Initiativabschnitt und nicht in derselben Phase wie eine normale Hauptaktion.</li>
-          <li>Optionalregeln und Sonderfertigkeiten bleiben Sache der Runde; diese Extension ersetzt kein Regelwerk.</li>
-        </ul>
-      </div>
-    </details>
   </div>
 `
 

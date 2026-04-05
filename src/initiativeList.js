@@ -3,7 +3,15 @@ import {
   collectSortedParticipants,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
-import { getCombat, onCombatChange, patchCombat } from './combatRoom.js'
+import {
+  getCombat,
+  getIniTieOrder,
+  onCombatChange,
+  onIniTieOrderChange,
+  patchCombat,
+  swapIniTiedPair,
+} from './combatRoom.js'
+import { initiativeCompareOnlyIni } from './initiativeSort.js'
 import { setTrackedParticipantIds } from './listState.js'
 import {
   addPhaseChildLink,
@@ -25,6 +33,7 @@ function formatHookDisplay(hook) {
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
+  let swapPickId = null
 
   const reconcileCombat = async (rows) => {
     const c = getCombat()
@@ -39,9 +48,37 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     }
   }
 
+  const handleTokenSwapClick = (clickedId) => {
+    const items = lastItems
+    if (!swapPickId) {
+      swapPickId = clickedId
+      renderList(items)
+      return
+    }
+    if (swapPickId === clickedId) {
+      return
+    }
+    const rows = collectSortedParticipants(items, getIniTieOrder())
+    const first = rows.find((r) => r.id === swapPickId)
+    const second = rows.find((r) => r.id === clickedId)
+    if (!first || !second) {
+      swapPickId = clickedId
+      renderList(items)
+      return
+    }
+    if (initiativeCompareOnlyIni(first, second) !== 0) {
+      swapPickId = clickedId
+      renderList(items)
+      return
+    }
+    const a = swapPickId
+    swapPickId = null
+    void swapIniTiedPair(a, clickedId, items)
+  }
+
   const renderList = (items) => {
     lastItems = items
-    const tokenRows = collectSortedParticipants(items)
+    const tokenRows = collectSortedParticipants(items, getIniTieOrder())
     setTrackedParticipantIds(tokenRows.map((r) => r.id))
     void reconcileCombat(tokenRows)
 
@@ -49,7 +86,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const activeId =
       combat.started && combat.currentItemId ? combat.currentItemId : null
 
-    const merged = buildMergedDisplayRows(tokenRows, items)
+    const merged = buildMergedDisplayRows(tokenRows, items, getIniTieOrder())
     const frag = document.createDocumentFragment()
 
     for (const entry of merged) {
@@ -63,7 +100,14 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const li = document.createElement('li')
         li.className = 'init-row'
         if (row.id === activeId) li.classList.add('init-row--active')
+        if (swapPickId === row.id) li.classList.add('init-row--swap-pick')
         li.dataset.itemId = row.id
+        li.title =
+          'Gleiche INI: erste Figur anklicken, zweite zum Tauschen. Escape bricht ab. Nicht auf +/− oder INI-Feld klicken.'
+        li.addEventListener('click', (e) => {
+          if (e.target.closest('button, input, textarea, select')) return
+          handleTokenSwapClick(row.id)
+        })
 
         const main = document.createElement('div')
         main.className = 'init-row-main'
@@ -238,9 +282,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         })
         iniInput.addEventListener('blur', () => {
           void OBR.scene.items.getItems().then((freshItems) => {
-            const ownerRow = collectSortedParticipants(freshItems).find(
-              (r) => r.id === ownerId
-            )
+            const ownerRow = collectSortedParticipants(
+              freshItems,
+              getIniTieOrder()
+            ).find((r) => r.id === ownerId)
             const ownerIni = ownerRow?.initiative ?? ownerIniStr
             const it = freshItems.find((i) => i.id === ownerId)
             const links = normalizePhases(
@@ -278,9 +323,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         })
         offsetInput.addEventListener('blur', () => {
           void OBR.scene.items.getItems().then((freshItems) => {
-            const ownerRow = collectSortedParticipants(freshItems).find(
-              (r) => r.id === ownerId
-            )
+            const ownerRow = collectSortedParticipants(
+              freshItems,
+              getIniTieOrder()
+            ).find((r) => r.id === ownerId)
             const ownerIni = ownerRow?.initiative ?? ownerIniStr
             const it = freshItems.find((i) => i.id === ownerId)
             const links = normalizePhases(
@@ -323,9 +369,20 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     onListChange?.(items)
   }
 
+  const onEscapeSwap = (e) => {
+    if (e.key !== 'Escape' || !swapPickId) return
+    swapPickId = null
+    renderList(lastItems)
+  }
+  document.addEventListener('keydown', onEscapeSwap)
+
   OBR.scene.items.getItems().then(renderList)
   OBR.scene.items.onChange(renderList)
   onCombatChange(() => renderList(lastItems))
+  onIniTieOrderChange(() => renderList(lastItems))
 
-  return () => renderList(lastItems)
+  return () => {
+    document.removeEventListener('keydown', onEscapeSwap)
+    renderList(lastItems)
+  }
 }

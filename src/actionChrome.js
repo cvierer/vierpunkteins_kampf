@@ -1,11 +1,11 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { assetUrl } from './assetUrl.js'
-import { getCombat } from './combatRoom.js'
+import { getCombat, getIniTieOrder } from './combatRoom.js'
 import { collectSortedParticipants } from './participants.js'
 
 export async function syncActionChrome(items) {
   const combat = getCombat()
-  const rows = collectSortedParticipants(items)
+  const rows = collectSortedParticipants(items, getIniTieOrder())
   const activeId = combat.started ? combat.currentItemId : null
   const activeRow = activeId ? rows.find((r) => r.id === activeId) : null
 
