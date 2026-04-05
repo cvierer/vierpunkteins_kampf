@@ -65,34 +65,27 @@ function buildIniKnotsExcluding(tokenEls, rowMap, excludeId) {
   return knots
 }
 
-function lerpIniFromClientY(clientY, knots) {
+/**
+ * INI aus vertikaler Zeigerlage: gesamte Listenhöhe + Rand wird auf einen
+ * Wertbereich [min−spread, max+spread] abgebildet (t unbegrenzt → weiter
+ * über/unter der Liste extrapolieren). Verhindert „alles klebt an gleicher INI“,
+ * wenn mehrere Knoten denselben Wert haben.
+ */
+function lerpIniFromClientY(clientY, knots, listUl) {
   if (knots.length === 0) return null
-  if (knots.length === 1) return knots[0].v
-  if (clientY <= knots[0].y) {
-    const k0 = knots[0]
-    const k1 = knots[1]
-    const denom = Math.max(k1.y - k0.y, 1e-6)
-    const t = (clientY - k0.y) / denom
-    return k0.v + t * (k1.v - k0.v)
-  }
-  const last = knots.length - 1
-  if (clientY >= knots[last].y) {
-    const k0 = knots[last - 1]
-    const k1 = knots[last]
-    const denom = Math.max(k1.y - k0.y, 1e-6)
-    const t = (clientY - k1.y) / denom
-    return k1.v + t * (k1.v - k0.v)
-  }
-  for (let i = 0; i < last; i++) {
-    if (clientY <= knots[i + 1].y) {
-      const k0 = knots[i]
-      const k1 = knots[i + 1]
-      const denom = Math.max(k1.y - k0.y, 1e-6)
-      const t = (clientY - k0.y) / denom
-      return k0.v + t * (k1.v - k0.v)
-    }
-  }
-  return knots[last].v
+  const ur = listUl.getBoundingClientRect()
+  const vs = knots.map((k) => k.v)
+  const minV = Math.min(...vs)
+  const maxV = Math.max(...vs)
+  const marginY = Math.max(56, ur.height * 0.45)
+  const yTop = ur.top - marginY
+  const yBot = ur.bottom + marginY
+  const range = maxV - minV
+  const spread = Math.max(12, range * 0.55 + 8)
+  const vHigh = maxV + spread
+  const vLow = Math.max(0, minV - spread)
+  const t = (clientY - yTop) / Math.max(yBot - yTop, 1e-6)
+  return vHigh + t * (vLow - vHigh)
 }
 
 function clampIniContinuous(continuous) {
@@ -148,14 +141,17 @@ function computeDropProposal(
   items,
   tieOrderIds,
   tokenEls,
-  wheelNudge
+  wheelNudge,
+  listUl
 ) {
   const rows = collectSortedParticipants(items, tieOrderIds)
   const rowMap = new Map(rows.map((r) => [r.id, r]))
   const dragRow = rowMap.get(dragId)
   const curStr = dragRow?.initiative ?? ''
   const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
-  const previewCont = clampIniContinuous(lerpIniFromClientY(clientY, knots))
+  const previewCont = clampIniContinuous(
+    lerpIniFromClientY(clientY, knots, listUl)
+  )
   let baseInt = iniBaseIntFromLerp(previewCont)
   if (baseInt == null) {
     const r = initiativeRank(curStr)
@@ -255,47 +251,6 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
-/**
- * Drag-Ghost: optisch wie die echte Zeile (Klone + gleiche Breite).
- * setDragImage synchron in dragstart; Hülle kurz im DOM lassen, dann entfernen.
- */
-function createRowDragPreviewShell(li, clientX, clientY) {
-  const rect = li.getBoundingClientRect()
-  const shell = document.createElement('div')
-  shell.className = 'initiative-list init-row-drag-preview-shell'
-  shell.setAttribute('aria-hidden', 'true')
-  shell.style.cssText = [
-    'position:fixed',
-    'left:-12000px',
-    'top:0',
-    `width:${rect.width}px`,
-    'margin:0',
-    'padding:0',
-    'list-style:none',
-    'pointer-events:none',
-    'box-sizing:border-box',
-    'z-index:2147483646',
-  ].join(';')
-  const clone = li.cloneNode(true)
-  clone.removeAttribute('draggable')
-  clone.classList.remove('init-row--dragging')
-  clone.style.boxSizing = 'border-box'
-  clone.style.width = '100%'
-  clone.querySelectorAll('input, button').forEach((el) => {
-    el.setAttribute('disabled', 'disabled')
-    el.setAttribute('tabindex', '-1')
-  })
-  shell.appendChild(clone)
-  document.body.appendChild(shell)
-  const ox = Math.round(clientX - rect.left)
-  const oy = Math.round(clientY - rect.top)
-  return {
-    shell,
-    ox: Math.max(0, Math.min(ox, Math.max(1, rect.width - 1))),
-    oy: Math.max(0, Math.min(oy, Math.max(1, rect.height - 1))),
-  }
-}
-
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
@@ -371,11 +326,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       lastItems,
       getIniTieOrder(),
       tokenEls,
-      dragWheelNudge
+      dragWheelNudge,
+      element
     )
 
     if (dragRow && rowDragActive) {
       iniFloat.replaceChildren()
+      const nameEl = document.createElement('div')
+      nameEl.className = 'init-drag-ini-float-name'
+      nameEl.textContent = dragRow.name || '—'
+      nameEl.title = dragRow.name || ''
       const main = document.createElement('div')
       main.className = 'init-drag-ini-float-main'
       main.textContent = `INI ${proposedStr}`
@@ -384,7 +344,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       mode.textContent = willIni
         ? 'Loslassen: neuen Wert übernehmen'
         : 'Loslassen: Reihenfolge tauschen'
-      iniFloat.append(main, mode)
+      iniFloat.append(nameEl, main, mode)
       iniFloat.style.left = `${dragFloatAnchorX}px`
       iniFloat.style.top = `${clientY + 12}px`
       iniFloat.classList.add('init-drag-ini-float--visible')
@@ -425,7 +385,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         fresh,
         getIniTieOrder(),
         tokenElsFresh,
-        wheelAtDrop
+        wheelAtDrop,
+        element
       )
       if (willIni) {
         restoreFocusItemId = dragId
@@ -547,11 +508,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           dragFloatAnchorX = hr
             ? Math.round(hr.left + 8)
             : Math.round(li.getBoundingClientRect().left)
-          const preview = createRowDragPreviewShell(li, e.clientX, e.clientY)
-          e.dataTransfer.setDragImage(preview.shell, preview.ox, preview.oy)
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => preview.shell.remove())
-          })
+          const dragImg = document.createElement('canvas')
+          dragImg.width = 1
+          dragImg.height = 1
+          e.dataTransfer.setDragImage(dragImg, 0, 0)
           li.classList.add('init-row--dragging')
           attachGlobalDragListeners()
           requestAnimationFrame(() => {

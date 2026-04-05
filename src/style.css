@@ -257,6 +257,18 @@ body {
   opacity: 1;
 }
 
+.init-drag-ini-float-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 14rem;
+  margin: 0 auto 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 248, 230, 0.95);
+  line-height: 1.2;
+}
+
 .init-drag-ini-float-main {
   font-size: 1.05rem;
   font-weight: 700;
@@ -457,14 +469,8 @@ body {
 }
 
 .init-row--dragging {
-  opacity: 0.28;
-  filter: none;
-}
-
-/* Klon für natives Drag-Bild: gleiche Optik wie Listenzeile */
-.init-row-drag-preview-shell .init-row {
   opacity: 1;
-  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.38));
+  filter: none;
 }
 
 .init-row--active {
