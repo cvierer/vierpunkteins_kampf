@@ -25,6 +25,15 @@ import {
   tryCommitPhaseTargetIni,
 } from './phaseLinks.js'
 
+const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
+
+function isTokenDragTransfer(dataTransfer) {
+  return (
+    dataTransfer?.types &&
+    Array.from(dataTransfer.types).includes(TOKEN_DRAG_MIME)
+  )
+}
+
 function formatHookDisplay(hook) {
   if (hook === null) return ''
   return Number.isInteger(hook) ? String(hook) : String(hook)
@@ -33,7 +42,6 @@ function formatHookDisplay(hook) {
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
-  let swapPickId = null
 
   const reconcileCombat = async (rows) => {
     const c = getCombat()
@@ -48,36 +56,14 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     }
   }
 
-  const handleTokenSwapClick = (clickedId) => {
-    const items = lastItems
-    if (!swapPickId) {
-      swapPickId = clickedId
-      renderList(items)
-      return
-    }
-    if (swapPickId === clickedId) {
-      return
-    }
-    const rows = collectSortedParticipants(items, getIniTieOrder())
-    const first = rows.find((r) => r.id === swapPickId)
-    const second = rows.find((r) => r.id === clickedId)
-    if (!first || !second) {
-      swapPickId = clickedId
-      renderList(items)
-      return
-    }
-    if (initiativeCompareOnlyIni(first, second) !== 0) {
-      swapPickId = clickedId
-      renderList(items)
-      return
-    }
-    const a = swapPickId
-    swapPickId = null
-    void swapIniTiedPair(a, clickedId, items)
-  }
-
   const renderList = (items) => {
     lastItems = items
+
+    const clearDragOverHighlights = () => {
+      element.querySelectorAll('.init-row--drag-over').forEach((n) => {
+        n.classList.remove('init-row--drag-over')
+      })
+    }
     const tokenRows = collectSortedParticipants(items, getIniTieOrder())
     setTrackedParticipantIds(tokenRows.map((r) => r.id))
     void reconcileCombat(tokenRows)
@@ -100,13 +86,39 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const li = document.createElement('li')
         li.className = 'init-row'
         if (row.id === activeId) li.classList.add('init-row--active')
-        if (swapPickId === row.id) li.classList.add('init-row--swap-pick')
         li.dataset.itemId = row.id
-        li.title =
-          'Gleiche INI: erste Figur anklicken, zweite zum Tauschen. Escape bricht ab. Nicht auf +/− oder INI-Feld klicken.'
-        li.addEventListener('click', (e) => {
-          if (e.target.closest('button, input, textarea, select')) return
-          handleTokenSwapClick(row.id)
+
+        li.addEventListener('dragenter', (e) => {
+          if (!isTokenDragTransfer(e.dataTransfer)) return
+          e.preventDefault()
+          li.classList.add('init-row--drag-over')
+        })
+        li.addEventListener('dragover', (e) => {
+          if (!isTokenDragTransfer(e.dataTransfer)) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+        })
+        li.addEventListener('dragleave', (e) => {
+          if (e.relatedTarget && li.contains(e.relatedTarget)) return
+          li.classList.remove('init-row--drag-over')
+        })
+        li.addEventListener('drop', (e) => {
+          if (!isTokenDragTransfer(e.dataTransfer)) return
+          e.preventDefault()
+          li.classList.remove('init-row--drag-over')
+          const dragId =
+            e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
+            e.dataTransfer.getData('text/plain')
+          if (!dragId || dragId === row.id) return
+          const itemsNow = lastItems
+          const rowsNow = collectSortedParticipants(
+            itemsNow,
+            getIniTieOrder()
+          )
+          const ra = rowsNow.find((r) => r.id === dragId)
+          const rb = rowsNow.find((r) => r.id === row.id)
+          if (!ra || !rb || initiativeCompareOnlyIni(ra, rb) !== 0) return
+          void swapIniTiedPair(dragId, row.id, itemsNow)
         })
 
         const main = document.createElement('div')
@@ -146,8 +158,33 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         const gutter = document.createElement('div')
-        gutter.className = 'init-phase-gutter init-phase-gutter--empty'
-        gutter.setAttribute('aria-hidden', 'true')
+        gutter.className = 'init-phase-gutter init-phase-gutter--dnd'
+
+        const handle = document.createElement('span')
+        handle.className = 'init-row-drag-handle'
+        handle.draggable = true
+        handle.title =
+          'Gleiche INI: auf andere Figur ziehen, um die Reihenfolge zu tauschen'
+        handle.setAttribute('aria-label', handle.title)
+        const g1 = document.createElement('span')
+        g1.className = 'init-row-drag-grip-col'
+        g1.textContent = '⋮'
+        const g2 = document.createElement('span')
+        g2.className = 'init-row-drag-grip-col'
+        g2.textContent = '⋮'
+        handle.append(g1, g2)
+        handle.addEventListener('dragstart', (e) => {
+          e.stopPropagation()
+          e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
+          e.dataTransfer.setData('text/plain', row.id)
+          e.dataTransfer.effectAllowed = 'move'
+          li.classList.add('init-row--dragging')
+        })
+        handle.addEventListener('dragend', () => {
+          li.classList.remove('init-row--dragging')
+          clearDragOverHighlights()
+        })
+        gutter.appendChild(handle)
 
         const nameCol = document.createElement('div')
         nameCol.className = 'init-row-name-col'
@@ -369,20 +406,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     onListChange?.(items)
   }
 
-  const onEscapeSwap = (e) => {
-    if (e.key !== 'Escape' || !swapPickId) return
-    swapPickId = null
-    renderList(lastItems)
-  }
-  document.addEventListener('keydown', onEscapeSwap)
-
   OBR.scene.items.getItems().then(renderList)
   OBR.scene.items.onChange(renderList)
   onCombatChange(() => renderList(lastItems))
   onIniTieOrderChange(() => renderList(lastItems))
 
   return () => {
-    document.removeEventListener('keydown', onEscapeSwap)
     renderList(lastItems)
   }
 }
