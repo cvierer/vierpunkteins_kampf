@@ -1,4 +1,5 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { compareInitiativeRows } from './initiativeSort.js'
 import { TRACKER_ITEM_META_KEY } from './participants.js'
 
 export const DEFAULT_PHASE_OFFSET = 8
@@ -7,7 +8,7 @@ export function defaultPhases() {
   return { links: [], rowPanelOpen: false }
 }
 
-function clampOffset(o) {
+function clampStoredOffset(o) {
   const n = Number(String(o ?? '').replace(',', '.'))
   if (!Number.isFinite(n)) return DEFAULT_PHASE_OFFSET
   return Math.max(0, Math.min(99, Math.round(n)))
@@ -25,7 +26,7 @@ export function normalizePhases(raw) {
     links.push({
       id: l.id,
       parentId: typeof l.parentId === 'string' ? l.parentId : null,
-      offset: clampOffset(l.offset),
+      offset: clampStoredOffset(l.offset),
     })
   }
   const valid = new Set(
@@ -49,7 +50,16 @@ function buildLinkMap(links) {
   return new Map(links.map((l) => [l.id, l]))
 }
 
-/** Ziel-INI der Verknüpfung: Basis (Helden-INI bzw. Eltern-Hook) minus Offset. */
+/** Basis-INI für das Offset-Feld dieser Verknüpfung (Helden-INI oder Ziel-INI der Eltern-Verknüpfung). */
+export function baseIniBeforeLink(linkId, ownerIniStr, links) {
+  const map = buildLinkMap(links)
+  const link = map.get(linkId)
+  if (!link) return null
+  if (link.parentId === null) return iniNumeric(ownerIniStr)
+  return hookIniForLink(link.parentId, ownerIniStr, links)
+}
+
+/** Ziel-INI: Basis minus Offset. */
 export function hookIniForLink(linkId, ownerIniStr, links) {
   const map = buildLinkMap(links)
   function hookFor(id) {
@@ -65,16 +75,6 @@ export function hookIniForLink(linkId, ownerIniStr, links) {
     return base - o
   }
   return hookFor(linkId)
-}
-
-export function findRowForHookIni(rows, hookIni) {
-  if (hookIni === null || !Number.isFinite(hookIni)) return null
-  const tol = 1e-6
-  for (const row of rows) {
-    const n = iniNumeric(row.initiative)
-    if (n !== null && Math.abs(n - hookIni) < tol) return row
-  }
-  return null
 }
 
 function linkDepth(linkId, map) {
@@ -94,8 +94,29 @@ export function sortedLinksForLayout(links) {
   )
 }
 
+function collectSubtreeIds(links, rootId) {
+  const out = new Set([rootId])
+  let added = true
+  while (added) {
+    added = false
+    for (const l of links) {
+      if (l.parentId && out.has(l.parentId) && !out.has(l.id)) {
+        out.add(l.id)
+        added = true
+      }
+    }
+  }
+  return out
+}
+
 function uuid() {
   return crypto.randomUUID()
+}
+
+function safeDefaultOffset(ownerIniStr) {
+  const b = iniNumeric(ownerIniStr)
+  if (b === null) return DEFAULT_PHASE_OFFSET
+  return Math.min(DEFAULT_PHASE_OFFSET, Math.max(0, Math.floor(b)))
 }
 
 export function patchItemPhases(itemId, updater) {
@@ -110,10 +131,10 @@ export function patchItemPhases(itemId, updater) {
 }
 
 /**
- * Klick: Panel öffnen (erster Link mit 8) bzw. weitere Wurzel-Verknüpfung.
- * Shift+Klick: Panel schließen (Links bleiben erhalten).
+ * Klick: Panel öffnen (erster Link) bzw. weitere Wurzel.
+ * Shift+Klick: Panel schließen.
  */
-export function onNamePhasePlusClick(itemId, { shiftKey }) {
+export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
   return patchItemPhases(itemId, (p) => {
     if (shiftKey) {
       return { ...p, rowPanelOpen: false }
@@ -121,7 +142,13 @@ export function onNamePhasePlusClick(itemId, { shiftKey }) {
     if (!p.rowPanelOpen) {
       const nextLinks =
         p.links.length === 0
-          ? [{ id: uuid(), parentId: null, offset: DEFAULT_PHASE_OFFSET }]
+          ? [
+              {
+                id: uuid(),
+                parentId: null,
+                offset: safeDefaultOffset(ownerIniStr),
+              },
+            ]
           : p.links
       return { ...p, rowPanelOpen: true, links: nextLinks }
     }
@@ -129,210 +156,169 @@ export function onNamePhasePlusClick(itemId, { shiftKey }) {
       ...p,
       links: [
         ...p.links,
-        { id: uuid(), parentId: null, offset: DEFAULT_PHASE_OFFSET },
+        {
+          id: uuid(),
+          parentId: null,
+          offset: safeDefaultOffset(ownerIniStr),
+        },
       ],
     }
   })
 }
 
-export function addPhaseChildLink(itemId, parentLinkId) {
-  return patchItemPhases(itemId, (p) => ({
-    ...p,
-    links: [
-      ...p.links,
-      { id: uuid(), parentId: parentLinkId, offset: DEFAULT_PHASE_OFFSET },
-    ],
-  }))
+export function addPhaseChildLink(itemId, parentLinkId, ownerIniStr) {
+  return patchItemPhases(itemId, (p) => {
+    const parentHook = hookIniForLink(parentLinkId, ownerIniStr, p.links)
+    const baseStr =
+      parentHook === null ? ownerIniStr : formatIniForSort(parentHook)
+    return {
+      ...p,
+      links: [
+        ...p.links,
+        {
+          id: uuid(),
+          parentId: parentLinkId,
+          offset: safeDefaultOffset(baseStr),
+        },
+      ],
+    }
+  })
 }
 
-export function updatePhaseLinkOffset(itemId, linkId, offsetStr) {
-  const off = clampOffset(offsetStr)
-  return patchItemPhases(itemId, (p) => ({
-    ...p,
-    links: p.links.map((l) => (l.id === linkId ? { ...l, offset: off } : l)),
-  }))
+export function removePhaseLink(itemId, linkId) {
+  return patchItemPhases(itemId, (p) => {
+    const cut = collectSubtreeIds(p.links, linkId)
+    return {
+      ...p,
+      links: p.links.filter((l) => !cut.has(l.id)),
+    }
+  })
+}
+
+/** Entfernt die zuletzt angelegte Wurzel-Verknüpfung (inkl. Kinder). */
+export function removeLastRootPhase(itemId) {
+  return patchItemPhases(itemId, (p) => {
+    const roots = p.links.filter((l) => l.parentId === null)
+    if (roots.length === 0) return p
+    const victim = roots[roots.length - 1]
+    const cut = collectSubtreeIds(p.links, victim.id)
+    return {
+      ...p,
+      links: p.links.filter((l) => !cut.has(l.id)),
+    }
+  })
+}
+
+function parseOffsetCommit(s) {
+  const n = Number(String(s ?? '').trim().replace(',', '.'))
+  if (!Number.isFinite(n)) return null
+  return Math.round(n)
 }
 
 /**
- * @param {HTMLElement} host
- * @param {HTMLElement} overlay
- * @param {HTMLElement} ul
- * @param {Array<{id:string,initiative:string,name:string}>} rows
- * @param {Map<string, object>} itemMetaById metadata[TRACKER_ITEM_META_KEY] per item
+ * Offset setzen. hookIni muss ≥ 0 sein, sonst { ok:false }.
  */
-export function layoutPhaseOverlay(host, overlay, ul, rows, itemMetaById) {
-  overlay.replaceChildren()
-  overlay.style.pointerEvents = 'none'
+export function tryCommitPhaseOffset(itemId, linkId, offsetStr, ownerIniStr, links) {
+  const link = links.find((l) => l.id === linkId)
+  if (!link) return Promise.resolve({ ok: false })
 
-  const hostR = host.getBoundingClientRect()
-  if (hostR.width <= 0 || hostR.height <= 0) return
+  const base = baseIniBeforeLink(linkId, ownerIniStr, links)
+  if (base === null) return Promise.resolve({ ok: false })
 
-  const relRect = (el) => {
-    const r = el.getBoundingClientRect()
-    return {
-      left: r.left - hostR.left,
-      top: r.top - hostR.top,
-      right: r.right - hostR.left,
-      bottom: r.bottom - hostR.top,
-      width: r.width,
-      height: r.height,
-    }
-  }
+  let off = parseOffsetCommit(offsetStr)
+  if (off === null) off = clampStoredOffset(link.offset)
+  off = Math.max(0, off)
 
-  const liForItem = (itemId) => ul.querySelector(`li[data-item-id="${CSS.escape(itemId)}"]`)
+  const hook = base - off
+  if (hook < 0) return Promise.resolve({ ok: false, reason: 'NEG_INI' })
 
-  for (const row of rows) {
-    const meta = itemMetaById.get(row.id)
-    if (!meta) continue
-    const phases = normalizePhases(meta.phases)
-    if (!phases.rowPanelOpen || phases.links.length === 0) continue
-
-    const ownerLi = liForItem(row.id)
-    if (!ownerLi) continue
-
-    const rootAnchor = ownerLi.querySelector('.phase-root-anchor')
-    if (!rootAnchor) continue
-
-    const ownerIniStr = row.initiative
-    const ordered = sortedLinksForLayout(phases.links)
-    const rootLinks = phases.links.filter((l) => l.parentId === null)
-
-    for (const link of ordered) {
-      const hookIni = hookIniForLink(link.id, ownerIniStr, phases.links)
-      const targetRow = findRowForHookIni(rows, hookIni)
-      const targetLi = targetRow ? liForItem(targetRow.id) : null
-
-      let ax
-      let ayStart
-
-      if (link.parentId === null) {
-        const ar = relRect(rootAnchor)
-        const ri = rootLinks.findIndex((r) => r.id === link.id)
-        const spread = Math.max(0, ri) * 16
-        ax = ar.left + spread
-        ayStart = ar.top
-      } else {
-        const hookEl = overlay.querySelector(`[data-phase-hook="${CSS.escape(link.parentId)}"]`)
-        if (!hookEl) continue
-        const hr = relRect(hookEl)
-        ax = hr.left + hr.width / 2
-        ayStart = hr.top + hr.height / 2
-      }
-
-      let ty
-      let iniRight
-
-      if (targetLi) {
-        const tr = relRect(targetLi)
-        ty = tr.top + tr.height / 2
-        const iniEl = targetLi.querySelector('.init-row-init')
-        if (iniEl) {
-          const ir = relRect(iniEl)
-          iniRight = ir.right
-        } else {
-          iniRight = tr.right
-        }
-      } else {
-        ty = ayStart + Math.max(36, Math.abs((hookIni ?? 0) % 7) * 4)
-        iniRight = ax + 52
-      }
-
-      const vTop = Math.min(ayStart, ty)
-      const vHeight = Math.max(2, Math.abs(ty - ayStart))
-      const vLeft = ax
-
-      const vBar = document.createElement('div')
-      vBar.className = 'phase-line-v'
-      vBar.style.left = `${vLeft}px`
-      vBar.style.top = `${vTop}px`
-      vBar.style.height = `${vHeight}px`
-      overlay.appendChild(vBar)
-
-      const hStart = Math.min(ax, iniRight)
-      const hWidth = Math.max(2, Math.abs(iniRight - ax))
-      const hBar = document.createElement('div')
-      hBar.className = 'phase-line-h'
-      hBar.style.left = `${hStart}px`
-      hBar.style.top = `${ty - 1}px`
-      hBar.style.width = `${hWidth}px`
-      overlay.appendChild(hBar)
-
-      const inputTop = vTop + vHeight / 2 - 11
-      const input = document.createElement('input')
-      input.type = 'text'
-      input.inputMode = 'numeric'
-      input.className = 'phase-offset-input'
-      input.value = String(link.offset)
-      input.setAttribute('aria-label', 'INI-Phasen später')
-      input.dataset.phaseLinkId = link.id
-      input.dataset.ownerItemId = row.id
-      input.style.left = `${vLeft + 5}px`
-      input.style.top = `${inputTop}px`
-      input.style.pointerEvents = 'auto'
-      overlay.appendChild(input)
-
-      const hookX = iniRight - 2
-      const hook = document.createElement('span')
-      hook.className = 'phase-hook-anchor'
-      hook.dataset.phaseHook = link.id
-      hook.style.left = `${hookX - 6}px`
-      hook.style.top = `${ty - 6}px`
-      overlay.appendChild(hook)
-
-      const addBtn = document.createElement('button')
-      addBtn.type = 'button'
-      addBtn.className = 'phase-line-plus'
-      addBtn.textContent = '+'
-      addBtn.title = 'Weitere INI-Phase'
-      addBtn.style.left = `${hookX - 8}px`
-      addBtn.style.top = `${ty - 10}px`
-      addBtn.style.pointerEvents = 'auto'
-      addBtn.dataset.ownerItemId = row.id
-      addBtn.dataset.parentLinkId = link.id
-      overlay.appendChild(addBtn)
-
-      if (!targetLi) {
-        const miss = document.createElement('span')
-        miss.className = 'phase-miss-label'
-        miss.textContent =
-          hookIni === null
-            ? '—'
-            : `INI ${Number.isInteger(hookIni) ? hookIni : hookIni.toFixed(1)}?`
-        miss.style.left = `${hStart + hWidth + 4}px`
-        miss.style.top = `${ty - 9}px`
-        overlay.appendChild(miss)
-      }
-    }
-  }
+  const stored = Math.min(99, off)
+  return patchItemPhases(itemId, (p) => ({
+    ...p,
+    links: p.links.map((l) => (l.id === linkId ? { ...l, offset: stored } : l)),
+  })).then(() => ({ ok: true }))
 }
 
-export function bindPhaseOverlayHandlers(overlay) {
-  const onBlur = (e) => {
-    const t = e.target
-    if (!(t instanceof HTMLInputElement) || !t.classList.contains('phase-offset-input')) return
-    const itemId = t.dataset.ownerItemId
-    const linkId = t.dataset.phaseLinkId
-    if (!itemId || !linkId) return
-    void updatePhaseLinkOffset(itemId, linkId, t.value)
+/**
+ * Ziel-INI aus dem großen INI-Feld; setzt Offset = Basis − Ziel.
+ */
+export function tryCommitPhaseTargetIni(itemId, linkId, iniStr, ownerIniStr, links) {
+  const link = links.find((l) => l.id === linkId)
+  if (!link) return Promise.resolve({ ok: false })
+
+  const base = baseIniBeforeLink(linkId, ownerIniStr, links)
+  if (base === null) return Promise.resolve({ ok: false })
+
+  const target = iniNumeric(iniStr)
+  if (target === null) return Promise.resolve({ ok: false })
+
+  if (target < 0) return Promise.resolve({ ok: false, reason: 'NEG_INI' })
+
+  const off = Math.round(base - target)
+  if (off < 0 || base - off < 0)
+    return Promise.resolve({ ok: false, reason: 'NEG_INI' })
+
+  const stored = Math.min(99, Math.max(0, off))
+  return patchItemPhases(itemId, (p) => ({
+    ...p,
+    links: p.links.map((l) => (l.id === linkId ? { ...l, offset: stored } : l)),
+  })).then(() => ({ ok: true }))
+}
+
+export function formatIniForSort(n) {
+  if (n === null) return ''
+  if (Number.isInteger(n)) return String(n)
+  return String(n)
+}
+
+/**
+ * Token-Zeilen + Phasen-Zeilen, nach INI sortiert (wie Kampfliste).
+ */
+export function buildMergedDisplayRows(tokenRows, items) {
+  const metaOf = (id) => {
+    const it = items.find((i) => i.id === id)
+    return it?.metadata?.[TRACKER_ITEM_META_KEY]
   }
 
-  const onClick = (e) => {
-    const t = e.target
-    if (!(t instanceof HTMLElement)) return
-    const btn = t.closest('.phase-line-plus')
-    if (!btn) return
-    const itemId = btn.dataset.ownerItemId
-    const parentLinkId = btn.dataset.parentLinkId
-    if (!itemId || !parentLinkId) return
-    e.preventDefault()
-    e.stopPropagation()
-    void addPhaseChildLink(itemId, parentLinkId)
+  const entries = []
+
+  for (const row of tokenRows) {
+    entries.push({ kind: 'token', row })
+    const meta = metaOf(row.id)
+    const phases = normalizePhases(meta?.phases)
+    if (!phases.rowPanelOpen || phases.links.length === 0) continue
+
+    for (const link of sortedLinksForLayout(phases.links)) {
+      const hook = hookIniForLink(link.id, row.initiative, phases.links)
+      if (hook === null || hook < 0) continue
+      entries.push({
+        kind: 'phase',
+        ownerId: row.id,
+        ownerName: row.name,
+        ownerIniStr: row.initiative,
+        link,
+        hookIni: hook,
+      })
+    }
   }
 
-  overlay.addEventListener('blur', onBlur, true)
-  overlay.addEventListener('click', onClick)
-  return () => {
-    overlay.removeEventListener('blur', onBlur, true)
-    overlay.removeEventListener('click', onClick)
-  }
+  entries.sort((a, b) => {
+    const sa =
+      a.kind === 'token'
+        ? { initiative: a.row.initiative, name: a.row.name }
+        : {
+            initiative: formatIniForSort(a.hookIni),
+            name: `${a.ownerName}\u0000${a.link.id}`,
+          }
+    const sb =
+      b.kind === 'token'
+        ? { initiative: b.row.initiative, name: b.row.name }
+        : {
+            initiative: formatIniForSort(b.hookIni),
+            name: `${b.ownerName}\u0000${b.link.id}`,
+          }
+    return compareInitiativeRows(sa, sb)
+  })
+
+  return entries
 }

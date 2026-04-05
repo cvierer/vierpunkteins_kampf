@@ -24,12 +24,13 @@ document.querySelector('#app').innerHTML = `
   <p id="standalone-hint" class="standalone-hint" hidden></p>
   <div class="kampf-list-section">
     <div class="kampf-list-head" aria-hidden="true">
+      <span class="kampf-h-spacer" aria-hidden="true"></span>
+      <span class="kampf-h-spacer" aria-hidden="true"></span>
       <span class="kampf-col-label kampf-col-label--name">Name</span>
       <span class="kampf-col-label kampf-col-label--ini">INI</span>
     </div>
     <div class="initiative-list-host" id="initiative-list-host">
       <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
-      <div class="phase-overlay" id="phase-overlay"></div>
     </div>
   </div>
 `
