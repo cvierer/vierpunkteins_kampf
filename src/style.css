@@ -422,7 +422,8 @@ body {
 }
 
 .init-row--dragging {
-  opacity: 0.9;
+  opacity: 1;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.42));
 }
 
 .init-row--active {

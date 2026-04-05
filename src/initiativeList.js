@@ -13,6 +13,7 @@ import {
   reorderIniTieToken,
 } from './combatRoom.js'
 import { setTrackedParticipantIds } from './listState.js'
+import { compareInitiativeRowsWithTieOrder } from './initiativeSort.js'
 import {
   addPhaseChildLink,
   buildMergedDisplayRows,
@@ -90,22 +91,63 @@ function lerpIniFromClientY(clientY, knots) {
   return knots[last].v
 }
 
-/** Vertikale Rasterung: INI ändert sich in erkennbaren Schritten beim Ziehen. */
-const INI_DRAG_Y_STEP_PX = 14
-
-function snapClientYForIniStep(clientY, listUl) {
-  const ur = listUl.getBoundingClientRect()
-  const y = Math.max(ur.top, Math.min(ur.bottom, clientY))
-  const step = Math.max(INI_DRAG_Y_STEP_PX, 1)
-  const snapped =
-    ur.top + step * Math.round((y - ur.top) / step)
-  return Math.max(ur.top, Math.min(ur.bottom, snapped))
-}
-
-/** Ganzzahl-Vorschlag aus Lerp; Commit/Reorder nur darauf abstimmen (vermeidet Float-Flattern). */
+/** Ganzzahl-Vorschlag aus Lerp; min. 0 (keine negativen INI per Drag). */
 function iniPreviewIntegerFromLerp(continuous) {
   if (continuous == null || !Number.isFinite(continuous)) return null
-  return Math.round(continuous)
+  return Math.max(0, Math.round(continuous))
+}
+
+function clampIniContinuous(continuous) {
+  if (continuous == null || !Number.isFinite(continuous)) return null
+  return Math.max(0, continuous)
+}
+
+function sortedTokenIdsWithVirtualDragIni(items, tieOrderIds, dragId, iniInt) {
+  const sortedRows = collectSortedParticipants(items, tieOrderIds)
+  const idSet = new Set(sortedRows.map((r) => r.id))
+  const tieFiltered = tieOrderIds.filter((id) => idSet.has(id))
+  const mod = sortedRows.map((r) =>
+    r.id === dragId ? { ...r, initiative: String(iniInt) } : r
+  )
+  mod.sort((a, b) =>
+    compareInitiativeRowsWithTieOrder(a, b, tieFiltered)
+  )
+  return mod.map((r) => r.id)
+}
+
+function virtualOrderToLineTopPx(order, dragId, tokenEls, listHost, listUl) {
+  const hr = listHost.getBoundingClientRect()
+  const ur = listUl.getBoundingClientRect()
+  const pad = 2
+  const rectFor = (id) => {
+    const el = tokenEls.find((e) => e.dataset.itemId === id)
+    return el?.getBoundingClientRect()
+  }
+  const k = order.indexOf(dragId)
+  if (k < 0 || order.length === 0) {
+    return Math.max(pad, ur.top - hr.top + pad)
+  }
+  if (order.length === 1) {
+    return Math.max(pad, ur.top - hr.top + pad)
+  }
+  if (k === 0) {
+    return Math.max(pad, ur.top - hr.top + pad)
+  }
+  if (k === order.length - 1) {
+    const prevR = rectFor(order[k - 1])
+    if (prevR) {
+      return Math.max(pad, (prevR.bottom + ur.bottom) / 2 - hr.top)
+    }
+    return Math.max(pad, ur.bottom - hr.top - pad)
+  }
+  const prevR = rectFor(order[k - 1])
+  const nextR = rectFor(order[k + 1])
+  if (prevR && nextR) {
+    return Math.max(pad, (prevR.bottom + nextR.top) / 2 - hr.top)
+  }
+  if (prevR) return Math.max(pad, (prevR.bottom + ur.top) / 2 - hr.top)
+  if (nextR) return Math.max(pad, (ur.bottom + nextR.top) / 2 - hr.top)
+  return Math.max(pad, ur.top - hr.top + ur.height / 2)
 }
 
 function shouldCommitIniFromDragInteger(previewInt, currentIniStr) {
@@ -179,25 +221,31 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     iniFloat.textContent = ''
   }
 
-  const updateDropLine = (clientY, dragId) => {
-    if (!listHost) return
-    const { validSlots } = computeValidIniTieInsertSlots(dragId, lastItems)
-    if (validSlots.length === 0) {
-      hideDropLine()
-      return
+  const computeDropLineTopPx = (
+    clientY,
+    dragId,
+    previewInt,
+    willCommitIni,
+    items,
+    tieOrderIds,
+    tokenEls
+  ) => {
+    if (!listHost) return null
+    if (willCommitIni && previewInt != null) {
+      const order = sortedTokenIdsWithVirtualDragIni(
+        items,
+        tieOrderIds,
+        dragId,
+        previewInt
+      )
+      return virtualOrderToLineTopPx(order, dragId, tokenEls, listHost, element)
     }
-    const tokenEls = [
-      ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
-    ]
+    const { validSlots } = computeValidIniTieInsertSlots(dragId, items)
+    if (validSlots.length === 0) return null
     const raw = clientYToInsertSlot(clientY, tokenEls)
     const slot = pickNearestValidSlot(raw, validSlots)
-    if (slot == null) {
-      hideDropLine()
-      return
-    }
-    const top = insertSlotToLineTopPx(slot, tokenEls, listHost, element)
-    dropLine.style.top = `${top}px`
-    dropLine.classList.add('init-list-drop-line--active')
+    if (slot == null) return null
+    return insertSlotToLineTopPx(slot, tokenEls, listHost, element)
   }
 
   const updateDragSession = (clientX, clientY, dragId) => {
@@ -207,11 +255,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const rows = collectSortedParticipants(lastItems, getIniTieOrder())
     const rowMap = new Map(rows.map((r) => [r.id, r]))
     const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
-    const yIni = snapClientYForIniStep(clientY, element)
-    const previewCont = lerpIniFromClientY(yIni, knots)
+    const previewCont = clampIniContinuous(lerpIniFromClientY(clientY, knots))
     const previewInt = iniPreviewIntegerFromLerp(previewCont)
     const dragRow = rowMap.get(dragId)
     const curStr = dragRow?.initiative ?? ''
+    const willIni = shouldCommitIniFromDragInteger(previewInt, curStr)
 
     if (previewInt != null && knots.length > 0) {
       iniFloat.textContent = `INI ${previewInt}`
@@ -222,10 +270,20 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       hideIniFloat()
     }
 
-    if (shouldCommitIniFromDragInteger(previewInt, curStr)) {
-      hideDropLine()
+    const topPx = computeDropLineTopPx(
+      clientY,
+      dragId,
+      previewInt,
+      willIni,
+      lastItems,
+      getIniTieOrder(),
+      tokenEls
+    )
+    if (topPx != null) {
+      dropLine.style.top = `${topPx}px`
+      dropLine.classList.add('init-list-drop-line--active')
     } else {
-      updateDropLine(clientY, dragId)
+      hideDropLine()
     }
   }
 
@@ -257,8 +315,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       const rows = collectSortedParticipants(fresh, getIniTieOrder())
       const rowMap = new Map(rows.map((r) => [r.id, r]))
       const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
-      const yIni = snapClientYForIniStep(clientY, element)
-      const previewCont = lerpIniFromClientY(yIni, knots)
+      const previewCont = clampIniContinuous(lerpIniFromClientY(clientY, knots))
       const previewInt = iniPreviewIntegerFromLerp(previewCont)
       const curStr = rowMap.get(dragId)?.initiative ?? ''
       if (shouldCommitIniFromDragInteger(previewInt, curStr)) {
@@ -335,7 +392,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         li.dataset.itemId = row.id
         li.draggable = true
         li.title =
-          'Zeile ziehen: INI-Vorschau folgt dem Zeiger (ganze Zahlen). Zwischen zwei Werten wird interpoliert und gerundet. Gleiche INI: goldene Linie = Reihenfolge auch ganz oben/unten. Nicht von +/− oder INI-Feld ziehen.'
+          'Zeile ziehen: INI-Vorschau (≥0, ganze Zahlen) und goldene Linie zeigen Loslass-Position. Gleiche INI: Reihenfolge. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
           if (e.target.closest('button, input, textarea, select')) {
             e.preventDefault()
@@ -344,10 +401,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
           e.dataTransfer.setData('text/plain', row.id)
           e.dataTransfer.effectAllowed = 'move'
-          const emptyImg = new Image()
-          emptyImg.src =
-            'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-          e.dataTransfer.setDragImage(emptyImg, 0, 0)
           li.classList.add('init-row--dragging')
           requestAnimationFrame(() => {
             updateDragSession(e.clientX, e.clientY, row.id)
