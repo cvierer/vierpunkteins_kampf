@@ -209,6 +209,25 @@ body {
   opacity: 1;
 }
 
+.init-list-drop-line--ini {
+  background: linear-gradient(
+    90deg,
+    rgba(201, 162, 39, 0.95),
+    rgba(230, 190, 80, 0.98)
+  );
+}
+
+.init-list-drop-line--reorder {
+  background: linear-gradient(
+    90deg,
+    rgba(120, 175, 210, 0.92),
+    rgba(160, 200, 230, 0.95)
+  );
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.22),
+    0 0 10px rgba(120, 175, 210, 0.35);
+}
+
 .init-drag-ini-float {
   position: fixed;
   z-index: 10000;
@@ -236,6 +255,22 @@ body {
 .init-drag-ini-float--visible {
   visibility: visible;
   opacity: 1;
+}
+
+.init-drag-ini-float-main {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.init-drag-ini-float-mode {
+  margin-top: 0.28rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(220, 210, 190, 0.82);
+  line-height: 1.2;
 }
 
 .initiative-list {
