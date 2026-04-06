@@ -604,16 +604,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const phasePlus = document.createElement('button')
         phasePlus.type = 'button'
-        phasePlus.className =
-          'init-row-phase-plus init-row-phase-plus--root init-row-phase-plus--stacked'
-        const phasePlusGlyph = document.createElement('span')
-        phasePlusGlyph.className = 'init-row-phase-plus__plus'
-        phasePlusGlyph.textContent = '+'
-        const phasePlusDown = document.createElement('span')
-        phasePlusDown.className = 'init-row-phase-plus__down'
-        phasePlusDown.setAttribute('aria-hidden', 'true')
-        phasePlusDown.textContent = '↓'
-        phasePlus.append(phasePlusGlyph, phasePlusDown)
+        phasePlus.className = 'init-row-phase-plus'
+        phasePlus.textContent = '+'
         phasePlus.title =
           'INI-Phasen (4.1): öffnen / weitere Wurzel · Shift+Klick schließen'
         phasePlus.setAttribute('aria-label', 'INI-Phasen öffnen')
