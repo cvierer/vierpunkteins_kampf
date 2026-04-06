@@ -37,6 +37,11 @@ appRoot.innerHTML = `
     <div class="initiative-list-host" id="initiative-list-host">
       <div class="initiative-list-scroll">
         <div class="initiative-list-scroll-inner">
+          <div class="kampf-round-separator" hidden>
+            <span class="kampf-round-separator__line" aria-hidden="true"></span>
+            <span class="kampf-round-separator__label" data-kampf-list-round>Kampfrunde —</span>
+            <span class="kampf-round-separator__line" aria-hidden="true"></span>
+          </div>
           <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   computeValidIniTieInsertSlots,
   getCombat,
   getIniTieOrder,
+  isCombatNavMutationActive,
   onCombatChange,
   onIniTieOrderChange,
   patchCombat,
@@ -384,6 +385,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
 
+  const listRoundLabel = document.querySelector('[data-kampf-list-round]')
+
   /** Enthält `ul` + Swap-Overlay, scrollt gemeinsam mit `.initiative-list-scroll`. */
   const listContentRoot = element.parentElement
   const listScrollEl = listContentRoot?.parentElement ?? null
@@ -653,6 +656,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   }
 
   const reconcileCombat = async (rows, items) => {
+    if (isCombatNavMutationActive()) return
     const c = getCombat()
     if (!c.started) return
     const steps = buildCombatTurnSteps(rows, items, getIniTieOrder())
@@ -703,6 +707,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     void reconcileCombat(tokenRows, items)
 
     const combat = getCombat()
+    const roundSep = listRoundLabel?.closest('.kampf-round-separator')
+    if (roundSep && listRoundLabel) {
+      roundSep.hidden = !combat.started
+      listRoundLabel.textContent = combat.started
+        ? `Kampfrunde ${combat.round}`
+        : 'Kampfrunde —'
+    }
     const activeId =
       combat.started && combat.currentItemId ? combat.currentItemId : null
     const activePhaseLinkId = combat.started

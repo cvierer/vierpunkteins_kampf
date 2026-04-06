@@ -43,6 +43,21 @@ function normalize(raw) {
 let cache = defaultCombat()
 let tieOrderCache = []
 
+/** Während „Weiter/Zurück/Start“: Szenen-Updates nicht per reconcile gegen veraltete Runde patchen. */
+let combatNavMutationDepth = 0
+
+export function beginCombatNavMutation() {
+  combatNavMutationDepth++
+}
+
+export function endCombatNavMutation() {
+  combatNavMutationDepth = Math.max(0, combatNavMutationDepth - 1)
+}
+
+export function isCombatNavMutationActive() {
+  return combatNavMutationDepth > 0
+}
+
 function notify() {
   for (const fn of listeners) {
     try {
