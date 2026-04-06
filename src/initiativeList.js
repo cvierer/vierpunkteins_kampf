@@ -106,36 +106,47 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
   return knots
 }
 
-/** Umkehrung von lerpIniFromClientY: Ziel-INI → Client-Y (für Drop-Linie beim Phasen-Zug). */
-function clientYFromLerpIniInverse(targetIni, knots, listUl) {
-  if (!Number.isFinite(targetIni)) return null
-  const ur = listUl.getBoundingClientRect()
-  const vs = knots.map((k) => k.v)
-  if (vs.length === 0) return ur.top + ur.height / 2
-  const minV = Math.min(...vs)
-  const maxV = Math.max(...vs)
-  const marginY = Math.max(56, ur.height * 0.45)
-  const yTop = ur.top - marginY
-  const yBot = ur.bottom + marginY
-  const range = maxV - minV
-  const spread = Math.max(12, range * 0.55 + 8)
-  const vHigh = maxV + spread
-  const vLow = Math.max(0, minV - spread)
-  const tv = Math.max(vLow, Math.min(vHigh, targetIni))
-  const denom = vLow - vHigh
-  const t = Math.abs(denom) < 1e-9 ? 0.5 : (tv - vHigh) / denom
-  return yTop + t * (yBot - yTop)
+/** Ganzzahliger Kampfwert-Anteil beim Drag: 0 … 99. */
+const DRAG_INI_INT_MAX = 99
+
+const INI_DRAG_FLOAT_HINT = 'LOSLASSEN: NEUEN WERT ÜBERNEHMEN'
+
+/**
+ * Zusätzliche INI-Schritte, wenn die Maus oberhalb/unterhalb des Float-Fensters bleibt.
+ */
+function extraIniStepsOutsideFloat(clientY, floatRect, pxPerStep = 26) {
+  if (!floatRect || floatRect.width <= 0 || floatRect.height <= 0) return 0
+  let s = 0
+  if (clientY < floatRect.top) {
+    s += Math.ceil((floatRect.top - clientY) / pxPerStep)
+  }
+  if (clientY > floatRect.bottom) {
+    s -= Math.ceil((clientY - floatRect.bottom) / pxPerStep)
+  }
+  return s
 }
 
-/** Linie innerhalb der sichtbaren `ul`-Höhe halten (Host kann höher sein). */
-function clampDropLineTopPx(topPx, listHost, listUl) {
-  const hr = listHost.getBoundingClientRect()
-  const ur = listUl.getBoundingClientRect()
-  const pad = 3
-  const minRel = ur.top - hr.top + pad
-  const maxRel = ur.bottom - hr.top - pad
-  if (maxRel <= minRel) return Math.max(pad, minRel)
-  return Math.min(Math.max(topPx, minRel), maxRel)
+function positionAndClampIniFloat(el, leftPx, topPx) {
+  el.style.left = `${leftPx}px`
+  el.style.top = `${topPx}px`
+  el.classList.add('init-drag-ini-float--visible')
+  const pad = 8
+  for (let i = 0; i < 4; i++) {
+    const r = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const left = parseFloat(el.style.left) || 0
+    const top = parseFloat(el.style.top) || 0
+    let dx = 0
+    let dy = 0
+    if (r.left < pad) dx = pad - r.left
+    if (r.right > vw - pad) dx = vw - pad - r.right
+    if (r.top < pad) dy = pad - r.top
+    if (r.bottom > vh - pad) dy = vh - pad - r.bottom
+    if (dx === 0 && dy === 0) break
+    el.style.left = `${left + dx}px`
+    el.style.top = `${top + dy}px`
+  }
 }
 
 /**
@@ -256,7 +267,8 @@ function computeDropProposal(
     const r = initiativeRank(curStr)
     baseInt = r ? Math.max(0, r.intPart) : 0
   }
-  const intPart = Math.max(0, baseInt + wheelNudge)
+  let intPart = Math.max(0, baseInt + wheelNudge)
+  intPart = Math.max(0, Math.min(DRAG_INI_INT_MAX, intPart))
   const proposedStr = composeProposedIniFromDragIntPart(intPart, curStr)
   const willIni = dragProposesIniChange(
     proposedStr,
@@ -292,32 +304,6 @@ function pickNearestValidSlot(rawSlot, validSlots) {
     }
   }
   return best
-}
-
-function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
-  const hr = listHost.getBoundingClientRect()
-  const ur = listUl.getBoundingClientRect()
-  const n = tokenEls.length
-  const pad = 2
-  if (n === 0) {
-    return Math.max(pad, ur.top - hr.top + ur.height / 2)
-  }
-  if (slot <= 0) return Math.max(pad, ur.top - hr.top + pad)
-  if (slot >= n) {
-    const last = tokenEls[n - 1].getBoundingClientRect()
-    return Math.max(pad, (last.bottom + ur.bottom) / 2 - hr.top)
-  }
-  const lower = tokenEls[slot]
-  const prev = lower.previousElementSibling
-  if (prev && prev.matches?.('li.init-row')) {
-    const mid =
-      (prev.getBoundingClientRect().bottom +
-        lower.getBoundingClientRect().top) /
-      2
-    return Math.max(pad, mid - hr.top)
-  }
-  const rects = tokenEls.map((el) => el.getBoundingClientRect())
-  return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
 /** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (einheitlich für alle Zeilen). */
@@ -364,10 +350,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let lastItems = []
 
   const listHost = element.parentElement
-  const dropLine = document.createElement('div')
-  dropLine.className = 'init-list-drop-line'
-  dropLine.setAttribute('aria-hidden', 'true')
-  if (listHost) listHost.appendChild(dropLine)
 
   const swapOverlay = document.createElement('div')
   swapOverlay.className = 'init-ini-swap-overlay'
@@ -381,6 +363,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
   let rowDragActive = false
   let dragWheelNudge = 0
+  /** Letzter effektiver Rad-+Außerhalb-Schritte-Wert (für Drop ohne verpasstes dragover). */
+  let lastCombinedWheelNudge = 0
   let activeDragRowId = null
   let lastDragClientX = 0
   let lastDragClientY = 0
@@ -391,67 +375,40 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   /** Nur bei geändertem Zug/Runde scrollen, nicht bei jedem List-Update. */
   let lastTurnScrollKey = ''
 
-  const hideDropLine = () => {
-    dropLine.classList.remove(
-      'init-list-drop-line--active',
-      'init-list-drop-line--ini',
-      'init-list-drop-line--reorder'
-    )
-  }
-
   const hideIniFloat = () => {
     iniFloat.classList.remove('init-drag-ini-float--visible')
     iniFloat.replaceChildren()
   }
 
-  const computeDropLineTopPx = (
-    clientY,
-    dragId,
-    proposedStr,
-    willCommitIni,
-    items,
-    tieOrderIds,
-    tokenEls
-  ) => {
-    if (!listHost) return null
-    const phaseRef = parsePhaseDrag(dragId)
-    if (phaseRef && !willCommitIni) return null
-    if (willCommitIni) {
-      const knots = buildDragKnots(element, items, tieOrderIds, dragId)
-      const v = parseIniNumber(proposedStr)
-      if (v == null) return null
-      const cy = clientYFromLerpIniInverse(v, knots, element)
-      if (cy == null) return null
-      const topPx = cy - listHost.getBoundingClientRect().top
-      return clampDropLineTopPx(topPx, listHost, element)
-    }
-    const { validSlots } = computeValidIniTieInsertSlots(dragId, items)
-    if (validSlots.length === 0) return null
-    const raw = clientYToInsertSlot(clientY, tokenEls)
-    const slot = pickNearestValidSlot(raw, validSlots)
-    if (slot == null) return null
-    const topPx = insertSlotToLineTopPx(slot, tokenEls, listHost, element)
-    return clampDropLineTopPx(topPx, listHost, element)
-  }
-
   const updateDragSession = (clientX, clientY, dragId) => {
     lastDragClientX = clientX
     lastDragClientY = clientY
-    const tokenEls = [
-      ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
-    ]
-    const { proposedStr, willIni, dragRow } = computeDropProposal(
-      clientY,
-      dragId,
-      lastItems,
-      getIniTieOrder(),
-      element,
-      dragWheelNudge,
-      element
-    )
+    if (!dragId || !rowDragActive) {
+      hideIniFloat()
+      return
+    }
+
+    let combinedNudge = dragWheelNudge
+    let proposedStr = ''
+    let dragRow = null
     const draggingPhase = Boolean(parsePhaseDrag(dragId))
 
-    if (dragRow && rowDragActive) {
+    for (let iter = 0; iter < 5; iter++) {
+      ;({ proposedStr, dragRow } = computeDropProposal(
+        clientY,
+        dragId,
+        lastItems,
+        getIniTieOrder(),
+        element,
+        combinedNudge,
+        element
+      ))
+      if (!dragRow) {
+        hideIniFloat()
+        lastCombinedWheelNudge = dragWheelNudge
+        return
+      }
+
       iniFloat.replaceChildren()
       const nameEl = document.createElement('div')
       nameEl.className = 'init-drag-ini-float-name'
@@ -464,40 +421,22 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         : `INI ${proposedStr}`
       const mode = document.createElement('div')
       mode.className = 'init-drag-ini-float-mode'
-      mode.textContent = willIni
-        ? 'Loslassen: neuen Wert übernehmen'
-        : draggingPhase
-          ? ''
-          : 'Loslassen: Reihenfolge tauschen'
+      mode.textContent = INI_DRAG_FLOAT_HINT
       iniFloat.append(nameEl, main, mode)
-      iniFloat.style.left = `${dragFloatAnchorX}px`
-      iniFloat.style.top = `${clientY + 12}px`
-      iniFloat.classList.add('init-drag-ini-float--visible')
-    } else {
-      hideIniFloat()
-    }
 
-    const topPx = computeDropLineTopPx(
-      clientY,
-      dragId,
-      proposedStr,
-      willIni,
-      lastItems,
-      getIniTieOrder(),
-      tokenEls
-    )
-    if (topPx != null) {
-      dropLine.style.top = `${topPx}px`
-      dropLine.classList.add('init-list-drop-line--active')
-      dropLine.classList.toggle('init-list-drop-line--ini', willIni)
-      dropLine.classList.toggle('init-list-drop-line--reorder', !willIni)
-    } else {
-      hideDropLine()
+      positionAndClampIniFloat(iniFloat, dragFloatAnchorX, clientY + 12)
+      const outside = extraIniStepsOutsideFloat(
+        clientY,
+        iniFloat.getBoundingClientRect()
+      )
+      const next = dragWheelNudge + outside
+      if (next === combinedNudge) break
+      combinedNudge = next
     }
+    lastCombinedWheelNudge = combinedNudge
   }
 
   const applyTokenDragRelease = (dragId, clientY, wheelAtDrop) => {
-    hideDropLine()
     hideIniFloat()
     if (!dragId || !listHost) return
     void OBR.scene.items.getItems().then((fresh) => {
@@ -594,8 +533,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       e.dataTransfer.getData(TOKEN_DRAG_MIME) ||
       e.dataTransfer.getData('text/plain')
     if (dragId !== activeDragRowId) return
-    const wheelAtDrop = dragWheelNudge
-    applyTokenDragRelease(dragId, e.clientY, wheelAtDrop)
+    updateDragSession(e.clientX, e.clientY, activeDragRowId)
+    applyTokenDragRelease(dragId, e.clientY, lastCombinedWheelNudge)
   }
 
   const onDocumentWheelWhileRow = (e) => {
@@ -722,7 +661,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           dragWheelNudge = 0
           activeDragRowId = null
           li.classList.remove('init-row--dragging')
-          hideDropLine()
           hideIniFloat()
         })
 
@@ -1090,7 +1028,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             dragWheelNudge = 0
             activeDragRowId = null
             li.classList.remove('init-row--dragging')
-            hideDropLine()
             hideIniFloat()
           })
         }
@@ -1192,7 +1129,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     swapLayoutRo?.disconnect()
     swapLayoutRo = null
     detachGlobalDragListeners()
-    dropLine.remove()
     swapOverlay.remove()
     iniFloat.remove()
   }

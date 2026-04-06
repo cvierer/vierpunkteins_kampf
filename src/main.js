@@ -1,4 +1,5 @@
 import './style.css'
+import { BUILD_VERSION } from './buildVersion.js'
 import OBR from '@owlbear-rodeo/sdk'
 import { setupContextMenu } from './contextMenu.js'
 import { setupInitiativeList } from './initiativeList.js'
@@ -7,7 +8,8 @@ import { setupCombatControls } from './combatControls.js'
 import { syncActionChrome } from './actionChrome.js'
 import { setupTurnMarkerSync } from './turnMarker.js'
 
-document.querySelector('#app').innerHTML = `
+const appRoot = document.querySelector('#app')
+appRoot.innerHTML = `
   <header class="app-header">
     <div class="combat-bar" data-combat-root>
       <div class="combat-toolbar">
@@ -35,8 +37,13 @@ document.querySelector('#app').innerHTML = `
     <div class="initiative-list-host" id="initiative-list-host">
       <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
     </div>
+    <div id="kampf-build-version" class="kampf-build-version" aria-hidden="true"></div>
   </div>
 `
+const buildVerEl = document.getElementById('kampf-build-version')
+if (buildVerEl) {
+  buildVerEl.textContent = `V. ${BUILD_VERSION}`
+}
 
 if (OBR.isAvailable) {
   OBR.onReady(async () => {

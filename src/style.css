@@ -216,44 +216,14 @@ body {
   box-sizing: border-box;
 }
 
-.init-list-drop-line {
-  position: absolute;
-  left: 0.35rem;
-  right: 0.35rem;
-  height: 3px;
-  margin-top: -1.5px;
-  border-radius: 2px;
-  background: var(--color-accent);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.28),
-    0 0 10px rgba(201, 162, 39, 0.45);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 4;
-  transition: opacity 0.1s ease;
-}
-
-.init-list-drop-line--active {
-  opacity: 1;
-}
-
-.init-list-drop-line--ini {
-  background: linear-gradient(
-    90deg,
-    rgba(201, 162, 39, 0.95),
-    rgba(230, 190, 80, 0.98)
-  );
-}
-
-.init-list-drop-line--reorder {
-  background: linear-gradient(
-    90deg,
-    rgba(120, 175, 210, 0.92),
-    rgba(160, 200, 230, 0.95)
-  );
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.22),
-    0 0 10px rgba(120, 175, 210, 0.35);
+.kampf-build-version {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.62rem;
+  line-height: 1.25;
+  color: rgba(170, 160, 145, 0.5);
+  padding: 0.15rem 0 0.1rem;
+  letter-spacing: 0.08em;
 }
 
 .init-drag-ini-float {
@@ -262,6 +232,7 @@ body {
   pointer-events: none;
   box-sizing: border-box;
   min-width: 3.75rem;
+  max-width: min(22rem, calc(100vw - 16px));
   padding: 0.38rem 0.55rem;
   border-radius: 8px;
   border: 1px solid rgba(201, 162, 39, 0.75);
@@ -305,11 +276,11 @@ body {
 
 .init-drag-ini-float-mode {
   margin-top: 0.28rem;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(220, 210, 190, 0.82);
+  color: rgba(235, 225, 200, 0.9);
   line-height: 1.2;
 }
 
