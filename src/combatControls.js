@@ -2,10 +2,13 @@ import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
 import {
   buildCombatTurnSteps,
+  clearEphemeralExtraIniRows,
   combatPatchForStep,
   findCombatStepIndex,
 } from './phaseLinks.js'
 import {
+  beginCombatNavMutation,
+  endCombatNavMutation,
   getCombat,
   getIniTieOrder,
   onCombatChange,
@@ -55,9 +58,17 @@ export async function setupCombatControls(root) {
     }
 
     if (elRound) {
-      elRound.textContent = c.started
-        ? `Kampfrunde ${c.round}`
-        : 'Kampfrunde —'
+      if (!c.started) {
+        elRound.textContent = 'Kampfrunde —'
+      } else if (c.roundIntroPending) {
+        const base =
+          typeof c.roundIntroPrevRound === 'number' && c.roundIntroPrevRound >= 1
+            ? c.roundIntroPrevRound
+            : c.round
+        elRound.textContent = `Kampfrunde ${base + 1}`
+      } else {
+        elRound.textContent = `Kampfrunde ${c.round}`
+      }
     }
 
     if (btnNext) {
@@ -108,9 +119,20 @@ export async function setupCombatControls(root) {
         })
         return
       }
+      const targetRound =
+        typeof c0.roundIntroPrevRound === 'number' && c0.roundIntroPrevRound >= 1
+          ? c0.roundIntroPrevRound + 1
+          : c0.round + 1
+      beginCombatNavMutation()
+      try {
+        await clearEphemeralExtraIniRows()
+      } finally {
+        endCombatNavMutation()
+      }
       await patchCombat({
         ...RESET_ROUND_INTRO,
         ...combatPatchForStep(stepsCommit[0]),
+        round: targetRound,
       })
       return
     }
@@ -136,11 +158,9 @@ export async function setupCombatControls(root) {
       return
     }
     const nextIdx = (idx + 1) % steps.length
-    const round = nextIdx === 0 ? c.round + 1 : c.round
 
     if (nextIdx === 0) {
       await patchCombat({
-        round,
         roundIntroPending: true,
         currentItemId: null,
         currentPhaseLinkId: null,
@@ -153,7 +173,7 @@ export async function setupCombatControls(root) {
 
     await patchCombat({
       ...combatPatchForStep(steps[nextIdx]),
-      round,
+      round: c.round,
     })
   }
 

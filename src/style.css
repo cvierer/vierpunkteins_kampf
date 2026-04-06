@@ -206,6 +206,7 @@ body {
 }
 
 .initiative-list-scroll {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
@@ -219,35 +220,59 @@ body {
   box-sizing: border-box;
 }
 
-.kampf-round-intro-banner {
+.kampf-round-intro-board {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.35rem;
-  margin: 0 0 0.35rem;
-  padding: 0.4rem 0.55rem;
+  padding: 0.75rem;
   box-sizing: border-box;
-  border-radius: var(--radius);
-  border: 1px solid rgba(201, 162, 39, 0.42);
-  background: rgba(201, 162, 39, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  background: rgba(12, 10, 8, 0.82);
+  backdrop-filter: blur(5px);
 }
 
-.kampf-round-intro-banner[hidden] {
+.kampf-round-intro-board[hidden] {
   display: none !important;
 }
 
-.kampf-round-intro-banner__text {
-  font-family: var(--font-heading);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(230, 205, 130, 0.95);
-  line-height: 1.2;
+.kampf-round-intro-board__panel {
+  max-width: 17.5rem;
+  width: 100%;
+  padding: 1.1rem 1.25rem 1rem;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 2px solid rgba(139, 105, 48, 0.85);
+  background: linear-gradient(
+    165deg,
+    rgba(58, 48, 36, 0.98) 0%,
+    rgba(42, 34, 28, 0.99) 45%,
+    rgba(32, 26, 22, 1) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35) inset,
+    0 12px 28px rgba(0, 0, 0, 0.45);
   text-align: center;
+}
+
+.kampf-round-intro-board__title {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(238, 214, 150, 0.98);
+  line-height: 1.25;
+}
+
+.kampf-round-intro-board__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(200, 185, 160, 0.88);
+  letter-spacing: 0.02em;
 }
 
 .init-ini-swap-overlay {

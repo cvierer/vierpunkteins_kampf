@@ -386,7 +386,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
 
-  const roundIntroBanner = document.querySelector('[data-kampf-round-intro]')
+  const roundIntroBoard = document.querySelector('[data-kampf-round-intro]')
   const roundIntroLabel = document.querySelector('[data-kampf-round-intro-label]')
 
   /** Enthält `ul` + Swap-Overlay, scrollt gemeinsam mit `.initiative-list-scroll`. */
@@ -712,11 +712,18 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     const combat = getCombat()
     const introActive = Boolean(combat.started && combat.roundIntroPending)
-    if (roundIntroBanner && roundIntroLabel) {
-      roundIntroBanner.hidden = !introActive
-      roundIntroLabel.textContent = introActive
-        ? `Kampfrunde ${combat.round}`
-        : ''
+    if (roundIntroBoard && roundIntroLabel) {
+      roundIntroBoard.hidden = !introActive
+      if (introActive) {
+        const nr =
+          typeof combat.roundIntroPrevRound === 'number' &&
+          combat.roundIntroPrevRound >= 1
+            ? combat.roundIntroPrevRound + 1
+            : combat.round + 1
+        roundIntroLabel.textContent = `Kampfrunde ${nr}`
+      } else {
+        roundIntroLabel.textContent = ''
+      }
     }
     const activeId =
       combat.started &&
