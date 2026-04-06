@@ -58,18 +58,20 @@ function buildIniKnotsExcluding(tokenEls, rowMap, excludeId) {
     const v = parseIniNumber(row?.initiative)
     if (v === null) continue
     const r = el.getBoundingClientRect()
-    const mid = r.top + r.height / 2
-    knots.push({ y: mid, v })
+    const top = r.top
+    const bottom = Math.max(r.bottom, r.top + 1)
+    const mid = top + (bottom - top) / 2
+    knots.push({ top, bottom, mid, v, id })
   }
-  knots.sort((a, b) => a.y - b.y)
+  knots.sort((a, b) => a.top - b.top)
   return knots
 }
 
 /**
- * INI aus vertikaler Zeigerlage: gesamte Listenhöhe + Rand wird auf einen
- * Wertbereich [min−spread, max+spread] abgebildet (t unbegrenzt → weiter
- * über/unter der Liste extrapolieren). Verhindert „alles klebt an gleicher INI“,
- * wenn mehrere Knoten denselben Wert haben.
+ * INI aus Y: Über der sichtbaren Zeile eines Tokens gilt dessen INI (Plateau),
+ * in den Lücken linear zwischen den Nachbarn, außerhalb der Liste extrapolieren.
+ * So gibt es bei gleicher Ziel-INI zwei sinnvolle Zonen (über/unter der Zeile /
+ * per Tie-Order), ohne dass sofort die nächsthöhere INI (z. B. 16 statt 15) greift.
  */
 function lerpIniFromClientY(clientY, knots, listUl) {
   if (knots.length === 0) return null
@@ -80,12 +82,39 @@ function lerpIniFromClientY(clientY, knots, listUl) {
   const marginY = Math.max(56, ur.height * 0.45)
   const yTop = ur.top - marginY
   const yBot = ur.bottom + marginY
-  const range = maxV - minV
-  const spread = Math.max(12, range * 0.55 + 8)
-  const vHigh = maxV + spread
-  const vLow = Math.max(0, minV - spread)
-  const t = (clientY - yTop) / Math.max(yBot - yTop, 1e-6)
-  return vHigh + t * (vLow - vHigh)
+  const spread = Math.max(12, (maxV - minV) * 0.55 + 8)
+
+  for (const k of knots) {
+    if (clientY >= k.top && clientY <= k.bottom) return k.v
+  }
+
+  const k0 = knots[0]
+  if (clientY < k0.top) {
+    const denom = Math.max(k0.top - yTop, 1e-6)
+    const t = (clientY - yTop) / denom
+    return k0.v + spread * (1 - t)
+  }
+
+  const kl = knots[knots.length - 1]
+  if (clientY > kl.bottom) {
+    const denom = Math.max(yBot - kl.bottom, 1e-6)
+    const t = (clientY - kl.bottom) / denom
+    return kl.v - spread * t
+  }
+
+  for (let i = 0; i < knots.length - 1; i++) {
+    const a = knots[i]
+    const b = knots[i + 1]
+    if (clientY > a.bottom && clientY < b.top) {
+      const y0 = a.bottom
+      const y1 = b.top
+      const denom = Math.max(y1 - y0, 1e-6)
+      const t = (clientY - y0) / denom
+      return a.v + t * (b.v - a.v)
+    }
+  }
+
+  return k0.v
 }
 
 function clampIniContinuous(continuous) {
@@ -390,12 +419,29 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       )
       if (willIni) {
         restoreFocusItemId = dragId
-        OBR.scene.items.updateItems([dragId], (drafts) => {
-          for (const d of drafts) {
-            const m = d.metadata[TRACKER_ITEM_META_KEY]
-            if (m) m.initiative = proposedStr
-          }
-        })
+        void OBR.scene.items
+          .updateItems([dragId], (drafts) => {
+            for (const d of drafts) {
+              const m = d.metadata[TRACKER_ITEM_META_KEY]
+              if (m) m.initiative = proposedStr
+            }
+          })
+          .then(() => OBR.scene.items.getItems())
+          .then((afterIni) => {
+            renderList(afterIni)
+            const els = [
+              ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
+            ]
+            const { validSlots } = computeValidIniTieInsertSlots(
+              dragId,
+              afterIni
+            )
+            if (validSlots.length === 0) return
+            const raw = clientYToInsertSlot(clientY, els)
+            const slot = pickNearestValidSlot(raw, validSlots)
+            if (slot == null) return
+            void reorderIniTieToken(dragId, slot, afterIni)
+          })
         return
       }
       const { validSlots } = computeValidIniTieInsertSlots(dragId, fresh)
