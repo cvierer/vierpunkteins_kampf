@@ -344,3 +344,31 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
 
   return entries
 }
+
+/**
+ * Zug-Reihenfolge für Kampf-Navigation (Token-Zeilen und ZAO/Phasen-Zeilen).
+ * Reihenfolge entspricht der angezeigten Liste.
+ */
+export function buildCombatTurnSteps(tokenRows, items, tieOrderIds = []) {
+  return buildMergedDisplayRows(tokenRows, items, tieOrderIds).map((e) =>
+    e.kind === 'token'
+      ? { kind: 'token', id: e.row.id }
+      : { kind: 'phase', ownerId: e.ownerId, linkId: e.link.id }
+  )
+}
+
+export function combatPatchForStep(step) {
+  if (step.kind === 'token') {
+    return { currentItemId: step.id, currentPhaseLinkId: null }
+  }
+  return { currentItemId: step.ownerId, currentPhaseLinkId: step.linkId }
+}
+
+export function findCombatStepIndex(steps, combat) {
+  const phaseId = combat.currentPhaseLinkId
+  return steps.findIndex((s) =>
+    s.kind === 'token'
+      ? s.id === combat.currentItemId && !phaseId
+      : s.ownerId === combat.currentItemId && s.linkId === phaseId
+  )
+}

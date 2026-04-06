@@ -21,7 +21,10 @@ import {
 } from './initiativeSort.js'
 import {
   addPhaseChildLink,
+  buildCombatTurnSteps,
   buildMergedDisplayRows,
+  combatPatchForStep,
+  findCombatStepIndex,
   hookIniForLink,
   normalizePhases,
   onNamePhasePlusClick,
@@ -516,14 +519,26 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   const reconcileCombat = async (rows) => {
     const c = getCombat()
     if (!c.started) return
-    const ids = rows.map((r) => r.id)
-    if (ids.length === 0) {
-      await patchCombat({ started: false, currentItemId: null, round: 1 })
+    const steps = buildCombatTurnSteps(rows, lastItems, getIniTieOrder())
+    if (steps.length === 0) {
+      await patchCombat({
+        started: false,
+        currentItemId: null,
+        currentPhaseLinkId: null,
+        round: 1,
+      })
       return
     }
-    if (!c.currentItemId || !ids.includes(c.currentItemId)) {
-      await patchCombat({ currentItemId: ids[0] })
+    if (findCombatStepIndex(steps, c) >= 0) return
+
+    const phaseId = c.currentPhaseLinkId
+    const ownerStillThere = rows.some((r) => r.id === c.currentItemId)
+    if (ownerStillThere && phaseId) {
+      await patchCombat({ currentPhaseLinkId: null })
+      return
     }
+
+    await patchCombat(combatPatchForStep(steps[0]))
   }
 
   const renderList = (items) => {
@@ -535,6 +550,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const combat = getCombat()
     const activeId =
       combat.started && combat.currentItemId ? combat.currentItemId : null
+    const activePhaseLinkId = combat.started
+      ? combat.currentPhaseLinkId
+      : null
 
     const merged = buildMergedDisplayRows(tokenRows, items, getIniTieOrder())
     const swapLowerByUpper = new Map()
@@ -558,7 +576,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const li = document.createElement('li')
         li.className = 'init-row init-row--token-draggable'
-        if (row.id === activeId) li.classList.add('init-row--active')
+        if (row.id === activeId && !activePhaseLinkId) {
+          li.classList.add('init-row--active')
+        }
         li.dataset.itemId = row.id
         li.draggable = true
         li.title =
@@ -693,43 +713,63 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         frag.appendChild(li)
       } else {
         const { ownerId, ownerName, ownerIniStr, link, hookIni } = entry
+        const isZaoRoot = link.parentId === null
 
         const li = document.createElement('li')
-        li.className = 'init-row init-row--phase'
+        li.className =
+          'init-row init-row--phase' +
+          (isZaoRoot ? ' init-row--phase-zao' : '')
         li.dataset.phaseOwnerId = ownerId
         li.dataset.phaseLinkId = link.id
 
         const main = document.createElement('div')
-        main.className = 'init-row-main init-row-main--phase'
+        main.className =
+          'init-row-main init-row-main--phase' +
+          (isZaoRoot ? ' init-row-main--phase-zao' : '')
 
         const btnCol = document.createElement('div')
         btnCol.className = 'init-col-btn init-col-btn--phase'
 
-        const phaseMinus = document.createElement('button')
-        phaseMinus.type = 'button'
-        phaseMinus.className = 'init-row-phase-minus'
-        phaseMinus.textContent = '−'
-        phaseMinus.title = 'Diese INI-Phase entfernen'
-        phaseMinus.setAttribute('aria-label', 'INI-Phase entfernen')
-        phaseMinus.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          void removePhaseLink(ownerId, link.id)
-        })
+        if (isZaoRoot) {
+          const zaoRemove = document.createElement('button')
+          zaoRemove.type = 'button'
+          zaoRemove.className = 'init-row-zao-remove'
+          zaoRemove.textContent = '×'
+          zaoRemove.title = 'Zusätzliches Aktionsobjekt (ZAO) entfernen'
+          zaoRemove.setAttribute('aria-label', 'ZAO entfernen')
+          zaoRemove.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void removePhaseLink(ownerId, link.id)
+          })
+          btnCol.appendChild(zaoRemove)
+        } else {
+          const phaseMinus = document.createElement('button')
+          phaseMinus.type = 'button'
+          phaseMinus.className = 'init-row-phase-minus'
+          phaseMinus.textContent = '−'
+          phaseMinus.title = 'Diese INI-Phase entfernen'
+          phaseMinus.setAttribute('aria-label', 'INI-Phase entfernen')
+          phaseMinus.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void removePhaseLink(ownerId, link.id)
+          })
 
-        const chainPlus = document.createElement('button')
-        chainPlus.type = 'button'
-        chainPlus.className = 'init-row-phase-plus init-row-phase-plus--small'
-        chainPlus.textContent = '+'
-        chainPlus.title = 'Weitere INI-Phase anknüpfen'
-        chainPlus.setAttribute('aria-label', 'Weitere Phase')
-        chainPlus.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          void addPhaseChildLink(ownerId, link.id, ownerIniStr)
-        })
+          const chainPlus = document.createElement('button')
+          chainPlus.type = 'button'
+          chainPlus.className = 'init-row-phase-plus init-row-phase-plus--small'
+          chainPlus.textContent = '+'
+          chainPlus.title = 'Weitere INI-Phase anknüpfen'
+          chainPlus.setAttribute('aria-label', 'Weitere Phase')
+          chainPlus.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void addPhaseChildLink(ownerId, link.id, ownerIniStr)
+          })
 
-        btnCol.append(phaseMinus, chainPlus)
+          btnCol.append(phaseMinus, chainPlus)
+        }
 
         const gutter = document.createElement('div')
         gutter.className = 'init-phase-gutter'
@@ -748,12 +788,33 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         gutter.appendChild(offsetInput)
 
         const nameCol = document.createElement('div')
-        nameCol.className = 'init-row-name-col'
-        const nameEl = document.createElement('span')
-        nameEl.className = 'init-row-name'
-        nameEl.textContent = ownerName
-        nameEl.title = 'Zusätzliche INI-Phase dieses Charakters'
-        nameCol.appendChild(nameEl)
+        if (isZaoRoot) {
+          nameCol.className = 'init-row-name-col init-row-name-col--zao'
+          const badge = document.createElement('span')
+          badge.className = 'init-row-zao-badge'
+          badge.textContent = 'ZAO'
+          const nameEl = document.createElement('span')
+          nameEl.className = 'init-row-name init-row-name--zao-trail'
+          nameEl.textContent = ownerName
+          nameEl.title = `Zusätzliches Aktionsobjekt von ${ownerName}`
+          nameCol.append(badge, nameEl)
+        } else {
+          nameCol.className = 'init-row-name-col'
+          const nameEl = document.createElement('span')
+          nameEl.className = 'init-row-name'
+          nameEl.textContent = ownerName
+          nameEl.title = 'Zusätzliche INI-Phase dieses Charakters'
+          nameCol.appendChild(nameEl)
+        }
+
+        if (
+          activeId &&
+          activePhaseLinkId &&
+          ownerId === activeId &&
+          link.id === activePhaseLinkId
+        ) {
+          li.classList.add('init-row--active')
+        }
 
         const iniInput = document.createElement('input')
         iniInput.className = 'init-row-init'

@@ -17,6 +17,7 @@ function defaultCombat() {
     started: false,
     round: 1,
     currentItemId: null,
+    currentPhaseLinkId: null,
   }
 }
 
@@ -28,6 +29,10 @@ function normalize(raw) {
     round: Math.max(1, Math.floor(Number(raw.round)) || 1),
     currentItemId:
       typeof raw.currentItemId === 'string' ? raw.currentItemId : null,
+    currentPhaseLinkId:
+      typeof raw.currentPhaseLinkId === 'string'
+        ? raw.currentPhaseLinkId
+        : null,
   }
 }
 
@@ -78,7 +83,8 @@ async function pullFromRoom() {
   const same =
     next.started === cache.started &&
     next.round === cache.round &&
-    next.currentItemId === cache.currentItemId
+    next.currentItemId === cache.currentItemId &&
+    next.currentPhaseLinkId === cache.currentPhaseLinkId
   if (same) return
   cache = next
   notify()
@@ -195,7 +201,15 @@ export async function initCombatRoom() {
 }
 
 export async function patchCombat(partial) {
-  const next = normalize({ ...cache, ...partial })
+  const merged = { ...cache, ...partial }
+  if (
+    partial.currentPhaseLinkId === undefined &&
+    partial.currentItemId !== undefined &&
+    partial.currentItemId !== cache.currentItemId
+  ) {
+    merged.currentPhaseLinkId = null
+  }
+  const next = normalize(merged)
   await OBR.room.setMetadata({ [COMBAT_KEY]: next })
   await pullFromRoom()
 }

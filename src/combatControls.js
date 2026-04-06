@@ -1,6 +1,11 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
 import {
+  buildCombatTurnSteps,
+  combatPatchForStep,
+  findCombatStepIndex,
+} from './phaseLinks.js'
+import {
   getCombat,
   getIniTieOrder,
   onCombatChange,
@@ -8,9 +13,10 @@ import {
 } from './combatRoom.js'
 import { getTrackedParticipantIds } from './listState.js'
 
-async function sortedIds() {
+async function combatTurnSteps() {
   const items = await OBR.scene.items.getItems()
-  return collectSortedParticipants(items, getIniTieOrder()).map((r) => r.id)
+  const rows = collectSortedParticipants(items, getIniTieOrder())
+  return buildCombatTurnSteps(rows, items, getIniTieOrder())
 }
 
 export async function setupCombatControls(root) {
@@ -59,53 +65,64 @@ export async function setupCombatControls(root) {
         started: false,
         round: 1,
         currentItemId: null,
+        currentPhaseLinkId: null,
       })
       return
     }
-    const ids = await sortedIds()
-    if (ids.length === 0) return
+    const steps = await combatTurnSteps()
+    if (steps.length === 0) return
     await patchCombat({
       started: true,
       round: 1,
-      currentItemId: ids[0],
+      ...combatPatchForStep(steps[0]),
     })
   })
 
   btnNext?.addEventListener('click', async () => {
-    const ids = await sortedIds()
+    const steps = await combatTurnSteps()
     const c = getCombat()
-    if (ids.length === 0) {
-      await patchCombat({ started: false, currentItemId: null, round: 1 })
+    if (steps.length === 0) {
+      await patchCombat({
+        started: false,
+        currentItemId: null,
+        currentPhaseLinkId: null,
+        round: 1,
+      })
       return
     }
-    const idx = ids.indexOf(c.currentItemId)
+    let idx = findCombatStepIndex(steps, c)
     if (idx < 0) {
-      await patchCombat({ currentItemId: ids[0] })
+      await patchCombat({ ...combatPatchForStep(steps[0]) })
       return
     }
-    const nextIdx = (idx + 1) % ids.length
+    const nextIdx = (idx + 1) % steps.length
     const round = nextIdx === 0 ? c.round + 1 : c.round
-    await patchCombat({ currentItemId: ids[nextIdx], round })
+    await patchCombat({ ...combatPatchForStep(steps[nextIdx]), round })
   })
 
   btnPrev?.addEventListener('click', async () => {
-    const ids = await sortedIds()
+    const steps = await combatTurnSteps()
     const c = getCombat()
-    if (ids.length === 0) {
-      await patchCombat({ started: false, currentItemId: null, round: 1 })
+    if (steps.length === 0) {
+      await patchCombat({
+        started: false,
+        currentItemId: null,
+        currentPhaseLinkId: null,
+        round: 1,
+      })
       return
     }
-    const idx = ids.indexOf(c.currentItemId)
+    let idx = findCombatStepIndex(steps, c)
     if (idx < 0) {
-      await patchCombat({ currentItemId: ids[0] })
+      await patchCombat({ ...combatPatchForStep(steps[0]) })
       return
     }
-    const prevIdx = (idx - 1 + ids.length) % ids.length
+    const prevIdx = (idx - 1 + steps.length) % steps.length
     let round = c.round
-    if (idx === 0 && prevIdx === ids.length - 1) {
+    if (idx === 0 && prevIdx === steps.length - 1) {
       round = Math.max(1, c.round - 1)
     }
-    await patchCombat({ currentItemId: ids[prevIdx], round })
+    await patchCombat({ ...combatPatchForStep(steps[prevIdx]), round })
   })
 
   const unsub = onCombatChange(refreshBar)

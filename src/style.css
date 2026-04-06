@@ -452,6 +452,36 @@ body {
   font-size: 0.76rem;
 }
 
+.init-row-zao-remove {
+  flex-shrink: 0;
+  width: 1.22rem;
+  height: 1.22rem;
+  padding: 0;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 127, 127, 0.45);
+  background: rgba(201, 127, 127, 0.1);
+  color: rgba(255, 200, 200, 0.95);
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.init-row-zao-remove:hover {
+  border-color: rgba(230, 150, 150, 0.65);
+  background: rgba(201, 127, 127, 0.18);
+}
+
+.init-row-zao-remove:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.55);
+  outline-offset: 1px;
+}
+
 .init-phase-gutter {
   position: relative;
   align-self: stretch;
@@ -476,9 +506,9 @@ body {
 
 .phase-offset-input {
   position: absolute;
-  left: 14px;
+  left: 50%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
   width: 2rem;
   box-sizing: border-box;
   padding: 0.2rem 0.15rem;
@@ -507,6 +537,19 @@ body {
 
 .init-row-main--phase {
   position: relative;
+  --init-phase-gutter-inner: 3.28rem;
+  grid-template-columns:
+    var(--init-col-btn) var(--init-phase-gutter-inner) minmax(0, 1fr)
+    var(--init-col-ini) var(--init-col-swap);
+}
+
+.init-row-main--phase-zao {
+  background: linear-gradient(
+    90deg,
+    rgba(201, 162, 39, 0.08) 0%,
+    rgba(201, 162, 39, 0.03) 42%,
+    transparent 70%
+  );
 }
 
 .init-row-main--phase > * {
@@ -518,7 +561,10 @@ body {
   content: '';
   position: absolute;
   z-index: 0;
-  left: calc(var(--init-col-btn) + var(--init-grid-gap) + 8px);
+  left: calc(
+    var(--init-col-btn) + var(--init-grid-gap) +
+      (var(--init-phase-gutter-inner) * 0.5)
+  );
   right: calc(
     var(--init-col-ini) + var(--init-grid-gap) + var(--init-col-swap) +
       var(--init-grid-gap)
@@ -629,6 +675,36 @@ body {
   font-size: 0.96rem;
 }
 
+.init-row-name-col--zao {
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.init-row-zao-badge {
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: rgba(201, 162, 39, 0.75);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: 3px;
+  padding: 0.1rem 0.22rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.init-row-name--zao-trail {
+  flex: 1;
+  min-width: 0;
+}
+
+.init-row--active .init-row-zao-badge {
+  border-color: rgba(201, 162, 39, 0.55);
+  color: var(--color-accent);
+}
+
 
 .init-row-init {
   width: 100%;
@@ -693,6 +769,26 @@ body {
     color: #7a2e2e;
     border-color: rgba(122, 46, 46, 0.35);
     background: rgba(122, 46, 46, 0.08);
+  }
+
+  .init-row-zao-remove {
+    color: #7a2e2e;
+    border-color: rgba(122, 46, 46, 0.35);
+    background: rgba(122, 46, 46, 0.08);
+  }
+
+  .init-row-zao-remove:hover {
+    border-color: rgba(122, 46, 46, 0.5);
+    background: rgba(122, 46, 46, 0.12);
+  }
+
+  .init-row-main--phase-zao {
+    background: linear-gradient(
+      90deg,
+      rgba(139, 74, 28, 0.09) 0%,
+      rgba(139, 74, 28, 0.04) 42%,
+      transparent 70%
+    );
   }
 
   .btn {
