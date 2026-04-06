@@ -616,8 +616,8 @@ body {
 }
 
 .init-row-kr-counter--fa .init-row-kr-counter__fill--half {
-  left: 50%;
-  right: 0;
+  left: 0;
+  right: 50%;
   opacity: 1;
 }
 

@@ -151,7 +151,7 @@ function appendFaCounter(container, ownerItemId, trackerMeta, canEdit) {
   b.append(fill, digit)
   applyFaCounterVisual(b, val)
   b.title =
-    'Freie Aktion: 1 = halb (rechts), 2 = voll, ab 3 Zahl · Linksklick +1, Rechtsklick −1'
+    'Freie Aktion: 1 = halb (links), 2 = voll, ab 3 Zahl · Linksklick +1, Rechtsklick −1'
   b.setAttribute('aria-label', faCounterAria(val))
   b.disabled = !canEdit
   if (canEdit) {
