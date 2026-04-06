@@ -35,7 +35,11 @@ appRoot.innerHTML = `
       <span class="kampf-h-spacer kampf-h-spacer--swap" aria-hidden="true"></span>
     </div>
     <div class="initiative-list-host" id="initiative-list-host">
-      <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
+      <div class="initiative-list-scroll">
+        <div class="initiative-list-scroll-inner">
+          <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
+        </div>
+      </div>
     </div>
     <div id="kampf-build-version" class="kampf-build-version" aria-hidden="true"></div>
   </div>

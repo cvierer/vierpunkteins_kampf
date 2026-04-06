@@ -196,12 +196,27 @@ body {
 }
 
 .initiative-list-host {
-  position: relative;
   margin: 0;
   padding: 0;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.initiative-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.initiative-list-scroll-inner {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .init-ini-swap-overlay {
@@ -291,12 +306,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--init-list-row-gap);
-  min-height: 0;
-  max-height: 100%;
-  overflow-x: hidden;
-  /* Bei ≤18 Kämpfern typ. kein Scroll; bei mehr Einträgen/Phasen-Zeilen scrollbar */
-  overflow-y: auto;
-  scrollbar-width: thin;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .init-row {

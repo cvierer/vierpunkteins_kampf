@@ -384,12 +384,21 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
 
-  const listHost = element.parentElement
+  /** Enthält `ul` + Swap-Overlay, scrollt gemeinsam mit `.initiative-list-scroll`. */
+  const listContentRoot = element.parentElement
+  const listScrollEl = listContentRoot?.parentElement ?? null
 
   const swapOverlay = document.createElement('div')
   swapOverlay.className = 'init-ini-swap-overlay'
   swapOverlay.setAttribute('aria-hidden', 'true')
-  if (listHost) listHost.appendChild(swapOverlay)
+  if (listContentRoot) listContentRoot.appendChild(swapOverlay)
+
+  const runSwapLayout = () =>
+    layoutIniSwapBetween(element, listContentRoot, swapOverlay)
+
+  if (listScrollEl) {
+    listScrollEl.addEventListener('scroll', runSwapLayout, { passive: true })
+  }
 
   const iniFloat = document.createElement('div')
   iniFloat.className = 'init-drag-ini-float'
@@ -434,7 +443,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     dragSessionLastTs = now
 
     const iniCol = getIniColumnBoundsFromList(element)
-    const listRect = element.getBoundingClientRect()
+    const listRect =
+      listScrollEl?.getBoundingClientRect() ?? element.getBoundingClientRect()
     let iniEdgeZone = null
     if (
       iniCol &&
@@ -514,7 +524,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
   const applyTokenDragRelease = (dragId, clientY, wheelAtDrop) => {
     hideIniFloat()
-    if (!dragId || !listHost) return
+    if (!dragId || !listContentRoot) return
     void OBR.scene.items.getItems().then((fresh) => {
       const phaseRef = parsePhaseDrag(dragId)
       const tokenElsFresh = [
@@ -737,7 +747,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           activeDragRowId = row.id
           lastDragClientX = e.clientX
           lastDragClientY = e.clientY
-          const hr = listHost?.getBoundingClientRect()
+          const hr =
+            listScrollEl?.getBoundingClientRect() ??
+            listContentRoot?.getBoundingClientRect()
           dragFloatAnchorX = hr
             ? Math.round(hr.left + 8)
             : Math.round(li.getBoundingClientRect().left)
@@ -1118,7 +1130,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             activeDragRowId = phasePayload
             lastDragClientX = e.clientX
             lastDragClientY = e.clientY
-            const hr = listHost?.getBoundingClientRect()
+            const hr =
+              listScrollEl?.getBoundingClientRect() ??
+              listContentRoot?.getBoundingClientRect()
             dragFloatAnchorX = hr
               ? Math.round(hr.left + 8)
               : Math.round(li.getBoundingClientRect().left)
@@ -1224,8 +1238,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       swapOverlay.appendChild(swapBtn)
     }
 
-    const runSwapLayout = () => layoutIniSwapBetween(element, listHost, swapOverlay)
-
     const scrollActiveRowIfTurnChanged = () => {
       const cNow = getCombat()
       if (!cNow.started) {
@@ -1255,7 +1267,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       if (!swapLayoutRo) {
         swapLayoutRo = new ResizeObserver(runSwapLayout)
         swapLayoutRo.observe(element)
-        if (listHost) swapLayoutRo.observe(listHost)
+        if (listContentRoot) swapLayoutRo.observe(listContentRoot)
+        if (listScrollEl) swapLayoutRo.observe(listScrollEl)
       }
     }
 
@@ -1282,6 +1295,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
   return () => {
     offZaoTie()
+    if (listScrollEl) {
+      listScrollEl.removeEventListener('scroll', runSwapLayout, { passive: true })
+    }
     swapLayoutRo?.disconnect()
     swapLayoutRo = null
     detachGlobalDragListeners()
