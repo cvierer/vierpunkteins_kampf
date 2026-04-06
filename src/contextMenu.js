@@ -41,6 +41,8 @@ export function setupContextMenu() {
               krAng: 0,
               krAbw: 0,
               krFreeAction: 0,
+              lhMax: 0,
+              lhRemaining: 0,
             }
           }
         })

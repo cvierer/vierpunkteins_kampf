@@ -138,8 +138,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
-  /* Ang., Abw., F.A., z.A. (+) à 1.22rem + Gaps */
-  --init-col-btn: calc(4 * 1.22rem + 3 * 0.22rem);
+  /* Ang., Abw., F.A., L.H., z.A. (+) à 1.22rem + Gaps */
+  --init-col-btn: calc(5 * 1.22rem + 4 * 0.22rem);
   --init-col-gutter: 0.72rem;
   --init-col-ini: calc(4.75rem * 2 / 3);
   --init-col-swap: 1.2rem;
@@ -627,6 +627,64 @@ body {
   opacity: 1;
 }
 
+/* Längerfristige Handlung: Kuchen (verbrauchter Anteil) + Zahl */
+.init-lh-cell {
+  position: relative;
+  flex-shrink: 0;
+  width: 1.22rem;
+  height: 1.22rem;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.init-lh-cell__pie {
+  position: absolute;
+  inset: 1px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 0;
+  --lh-green: #b8e6bb;
+  background: conic-gradient(
+    from 0deg,
+    var(--lh-green) 0deg,
+    var(--lh-green) var(--lh-consumed, 0deg),
+    rgba(0, 0, 0, 0.16) var(--lh-consumed, 0deg)
+  );
+}
+
+.init-lh-cell__input {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #0d0d0d;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.75);
+  cursor: default;
+}
+
+.init-lh-cell__input:focus {
+  outline: 2px solid rgba(201, 162, 39, 0.55);
+  outline-offset: 0;
+}
+
+.init-lh-cell__input:not([readonly]) {
+  cursor: text;
+}
+
 .init-row-kr-counter__digit {
   position: absolute;
   left: 0;
@@ -838,7 +896,7 @@ body {
 }
 
 .init-row-main--phase-zao {
-  --init-col-btn: calc(5 * 1.22rem + 4 * 0.22rem);
+  --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
   grid-template-columns:
     var(--init-col-btn) minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
 }

@@ -49,6 +49,7 @@ import {
   readKrAbw,
   readKrAng,
 } from './krCounters.js'
+import { commitLhValue, readLhState, runLongHandlungAfterCombatUpdate } from './longHandlung.js'
 
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
@@ -187,6 +188,71 @@ function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
     'Abwehraktion'
   )
   appendFaCounter(container, ownerItemId, trackerMeta, canEdit)
+  appendLhCell(container, ownerItemId, trackerMeta, canEdit)
+}
+
+function applyLhVisual(wrap, max, rem) {
+  const pie = wrap.querySelector('.init-lh-cell__pie')
+  if (!pie) return
+  if (max <= 0) {
+    pie.style.setProperty('--lh-consumed', '0deg')
+    return
+  }
+  const frac = Math.max(0, Math.min(1, (max - rem) / max))
+  pie.style.setProperty('--lh-consumed', `${frac * 360}deg`)
+}
+
+function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
+  const st = readLhState(trackerMeta)
+  const wrap = document.createElement('div')
+  wrap.className = 'init-lh-cell'
+  const pie = document.createElement('div')
+  pie.className = 'init-lh-cell__pie'
+  pie.setAttribute('aria-hidden', 'true')
+  const inp = document.createElement('input')
+  inp.type = 'text'
+  inp.className = 'init-lh-cell__input'
+  inp.inputMode = 'numeric'
+  inp.autocomplete = 'off'
+  inp.spellcheck = false
+  inp.maxLength = 3
+  inp.value = st.max > 0 ? String(st.rem) : ''
+  inp.title =
+    'Längerfristige Handlung: Ziel (z. B. 7). Pro KR −2 — beim Dran und 8 INI-Schritte später. Leer = aus.'
+  inp.setAttribute(
+    'aria-label',
+    st.max > 0
+      ? `Längerfristige Handlung, noch ${st.rem} von ${st.max}`
+      : 'Längerfristige Handlung, inaktiv'
+  )
+  inp.readOnly = !canEdit
+  if (!canEdit) {
+    inp.title =
+      'Nur Spielleitung oder Besitzer dieses Tokens (Längerfristige Handlung)'
+  }
+  applyLhVisual(wrap, st.max, st.rem)
+  wrap.append(pie, inp)
+  if (canEdit) {
+    let dirty = false
+    inp.addEventListener('focus', () => {
+      dirty = false
+    })
+    inp.addEventListener('input', () => {
+      dirty = true
+    })
+    inp.addEventListener('blur', () => {
+      if (!dirty) return
+      dirty = false
+      void commitLhValue(ownerItemId, inp.value)
+    })
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        inp.blur()
+      }
+    })
+  }
+  container.appendChild(wrap)
 }
 
 function encodePhaseDrag(ownerId, linkId) {
@@ -1541,7 +1607,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   OBR.scene.items.getItems().then(renderList)
   OBR.scene.items.onChange(renderList)
   onCombatChange(() => {
-    void OBR.scene.items.getItems().then(renderList)
+    void (async () => {
+      const items = await OBR.scene.items.getItems()
+      await runLongHandlungAfterCombatUpdate(items, getIniTieOrder())
+      const fresh = await OBR.scene.items.getItems()
+      renderList(fresh)
+    })()
   })
   onIniTieOrderChange(() => renderList(lastItems))
   const offZaoTie = onZaoRootTieOrderChange(() => renderList(lastItems))
