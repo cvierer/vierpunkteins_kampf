@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:preview": "vite --host --port 5173 --strictPort --open /",
     "build": "vite build",
     "preview": "vite preview"
   },
