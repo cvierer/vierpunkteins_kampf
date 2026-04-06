@@ -43,7 +43,7 @@ function normalize(raw) {
 let cache = defaultCombat()
 let tieOrderCache = []
 
-/** Während „Weiter/Zurück/Start“: Szenen-Updates nicht per reconcile gegen veraltete Runde patchen. */
+/** Bei Runden+1 während ephemerer Z.A.-Entfernung vor Raum-Metadaten: reconcile nicht gegen alte KR patchen. */
 let combatNavMutationDepth = 0
 
 export function beginCombatNavMutation() {
@@ -232,9 +232,20 @@ export async function patchCombat(partial) {
     merged.currentPhaseLinkId = null
   }
   const next = normalize(merged)
-  await OBR.room.setMetadata({ [COMBAT_KEY]: next })
-  await pullFromRoom()
-  if (next.started && next.round > prevRound) {
-    await clearEphemeralExtraIniRows()
+  const roundIncreased = next.started && next.round > prevRound
+
+  if (roundIncreased) {
+    beginCombatNavMutation()
+  }
+  try {
+    if (roundIncreased) {
+      await clearEphemeralExtraIniRows()
+    }
+    await OBR.room.setMetadata({ [COMBAT_KEY]: next })
+    await pullFromRoom()
+  } finally {
+    if (roundIncreased) {
+      endCombatNavMutation()
+    }
   }
 }

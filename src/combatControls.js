@@ -2,13 +2,10 @@ import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
 import {
   buildCombatTurnSteps,
-  clearEphemeralExtraIniRows,
   combatPatchForStep,
   findCombatStepIndex,
 } from './phaseLinks.js'
 import {
-  beginCombatNavMutation,
-  endCombatNavMutation,
   getCombat,
   getIniTieOrder,
   onCombatChange,
@@ -69,103 +66,73 @@ export async function setupCombatControls(root) {
   }
 
   const applyCombatStartStop = async () => {
-    beginCombatNavMutation()
-    try {
-      const c = getCombat()
-      if (c.started) {
-        await patchCombat({
-          started: false,
-          round: 1,
-          currentItemId: null,
-          currentPhaseLinkId: null,
-        })
-        return
-      }
-      const steps = await combatTurnSteps()
-      if (steps.length === 0) return
+    const c = getCombat()
+    if (c.started) {
       await patchCombat({
-        started: true,
+        started: false,
         round: 1,
-        ...combatPatchForStep(steps[0]),
+        currentItemId: null,
+        currentPhaseLinkId: null,
       })
-    } finally {
-      endCombatNavMutation()
+      return
     }
+    const steps = await combatTurnSteps()
+    if (steps.length === 0) return
+    await patchCombat({
+      started: true,
+      round: 1,
+      ...combatPatchForStep(steps[0]),
+    })
   }
 
   const applyCombatNext = async () => {
-    beginCombatNavMutation()
-    try {
-      let steps = await combatTurnSteps()
-      const c = getCombat()
-      if (steps.length === 0) {
-        await patchCombat({
-          started: false,
-          currentItemId: null,
-          currentPhaseLinkId: null,
-          round: 1,
-        })
-        return
-      }
-      let idx = findCombatStepIndex(steps, c)
-      if (idx < 0) {
-        await patchCombat({ ...combatPatchForStep(steps[0]) })
-        return
-      }
-      const nextIdx = (idx + 1) % steps.length
-      const round = nextIdx === 0 ? c.round + 1 : c.round
-
-      let patchPayload = { ...combatPatchForStep(steps[nextIdx]), round }
-
-      if (nextIdx === 0) {
-        await clearEphemeralExtraIniRows()
-        steps = await combatTurnSteps()
-        if (steps.length === 0) {
-          await patchCombat({
-            started: false,
-            currentItemId: null,
-            currentPhaseLinkId: null,
-            round: 1,
-          })
-          return
-        }
-        patchPayload = { ...combatPatchForStep(steps[0]), round }
-      }
-
-      await patchCombat(patchPayload)
-    } finally {
-      endCombatNavMutation()
+    const steps = await combatTurnSteps()
+    const c = getCombat()
+    if (steps.length === 0) {
+      await patchCombat({
+        started: false,
+        currentItemId: null,
+        currentPhaseLinkId: null,
+        round: 1,
+      })
+      return
     }
+    const idx = findCombatStepIndex(steps, c)
+    if (idx < 0) {
+      await patchCombat({ ...combatPatchForStep(steps[0]) })
+      return
+    }
+    const nextIdx = (idx + 1) % steps.length
+    const round = nextIdx === 0 ? c.round + 1 : c.round
+    await patchCombat({
+      ...combatPatchForStep(steps[nextIdx]),
+      round,
+    })
   }
 
   const applyCombatPrev = async () => {
-    beginCombatNavMutation()
-    try {
-      const steps = await combatTurnSteps()
-      const c = getCombat()
-      if (steps.length === 0) {
-        await patchCombat({
-          started: false,
-          currentItemId: null,
-          currentPhaseLinkId: null,
-          round: 1,
-        })
-        return
-      }
-      let idx = findCombatStepIndex(steps, c)
-      if (idx < 0) {
-        await patchCombat({ ...combatPatchForStep(steps[0]) })
-        return
-      }
-      const prevIdx = (idx - 1 + steps.length) % steps.length
-      let round = c.round
-      if (idx === 0 && prevIdx === steps.length - 1) {
-        round = Math.max(1, c.round - 1)
-      }
-      await patchCombat({ ...combatPatchForStep(steps[prevIdx]), round })
-    } finally {
-      endCombatNavMutation()
+    const steps = await combatTurnSteps()
+    const c = getCombat()
+    if (steps.length === 0) {
+      await patchCombat({
+        started: false,
+        currentItemId: null,
+        currentPhaseLinkId: null,
+        round: 1,
+      })
+      return
     }
+    const idx = findCombatStepIndex(steps, c)
+    if (idx < 0) {
+      await patchCombat({ ...combatPatchForStep(steps[0]) })
+      return
+    }
+    const prevIdx = (idx - 1 + steps.length) % steps.length
+    let round = c.round
+    if (idx === 0 && prevIdx === steps.length - 1) {
+      round = Math.max(1, c.round - 1)
+    }
+    await patchCombat({ ...combatPatchForStep(steps[prevIdx]), round })
   }
 
   btnToggle?.addEventListener('click', () => void applyCombatStartStop())

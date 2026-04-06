@@ -219,52 +219,6 @@ body {
   box-sizing: border-box;
 }
 
-.kampf-round-separator {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.28rem 0.4rem 0.42rem;
-  margin: 0;
-  box-sizing: border-box;
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  background: linear-gradient(
-    180deg,
-    var(--color-bg) 72%,
-    rgba(28, 27, 25, 0)
-  );
-}
-
-.kampf-round-separator[hidden] {
-  display: none !important;
-}
-
-.kampf-round-separator__line {
-  flex: 1;
-  min-width: 0.75rem;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(201, 162, 39, 0.45) 20%,
-    rgba(201, 162, 39, 0.45) 80%,
-    transparent
-  );
-}
-
-.kampf-round-separator__label {
-  flex-shrink: 0;
-  font-family: var(--font-heading);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(201, 162, 39, 0.88);
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
 .init-ini-swap-overlay {
   position: absolute;
   inset: 0;
