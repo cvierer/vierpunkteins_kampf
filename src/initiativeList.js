@@ -273,17 +273,20 @@ function layoutIniSwapBetween(ul, host, overlay) {
     btn.style.display = ''
     const gapTop = prev.getBoundingClientRect().bottom
     const gapBot = lowerLi.getBoundingClientRect().top
-    const h = Math.max(0, gapBot - gapTop)
-    if (h < 1) {
+    const gapH = Math.max(0, gapBot - gapTop)
+    if (gapH < 1) {
       btn.style.display = 'none'
       continue
     }
     const col = refCol.getBoundingClientRect()
+    const hitH = 22
+    const hitW = Math.max(col.width + 10, 24)
+    const midY = (gapTop + gapBot) / 2
     btn.style.position = 'absolute'
-    btn.style.left = `${col.left - hostR.left}px`
-    btn.style.width = `${col.width}px`
-    btn.style.top = `${gapTop - hostR.top}px`
-    btn.style.height = `${h}px`
+    btn.style.left = `${col.left - hostR.left - (hitW - col.width) / 2}px`
+    btn.style.width = `${hitW}px`
+    btn.style.top = `${midY - hostR.top - hitH / 2}px`
+    btn.style.height = `${hitH}px`
   }
 }
 
