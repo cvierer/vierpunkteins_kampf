@@ -200,7 +200,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 3;
+  z-index: 2;
 }
 
 .init-ini-swap-overlay .init-row-ini-swap {
@@ -549,6 +549,8 @@ body {
 }
 
 .init-row--active {
+  position: relative;
+  z-index: 5;
   background: var(--color-active);
   border-color: var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);
