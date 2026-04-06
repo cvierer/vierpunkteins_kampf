@@ -334,6 +334,9 @@ body {
   gap: var(--init-grid-gap);
   align-items: center;
   width: 100%;
+  box-sizing: border-box;
+  border-radius: calc(var(--radius) - 1px);
+  border: 1px solid transparent;
 }
 
 .init-col-swap {
@@ -556,6 +559,14 @@ body {
 .init-row--active {
   position: relative;
   z-index: 5;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Aktive Fläche wie im Screendesign: nur über die eigentliche Zeile,
+   nicht unter den schwebenden Tausch-Button hinein. */
+.init-row--active .init-row-main {
   background: var(--color-active);
   border-color: var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);
