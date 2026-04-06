@@ -251,7 +251,7 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
-/** Tausch-Button in die Lücke zwischen zwei Token-Zeilen, X wie Swap-Spalte. */
+/** Tausch-Button exakt in der Listenlücke (gap = --init-list-row-gap), X wie Swap-Spalte des oberen Tokens. */
 function layoutIniSwapBetween(ul, host, overlay) {
   if (!host || !overlay) return
   const hostR = host.getBoundingClientRect()
@@ -265,36 +265,27 @@ function layoutIniSwapBetween(ul, host, overlay) {
       `li.init-row--token-draggable[data-item-id="${CSS.escape(lowerId)}"]`
     )
     const refCol = upperLi?.querySelector('.init-col-swap')
-    if (!upperLi || !lowerLi || !refCol) {
+    const prev = lowerLi?.previousElementSibling
+    if (!upperLi || !lowerLi || !refCol || !prev) {
       btn.style.display = 'none'
       continue
     }
     btn.style.display = ''
-    const u = upperLi.getBoundingClientRect()
-    const l = lowerLi.getBoundingClientRect()
-    const col = refCol.getBoundingClientRect()
-    const gapTop = u.bottom
-    const gapBot = l.top
-    const eps = 3
-    const h = btn.offsetHeight || 18
-    const inner = gapBot - gapTop - 2 * eps
-    let topInViewport
-    if (inner >= h) {
-      // Unterhalb der oberen Zeile (kein Eindringen in Highlight/Rahmen)
-      topInViewport = gapTop + eps
-    } else {
-      // Sehr enger Spalt: mittig, aber strikt in [gapTop+eps, gapBot-eps-h] clampen
-      const mid = (gapTop + gapBot) / 2
-      topInViewport = mid - h / 2
+    const prevMain = prev.querySelector('.init-row-main')
+    const lowerMain = lowerLi.querySelector('.init-row-main')
+    const gapTop = (prevMain ?? prev).getBoundingClientRect().bottom
+    const gapBot = (lowerMain ?? lowerLi).getBoundingClientRect().top
+    const h = Math.max(0, gapBot - gapTop)
+    if (h < 1) {
+      btn.style.display = 'none'
+      continue
     }
-    topInViewport = Math.max(
-      gapTop + eps,
-      Math.min(topInViewport, gapBot - eps - h)
-    )
+    const col = refCol.getBoundingClientRect()
     btn.style.position = 'absolute'
     btn.style.left = `${col.left - hostR.left}px`
     btn.style.width = `${col.width}px`
-    btn.style.top = `${topInViewport - hostR.top}px`
+    btn.style.top = `${gapTop - hostR.top}px`
+    btn.style.height = `${h}px`
   }
 }
 
@@ -569,9 +560,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         if (row.id === activeId) li.classList.add('init-row--active')
         li.dataset.itemId = row.id
         li.draggable = true
-        if (swapLowerByUpper.has(row.id)) {
-          li.classList.add('init-row--swap-gap-after')
-        }
         li.title =
           'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {

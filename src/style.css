@@ -147,6 +147,8 @@ body {
   --init-col-ini: calc(4.75rem * 2 / 3);
   --init-col-swap: 1.32rem;
   --init-grid-gap: 0.5rem;
+  /* Abstand zwischen allen Zeilen = äußere Höhe des Tausch-Buttons (box-sizing: border-box) */
+  --init-list-row-gap: 1.05rem;
 }
 
 .kampf-list-head {
@@ -309,21 +311,19 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--init-list-row-gap);
 }
 
 .init-row {
-  margin-bottom: 0.45rem;
-  padding: 0.35rem 0.45rem;
+  margin-bottom: 0;
+  padding: 0 0.45rem;
   border-radius: var(--radius);
   border: 1px solid transparent;
   transition:
     background 0.15s ease,
     border-color 0.15s ease;
-}
-
-/* Extra Abstand nur wenn Tausch-Button zwischen dieser und der nächsten Zeile sitzt */
-.init-row--token-draggable.init-row--swap-gap-after {
-  margin-bottom: 1.15rem;
 }
 
 .init-row-main {
@@ -335,6 +335,7 @@ body {
   align-items: center;
   width: 100%;
   box-sizing: border-box;
+  padding: 0.35rem 0;
   border-radius: calc(var(--radius) - 1px);
   border: 1px solid transparent;
 }
@@ -360,8 +361,8 @@ body {
   justify-content: center;
   gap: 0.14rem;
   width: 100%;
-  min-height: 1.05rem;
-  height: 1.05rem;
+  min-height: 0;
+  height: auto;
   padding: 0.05rem 0.06rem;
   margin: 0;
   border-radius: 4px;
