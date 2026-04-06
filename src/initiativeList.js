@@ -28,7 +28,6 @@ import {
   hookIniForLink,
   normalizePhases,
   onNamePhasePlusClick,
-  removeLastRootPhase,
   removePhaseLink,
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
@@ -630,37 +629,42 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         main.className = 'init-row-main'
 
         const btnCol = document.createElement('div')
-        btnCol.className = 'init-col-btn'
+        btnCol.className = 'init-col-btn init-col-btn--phase-slot'
+
+        const plusAnchor = document.createElement('div')
+        plusAnchor.className = 'init-phase-plus-anchor'
+
+        const rootCount = phases.links.filter((l) => l.parentId === null).length
 
         const phasePlus = document.createElement('button')
         phasePlus.type = 'button'
-        phasePlus.className = 'init-row-phase-plus'
+        phasePlus.className = 'init-row-phase-plus init-row-phase-plus--in-slot'
         phasePlus.textContent = '+'
         phasePlus.title =
           'INI-Phasen (4.1): öffnen / weitere Wurzel · Shift+Klick schließen'
-        phasePlus.setAttribute('aria-label', 'INI-Phasen öffnen')
+        phasePlus.setAttribute(
+          'aria-label',
+          rootCount > 0
+            ? `INI-Phasen (${rootCount} zusätzliche Aktionen)`
+            : 'INI-Phasen öffnen'
+        )
         phasePlus.addEventListener('click', (e) => {
           e.preventDefault()
           e.stopPropagation()
           void onNamePhasePlusClick(row.id, { shiftKey: e.shiftKey }, row.initiative)
         })
 
-        btnCol.appendChild(phasePlus)
-
-        if (phases.rowPanelOpen && phases.links.length > 0) {
-          const phaseMinus = document.createElement('button')
-          phaseMinus.type = 'button'
-          phaseMinus.className = 'init-row-phase-minus'
-          phaseMinus.textContent = '−'
-          phaseMinus.title = 'Letzte Wurzel-Verknüpfung entfernen'
-          phaseMinus.setAttribute('aria-label', 'Letzte INI-Phase entfernen')
-          phaseMinus.addEventListener('click', (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            void removeLastRootPhase(row.id)
-          })
-          btnCol.appendChild(phaseMinus)
+        plusAnchor.appendChild(phasePlus)
+        if (rootCount > 0) {
+          const countEl = document.createElement('span')
+          countEl.className = 'init-phase-root-count'
+          countEl.textContent = String(rootCount)
+          countEl.title = `${rootCount} zusätzliche Aktion(en)`
+          countEl.setAttribute('aria-hidden', 'true')
+          plusAnchor.appendChild(countEl)
         }
+
+        btnCol.appendChild(plusAnchor)
 
         const gutter = document.createElement('div')
         gutter.className = 'init-phase-gutter init-phase-gutter--empty'

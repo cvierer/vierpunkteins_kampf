@@ -33,7 +33,7 @@ export function normalizePhases(raw) {
       offset: clampStoredOffset(l.offset),
     }
     if (parentId === null) {
-      entry.expiresNextRound = Boolean(l.expiresNextRound)
+      entry.expiresNextRound = l.expiresNextRound === false ? false : true
     }
     links.push(entry)
   }

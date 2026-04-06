@@ -414,6 +414,54 @@ body {
   gap: 0.22rem;
 }
 
+/* Eine feste Zeilenhöhe wie nur mit +-Button (kein zweiter Button darunter). */
+.init-col-btn--phase-slot {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 1.22rem;
+  min-height: 1.22rem;
+  max-height: 1.22rem;
+}
+
+.init-phase-plus-anchor {
+  position: relative;
+  width: 1.22rem;
+  height: 1.22rem;
+  flex-shrink: 0;
+}
+
+.init-row-phase-plus--in-slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.init-phase-root-count {
+  position: absolute;
+  right: -0.04rem;
+  bottom: -0.04rem;
+  z-index: 2;
+  min-width: 0.55rem;
+  height: 0.55rem;
+  padding: 0 0.08rem;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+  font-size: 0.46rem;
+  font-weight: 700;
+  line-height: 0.55rem;
+  text-align: center;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 .init-row-phase-plus,
 .init-row-phase-minus {
   flex-shrink: 0;
