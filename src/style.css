@@ -544,12 +544,50 @@ body {
 }
 
 .init-row-main--phase-zao {
-  background: linear-gradient(
-    90deg,
-    rgba(201, 162, 39, 0.08) 0%,
-    rgba(201, 162, 39, 0.03) 42%,
-    transparent 70%
-  );
+  grid-template-columns:
+    var(--init-col-btn) minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
+}
+
+.init-row-main--phase-zao::after {
+  display: none;
+}
+
+.init-phase-zao-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.init-phase-zao-dash {
+  flex-shrink: 0;
+  color: var(--color-ink-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.init-phase-zao-ini-label {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.phase-offset-input--zao-inline {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  flex-shrink: 0;
+  z-index: auto;
+}
+
+.init-phase-zao-meta .init-row-name {
+  flex: 1;
+  min-width: 0;
 }
 
 .init-row-main--phase > * {
@@ -675,37 +713,6 @@ body {
   font-size: 0.96rem;
 }
 
-.init-row-name-col--zao {
-  gap: 0.38rem;
-  min-width: 0;
-}
-
-.init-row-zao-badge {
-  flex-shrink: 0;
-  align-self: center;
-  font-family: var(--font-heading);
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  color: rgba(201, 162, 39, 0.75);
-  border: 1px solid rgba(201, 162, 39, 0.35);
-  border-radius: 3px;
-  padding: 0.1rem 0.22rem;
-  line-height: 1;
-  user-select: none;
-}
-
-.init-row-name--zao-trail {
-  flex: 1;
-  min-width: 0;
-}
-
-.init-row--active .init-row-zao-badge {
-  border-color: rgba(201, 162, 39, 0.55);
-  color: var(--color-accent);
-}
-
-
 .init-row-init {
   width: 100%;
   max-width: var(--init-col-ini);
@@ -780,15 +787,6 @@ body {
   .init-row-zao-remove:hover {
     border-color: rgba(122, 46, 46, 0.5);
     background: rgba(122, 46, 46, 0.12);
-  }
-
-  .init-row-main--phase-zao {
-    background: linear-gradient(
-      90deg,
-      rgba(139, 74, 28, 0.09) 0%,
-      rgba(139, 74, 28, 0.04) 42%,
-      transparent 70%
-    );
   }
 
   .btn {

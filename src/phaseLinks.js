@@ -346,7 +346,7 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
 }
 
 /**
- * Zug-Reihenfolge für Kampf-Navigation (Token-Zeilen und ZAO/Phasen-Zeilen).
+ * Zug-Reihenfolge für Kampf-Navigation (Token-Zeilen und zusätzliche INI-Zeilen).
  * Reihenfolge entspricht der angezeigten Liste.
  */
 export function buildCombatTurnSteps(tokenRows, items, tieOrderIds = []) {

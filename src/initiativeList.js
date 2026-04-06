@@ -735,8 +735,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           zaoRemove.type = 'button'
           zaoRemove.className = 'init-row-zao-remove'
           zaoRemove.textContent = '×'
-          zaoRemove.title = 'Zusätzliches Aktionsobjekt (ZAO) entfernen'
-          zaoRemove.setAttribute('aria-label', 'ZAO entfernen')
+          zaoRemove.title = 'Zusätzliche Aktion entfernen'
+          zaoRemove.setAttribute('aria-label', 'Zusätzliche Aktion entfernen')
           zaoRemove.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -771,40 +771,47 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           btnCol.append(phaseMinus, chainPlus)
         }
 
-        const gutter = document.createElement('div')
-        gutter.className = 'init-phase-gutter'
-        const spine = document.createElement('div')
-        spine.className = 'phase-spine'
-        gutter.appendChild(spine)
-
         const offsetInput = document.createElement('input')
         offsetInput.type = 'text'
         offsetInput.inputMode = 'numeric'
-        offsetInput.className = 'phase-offset-input'
+        offsetInput.className = isZaoRoot
+          ? 'phase-offset-input phase-offset-input--zao-inline'
+          : 'phase-offset-input'
         offsetInput.value = String(link.offset)
         offsetInput.setAttribute('aria-label', 'Phasen später')
         offsetInput.title = 'INI-Phasen später (4.1)'
 
-        gutter.appendChild(offsetInput)
-
-        const nameCol = document.createElement('div')
+        let phaseZaoMeta = null
+        let phaseGutter = null
+        let phaseNameCol = null
         if (isZaoRoot) {
-          nameCol.className = 'init-row-name-col init-row-name-col--zao'
-          const badge = document.createElement('span')
-          badge.className = 'init-row-zao-badge'
-          badge.textContent = 'ZAO'
+          phaseZaoMeta = document.createElement('div')
+          phaseZaoMeta.className = 'init-phase-zao-meta'
+          const dash = document.createElement('span')
+          dash.className = 'init-phase-zao-dash'
+          dash.textContent = '-'
+          dash.setAttribute('aria-hidden', 'true')
+          const iniActLabel = document.createElement('span')
+          iniActLabel.className = 'init-phase-zao-ini-label'
+          iniActLabel.textContent = 'INI z. Aktion'
           const nameEl = document.createElement('span')
-          nameEl.className = 'init-row-name init-row-name--zao-trail'
+          nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
-          nameEl.title = `Zusätzliches Aktionsobjekt von ${ownerName}`
-          nameCol.append(badge, nameEl)
+          nameEl.title = `Zusätzliche Aktion · ${ownerName}`
+          phaseZaoMeta.append(dash, offsetInput, iniActLabel, nameEl)
         } else {
-          nameCol.className = 'init-row-name-col'
+          phaseGutter = document.createElement('div')
+          phaseGutter.className = 'init-phase-gutter'
+          const spine = document.createElement('div')
+          spine.className = 'phase-spine'
+          phaseGutter.append(spine, offsetInput)
+          phaseNameCol = document.createElement('div')
+          phaseNameCol.className = 'init-row-name-col'
           const nameEl = document.createElement('span')
           nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
           nameEl.title = 'Zusätzliche INI-Phase dieses Charakters'
-          nameCol.appendChild(nameEl)
+          phaseNameCol.appendChild(nameEl)
         }
 
         if (
@@ -908,7 +915,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapSpacer.className = 'init-col-swap init-col-swap--phase'
         swapSpacer.setAttribute('aria-hidden', 'true')
 
-        main.append(btnCol, gutter, nameCol, iniInput, swapSpacer)
+        if (isZaoRoot) {
+          main.append(btnCol, phaseZaoMeta, iniInput, swapSpacer)
+        } else {
+          main.append(btnCol, phaseGutter, phaseNameCol, iniInput, swapSpacer)
+        }
         li.appendChild(main)
         frag.appendChild(li)
       }
