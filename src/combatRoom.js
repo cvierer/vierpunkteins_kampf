@@ -1,5 +1,8 @@
 import OBR from '@owlbear-rodeo/sdk'
-import { clearEphemeralExtraIniRows } from './phaseLinks.js'
+import {
+  clearEphemeralExtraIniRows,
+  pullZaoRootTieOrderFromRoom,
+} from './phaseLinks.js'
 import { collectSortedParticipants } from './participants.js'
 import {
   compareInitiativeRowsWithTieOrder,
@@ -195,9 +198,11 @@ export async function swapAdjacentIniTiePair(upperId, lowerId, items) {
 export async function initCombatRoom() {
   await pullFromRoom()
   await pullIniTieOrderFromRoom()
+  await pullZaoRootTieOrderFromRoom()
   return OBR.room.onMetadataChange(() => {
     void pullFromRoom()
     void pullIniTieOrderFromRoom()
+    void pullZaoRootTieOrderFromRoom()
   })
 }
 

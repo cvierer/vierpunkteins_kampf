@@ -24,13 +24,17 @@ import {
   buildMergedDisplayRows,
   combatPatchForStep,
   findCombatStepIndex,
+  formatIniForSort,
   hookIniForLink,
   normalizePhases,
   onNamePhasePlusClick,
+  onZaoRootTieOrderChange,
   removePhaseLink,
+  swapAdjacentZaoRootKeys,
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
   tryCommitPhaseTargetIni,
+  zaoRootKey,
 } from './phaseLinks.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 
@@ -110,6 +114,23 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
 const DRAG_INI_INT_MAX = 99
 
 const INI_DRAG_FLOAT_HINT = 'LOSLASSEN: NEUEN WERT ÜBERNEHMEN'
+
+/** Dwell-Zeit in ms pro ±1 INI, wenn die Maus in der INI-Spalte über/unter der Liste bleibt. */
+const INI_LIST_EDGE_DWELL_MS = 240
+
+function getIniColumnBoundsFromList(listUl) {
+  const inputs = listUl.querySelectorAll('.init-row-init')
+  if (inputs.length === 0) return null
+  let left = Infinity
+  let right = -Infinity
+  for (const el of inputs) {
+    const r = el.getBoundingClientRect()
+    left = Math.min(left, r.left)
+    right = Math.max(right, r.right)
+  }
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null
+  return { left, right }
+}
 
 /**
  * Zusätzliche INI-Schritte, wenn die Maus oberhalb/unterhalb des Float-Fensters bleibt.
@@ -306,19 +327,33 @@ function pickNearestValidSlot(rawSlot, validSlots) {
   return best
 }
 
-/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (einheitlich für alle Zeilen). */
+/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (Token oder Z.A.-Wurzel). */
 function layoutIniSwapBetween(ul, host, overlay) {
   if (!host || !overlay) return
   const hostR = host.getBoundingClientRect()
-  for (const btn of overlay.querySelectorAll('.init-row-ini-swap[data-ini-swap-upper]')) {
-    const upperId = btn.dataset.iniSwapUpper
-    const lowerId = btn.dataset.iniSwapLower
-    const upperLi = ul.querySelector(
-      `li.init-row--token-draggable[data-item-id="${CSS.escape(upperId)}"]`
-    )
-    const lowerLi = ul.querySelector(
-      `li.init-row--token-draggable[data-item-id="${CSS.escape(lowerId)}"]`
-    )
+  for (const btn of overlay.querySelectorAll('.init-row-ini-swap')) {
+    const zU = btn.dataset.zaoSwapUpper
+    const zL = btn.dataset.zaoSwapLower
+    let upperLi
+    let lowerLi
+    if (zU && zL) {
+      upperLi = ul.querySelector(
+        `li.init-row--phase-zao[data-zao-swap-key="${CSS.escape(zU)}"]`
+      )
+      lowerLi = ul.querySelector(
+        `li.init-row--phase-zao[data-zao-swap-key="${CSS.escape(zL)}"]`
+      )
+    } else {
+      const upperId = btn.dataset.iniSwapUpper
+      const lowerId = btn.dataset.iniSwapLower
+      if (!upperId || !lowerId) continue
+      upperLi = ul.querySelector(
+        `li.init-row--token-draggable[data-item-id="${CSS.escape(upperId)}"]`
+      )
+      lowerLi = ul.querySelector(
+        `li.init-row--token-draggable[data-item-id="${CSS.escape(lowerId)}"]`
+      )
+    }
     const refCol = upperLi?.querySelector('.init-col-swap')
     const prev = lowerLi?.previousElementSibling
     if (!upperLi || !lowerLi || !refCol || !prev) {
@@ -365,6 +400,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let dragWheelNudge = 0
   /** Letzter effektiver Rad-+Außerhalb-Schritte-Wert (für Drop ohne verpasstes dragover). */
   let lastCombinedWheelNudge = 0
+  /** Langsame ±1-Schritte bei Maus in INI-Spalte über/unter der Liste. */
+  let dragEdgeSlowSteps = 0
+  let dragEdgeAccumMs = 0
+  let dragEdgeZone = null
+  let dragSessionLastTs = 0
   let activeDragRowId = null
   let lastDragClientX = 0
   let lastDragClientY = 0
@@ -388,7 +428,43 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       return
     }
 
-    let combinedNudge = dragWheelNudge
+    const now = performance.now()
+    if (dragSessionLastTs <= 0) dragSessionLastTs = now
+    const dt = Math.min(80, Math.max(0, now - dragSessionLastTs))
+    dragSessionLastTs = now
+
+    const iniCol = getIniColumnBoundsFromList(element)
+    const listRect = element.getBoundingClientRect()
+    let iniEdgeZone = null
+    if (
+      iniCol &&
+      clientX >= iniCol.left - 4 &&
+      clientX <= iniCol.right + 4
+    ) {
+      if (clientY > listRect.bottom) iniEdgeZone = 'below'
+      else if (clientY < listRect.top) iniEdgeZone = 'above'
+    }
+    if (iniEdgeZone !== dragEdgeZone) {
+      dragEdgeZone = iniEdgeZone
+      dragEdgeAccumMs = 0
+    }
+    if (iniEdgeZone === 'below') {
+      dragEdgeAccumMs += dt
+      while (dragEdgeAccumMs >= INI_LIST_EDGE_DWELL_MS) {
+        dragEdgeSlowSteps--
+        dragEdgeAccumMs -= INI_LIST_EDGE_DWELL_MS
+      }
+    } else if (iniEdgeZone === 'above') {
+      dragEdgeAccumMs += dt
+      while (dragEdgeAccumMs >= INI_LIST_EDGE_DWELL_MS) {
+        dragEdgeSlowSteps++
+        dragEdgeAccumMs -= INI_LIST_EDGE_DWELL_MS
+      }
+    } else {
+      dragEdgeAccumMs = 0
+    }
+
+    let combinedNudge = dragWheelNudge + dragEdgeSlowSteps
     let proposedStr = ''
     let dragRow = null
     const draggingPhase = Boolean(parsePhaseDrag(dragId))
@@ -405,7 +481,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       ))
       if (!dragRow) {
         hideIniFloat()
-        lastCombinedWheelNudge = dragWheelNudge
+        lastCombinedWheelNudge = dragWheelNudge + dragEdgeSlowSteps
         return
       }
 
@@ -429,7 +505,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         clientY,
         iniFloat.getBoundingClientRect()
       )
-      const next = dragWheelNudge + outside
+      const next = dragWheelNudge + dragEdgeSlowSteps + outside
       if (next === combinedNudge) break
       combinedNudge = next
     }
@@ -605,6 +681,26 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       }
     }
 
+    const zaoSwapLowerByUpper = new Map()
+    for (let mi = 0; mi < merged.length - 1; mi++) {
+      const u = merged[mi]
+      const l = merged[mi + 1]
+      if (u.kind !== 'phase' || l.kind !== 'phase') continue
+      if (u.link.parentId !== null || l.link.parentId !== null) continue
+      if (
+        initiativeCompareOnlyIni(
+          { initiative: formatIniForSort(u.hookIni), name: '' },
+          { initiative: formatIniForSort(l.hookIni), name: '' }
+        ) !== 0
+      ) {
+        continue
+      }
+      zaoSwapLowerByUpper.set(
+        zaoRootKey(u.ownerId, u.link.id),
+        zaoRootKey(l.ownerId, l.link.id)
+      )
+    }
+
     const frag = document.createDocumentFragment()
 
     for (const entry of merged) {
@@ -634,6 +730,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           e.dataTransfer.effectAllowed = 'move'
           rowDragActive = true
           dragWheelNudge = 0
+          dragEdgeSlowSteps = 0
+          dragEdgeAccumMs = 0
+          dragEdgeZone = null
+          dragSessionLastTs = 0
           activeDragRowId = row.id
           lastDragClientX = e.clientX
           lastDragClientY = e.clientY
@@ -659,6 +759,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           detachGlobalDragListeners()
           rowDragActive = false
           dragWheelNudge = 0
+          dragEdgeSlowSteps = 0
+          dragEdgeAccumMs = 0
+          dragEdgeZone = null
+          dragSessionLastTs = 0
           activeDragRowId = null
           li.classList.remove('init-row--dragging')
           hideIniFloat()
@@ -767,6 +871,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         li.dataset.phaseOwnerId = ownerId
         li.dataset.phaseLinkId = link.id
         li.dataset.dragKnotIni = formatHookDisplay(hookIni)
+        if (isZaoRoot) {
+          li.dataset.zaoSwapKey = zaoRootKey(ownerId, link.id)
+        }
 
         const main = document.createElement('div')
         main.className =
@@ -979,8 +1086,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapSpacer.className = 'init-col-swap init-col-swap--phase'
         swapSpacer.setAttribute('aria-hidden', 'true')
 
+        const zaoSwapCol = document.createElement('div')
+        zaoSwapCol.className = 'init-col-swap'
+
         if (isZaoRoot) {
-          main.append(btnCol, phaseZaoMeta, iniInput, swapSpacer)
+          main.append(btnCol, phaseZaoMeta, iniInput, zaoSwapCol)
         } else {
           main.append(btnCol, phaseGutter, phaseNameCol, iniInput, swapSpacer)
         }
@@ -1001,6 +1111,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             e.dataTransfer.effectAllowed = 'move'
             rowDragActive = true
             dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
             activeDragRowId = phasePayload
             lastDragClientX = e.clientX
             lastDragClientY = e.clientY
@@ -1026,6 +1140,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             detachGlobalDragListeners()
             rowDragActive = false
             dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
             activeDragRowId = null
             li.classList.remove('init-row--dragging')
             hideIniFloat()
@@ -1065,6 +1183,42 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         e.stopPropagation()
         void OBR.scene.items.getItems().then((fresh) => {
           void swapAdjacentIniTiePair(upperId, lowerId, fresh)
+        })
+      })
+      swapOverlay.appendChild(swapBtn)
+    }
+
+    for (const [upperKey, lowerKey] of zaoSwapLowerByUpper.entries()) {
+      const swapBtn = document.createElement('button')
+      swapBtn.type = 'button'
+      swapBtn.className = 'init-row-ini-swap'
+      swapBtn.dataset.zaoSwapUpper = upperKey
+      swapBtn.dataset.zaoSwapLower = lowerKey
+      const arrUp = document.createElement('span')
+      arrUp.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--up'
+      arrUp.setAttribute('aria-hidden', 'true')
+      arrUp.textContent = '↑'
+      const arrDown = document.createElement('span')
+      arrDown.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--down'
+      arrDown.setAttribute('aria-hidden', 'true')
+      arrDown.textContent = '↓'
+      swapBtn.append(arrUp, arrDown)
+      swapBtn.title =
+        'Reihenfolge mit dem nächsten Z.A.-Eintrag tauschen (gleiche INI)'
+      swapBtn.setAttribute(
+        'aria-label',
+        'Gleiche INI: Zusätzliche Aktion mit darunterliegendem Z.A.-Eintrag tauschen'
+      )
+      swapBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void OBR.scene.items.getItems().then((fresh) => {
+          void swapAdjacentZaoRootKeys(
+            upperKey,
+            lowerKey,
+            fresh,
+            getIniTieOrder()
+          )
         })
       })
       swapOverlay.appendChild(swapBtn)
@@ -1124,8 +1278,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   OBR.scene.items.onChange(renderList)
   onCombatChange(() => renderList(lastItems))
   onIniTieOrderChange(() => renderList(lastItems))
+  const offZaoTie = onZaoRootTieOrderChange(() => renderList(lastItems))
 
   return () => {
+    offZaoTie()
     swapLayoutRo?.disconnect()
     swapLayoutRo = null
     detachGlobalDragListeners()

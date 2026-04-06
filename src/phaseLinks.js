@@ -3,7 +3,110 @@ import {
   compareInitiativeRows,
   compareInitiativeRowsWithTieOrder,
 } from './initiativeSort.js'
-import { TRACKER_ITEM_META_KEY } from './participants.js'
+import {
+  collectSortedParticipants,
+  TRACKER_ID,
+  TRACKER_ITEM_META_KEY,
+} from './participants.js'
+
+const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
+
+/** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der Z.A.-Wurzeln ownerId:linkId */
+let zaoRootTieOrderByIniCache = {}
+
+const zaoOrderListeners = new Set()
+
+function notifyZaoRootTieOrder() {
+  for (const fn of zaoOrderListeners) {
+    try {
+      fn()
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function getZaoRootTieOrderByIni() {
+  return zaoRootTieOrderByIniCache
+}
+
+export function onZaoRootTieOrderChange(fn) {
+  zaoOrderListeners.add(fn)
+  return () => zaoOrderListeners.delete(fn)
+}
+
+function normalizeZaoOrderRoom(raw) {
+  /** @type {Record<string, string[]>} */
+  const out = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [iniK, arr] of Object.entries(raw)) {
+    if (typeof iniK !== 'string') continue
+    if (!Array.isArray(arr)) continue
+    out[iniK] = arr.filter((k) => typeof k === 'string')
+  }
+  return out
+}
+
+export async function pullZaoRootTieOrderFromRoom() {
+  const meta = await OBR.room.getMetadata()
+  const next = normalizeZaoOrderRoom(meta[ZAO_ROOT_TIE_ORDER_KEY])
+  const prevKeys = JSON.stringify(zaoRootTieOrderByIniCache)
+  const nextKeys = JSON.stringify(next)
+  if (prevKeys === nextKeys) return
+  zaoRootTieOrderByIniCache = next
+  notifyZaoRootTieOrder()
+}
+
+export function zaoRootKey(ownerId, linkId) {
+  return `${ownerId}:${linkId}`
+}
+
+/**
+ * Zwei direkt untereinander stehende Z.A.-Wurzeln mit gleicher Ziel-INI tauschen (Kampflisten-Reihenfolge).
+ */
+export async function swapAdjacentZaoRootKeys(
+  keyUpper,
+  keyLower,
+  items,
+  tieOrderIds
+) {
+  const tokenRows = collectSortedParticipants(items, tieOrderIds)
+  const merged = buildMergedDisplayRows(tokenRows, items, tieOrderIds)
+  const zaoIdx = (k) =>
+    merged.findIndex(
+      (e) =>
+        e.kind === 'phase' &&
+        e.link.parentId === null &&
+        zaoRootKey(e.ownerId, e.link.id) === k
+    )
+  const iu = zaoIdx(keyUpper)
+  const il = zaoIdx(keyLower)
+  if (iu < 0 || il < 0 || il !== iu + 1) return
+  const eu = merged[iu]
+  const el = merged[il]
+  if (eu.kind !== 'phase' || el.kind !== 'phase') return
+  if (formatIniForSort(eu.hookIni) !== formatIniForSort(el.hookIni)) return
+  const iniK = formatIniForSort(eu.hookIni)
+  const keysInMerged = merged
+    .filter(
+      (e) =>
+        e.kind === 'phase' &&
+        e.link.parentId === null &&
+        formatIniForSort(e.hookIni) === iniK
+    )
+    .map((e) => zaoRootKey(e.ownerId, e.link.id))
+  let bucket = [...(zaoRootTieOrderByIniCache[iniK] ?? [])].filter((k) =>
+    keysInMerged.includes(k)
+  )
+  if (bucket.length === 0) bucket = [...keysInMerged]
+  const posU = bucket.indexOf(keyUpper)
+  const posL = bucket.indexOf(keyLower)
+  if (posU !== posL - 1) return
+  ;[bucket[posU], bucket[posL]] = [bucket[posL], bucket[posU]]
+  const next = { ...zaoRootTieOrderByIniCache, [iniK]: bucket }
+  await OBR.room.setMetadata({ [ZAO_ROOT_TIE_ORDER_KEY]: next })
+  await pullZaoRootTieOrderFromRoom()
+}
 
 export const DEFAULT_PHASE_OFFSET = 8
 
@@ -396,6 +499,22 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
         },
         tieFiltered
       )
+    }
+    if (a.kind === 'phase' && b.kind === 'phase') {
+      const ha = formatIniForSort(a.hookIni)
+      const hb = formatIniForSort(b.hookIni)
+      if (ha === hb) {
+        const bucket = zaoRootTieOrderByIniCache[ha]
+        const ka = zaoRootKey(a.ownerId, a.link.id)
+        const kb = zaoRootKey(b.ownerId, b.link.id)
+        if (bucket?.length) {
+          const ia = bucket.indexOf(ka)
+          const ib = bucket.indexOf(kb)
+          const ma = ia === -1 ? 1e9 : ia
+          const mb = ib === -1 ? 1e9 : ib
+          if (ma !== mb) return ma - mb
+        }
+      }
     }
     const sa =
       a.kind === 'token'
