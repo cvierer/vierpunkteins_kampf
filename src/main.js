@@ -27,7 +27,8 @@ appRoot.innerHTML = `
   <div class="kampf-list-section">
     <div class="kampf-list-head" aria-hidden="true">
       <div class="kampf-col-za-group">
-        <span class="kampf-col-label kampf-col-label--counter" title="Aktion">A.</span>
+        <span class="kampf-col-label kampf-col-label--counter" title="Angriffsaktion">Ang.</span>
+        <span class="kampf-col-label kampf-col-label--counter" title="Abwehraktion">Abw.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Freie Aktion">F.A.</span>
         <span class="kampf-col-label kampf-col-label--za" title="Zusätzliche Aktion">z.A.</span>
       </div>

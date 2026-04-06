@@ -41,43 +41,113 @@ import {
 } from './phaseLinks.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 import {
-  KR_ACTION,
+  KR_ABW,
+  KR_ANG,
   KR_FREE_ACTION,
   normalizeKrDigit,
   patchKrCounterByDelta,
+  readKrAbw,
+  readKrAng,
 } from './krCounters.js'
 
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
 const PHASE_DRAG_MARK = 'vierpphase|'
 
-function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
-  const addBtn = (field, val, labelDe) => {
-    const b = document.createElement('button')
-    b.type = 'button'
-    b.className = 'init-row-kr-counter'
-    b.textContent = String(val)
-    b.title = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–9)`
-    b.setAttribute('aria-label', `${labelDe}, Wert ${val}`)
-    b.disabled = !canEdit
-    if (canEdit) {
-      b.addEventListener('click', (e) => {
-        e.preventDefault()
-        void patchKrCounterByDelta(ownerItemId, field, 1)
-      })
-      b.addEventListener('contextmenu', (e) => {
-        e.preventDefault()
-        void patchKrCounterByDelta(ownerItemId, field, -1)
-      })
-    }
-    container.appendChild(b)
+function applySplitCounterVisual(btn, v) {
+  const fill = btn.querySelector('.init-row-kr-counter__fill')
+  const digit = btn.querySelector('.init-row-kr-counter__digit')
+  if (!fill || !digit) return
+  fill.classList.toggle('init-row-kr-counter__fill--on', v >= 1)
+  btn.classList.toggle('init-row-kr-counter--has-digit', v >= 2)
+  digit.textContent = v >= 2 ? String(v) : ''
+}
+
+function splitCounterAria(v, labelDe) {
+  if (v === 0) return `${labelDe}, leer`
+  if (v === 1) return `${labelDe}, markiert`
+  return `${labelDe}, ${v}`
+}
+
+function appendSplitKrCounter(
+  container,
+  ownerItemId,
+  field,
+  kind,
+  value,
+  canEdit,
+  labelDe
+) {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = `init-row-kr-counter init-row-kr-counter--split init-row-kr-counter--${kind}`
+  const fill = document.createElement('span')
+  fill.className = 'init-row-kr-counter__fill'
+  fill.setAttribute('aria-hidden', 'true')
+  const digit = document.createElement('span')
+  digit.className = 'init-row-kr-counter__digit'
+  digit.setAttribute('aria-hidden', 'true')
+  b.append(fill, digit)
+  const v = normalizeKrDigit(value)
+  applySplitCounterVisual(b, v)
+  b.title = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–9, 1 = nur Farbe)`
+  b.setAttribute('aria-label', splitCounterAria(v, labelDe))
+  b.disabled = !canEdit
+  if (canEdit) {
+    b.addEventListener('click', (e) => {
+      e.preventDefault()
+      void patchKrCounterByDelta(ownerItemId, field, 1)
+    })
+    b.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      void patchKrCounterByDelta(ownerItemId, field, -1)
+    })
   }
-  addBtn(KR_ACTION, normalizeKrDigit(trackerMeta?.[KR_ACTION]), 'Aktion')
-  addBtn(
-    KR_FREE_ACTION,
-    normalizeKrDigit(trackerMeta?.[KR_FREE_ACTION]),
-    'Freie Aktion'
+  container.appendChild(b)
+}
+
+function appendSimpleFaCounter(container, ownerItemId, trackerMeta, canEdit) {
+  const val = normalizeKrDigit(trackerMeta?.[KR_FREE_ACTION])
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'init-row-kr-counter'
+  b.textContent = String(val)
+  b.title = 'Freie Aktion: Linksklick +1, Rechtsklick −1 (0–9)'
+  b.setAttribute('aria-label', `Freie Aktion, Wert ${val}`)
+  b.disabled = !canEdit
+  if (canEdit) {
+    b.addEventListener('click', (e) => {
+      e.preventDefault()
+      void patchKrCounterByDelta(ownerItemId, KR_FREE_ACTION, 1)
+    })
+    b.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      void patchKrCounterByDelta(ownerItemId, KR_FREE_ACTION, -1)
+    })
+  }
+  container.appendChild(b)
+}
+
+function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
+  appendSplitKrCounter(
+    container,
+    ownerItemId,
+    KR_ANG,
+    'ang',
+    readKrAng(trackerMeta),
+    canEdit,
+    'Angriffsaktion'
   )
+  appendSplitKrCounter(
+    container,
+    ownerItemId,
+    KR_ABW,
+    'abw',
+    readKrAbw(trackerMeta),
+    canEdit,
+    'Abwehraktion'
+  )
+  appendSimpleFaCounter(container, ownerItemId, trackerMeta, canEdit)
 }
 
 function encodePhaseDrag(ownerId, linkId) {
