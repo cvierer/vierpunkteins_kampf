@@ -162,8 +162,6 @@ export async function setupCombatControls(root) {
     if (nextIdx === 0) {
       await patchCombat({
         roundIntroPending: true,
-        currentItemId: null,
-        currentPhaseLinkId: null,
         roundIntroPrevRound: c.round,
         roundIntroPrevItemId: c.currentItemId,
         roundIntroPrevPhaseLinkId: c.currentPhaseLinkId,
@@ -181,13 +179,7 @@ export async function setupCombatControls(root) {
     const cIntro = getCombat()
     if (cIntro.started && cIntro.roundIntroPending) {
       await patchCombat({
-        roundIntroPending: false,
-        round: cIntro.roundIntroPrevRound ?? cIntro.round,
-        currentItemId: cIntro.roundIntroPrevItemId,
-        currentPhaseLinkId: cIntro.roundIntroPrevPhaseLinkId,
-        roundIntroPrevRound: null,
-        roundIntroPrevItemId: null,
-        roundIntroPrevPhaseLinkId: null,
+        ...RESET_ROUND_INTRO,
       })
       return
     }
@@ -233,6 +225,7 @@ export async function setupCombatControls(root) {
     const canNav = c.started && getTrackedParticipantIds().length > 0
     if (!canNav) return
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      if (c.roundIntroPending && e.repeat) return
       e.preventDefault()
       void applyCombatNext()
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {

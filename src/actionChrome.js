@@ -9,7 +9,7 @@ export async function syncActionChrome(items) {
   const activeId = combat.started ? combat.currentItemId : null
   const activeRow = activeId ? rows.find((r) => r.id === activeId) : null
 
-  if (!combat.started || !activeId) {
+  if (!combat.started || !activeId || combat.roundIntroPending) {
     await OBR.action.setBadgeText(undefined)
     await OBR.action.setIcon(assetUrl('action-sword-idle.svg'))
     await OBR.action.setTitle('vierpunkteins_kampf')

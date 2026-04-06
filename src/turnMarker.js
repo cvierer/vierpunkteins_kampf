@@ -33,7 +33,11 @@ async function applyTurnMarker() {
     )
     const markerIds = markers.map((m) => m.id)
 
-    if (!combat.started || !combat.currentItemId) {
+    if (
+      !combat.started ||
+      !combat.currentItemId ||
+      combat.roundIntroPending
+    ) {
       if (markerIds.length > 0) {
         await OBR.scene.items.deleteItems(markerIds)
       }
