@@ -385,6 +385,16 @@ function layoutIniSwapBetween(ul, host, overlay) {
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
+  let canWriteCombat = false
+
+  void OBR.player
+    .getRole()
+    .then((role) => {
+      canWriteCombat = role === 'GM'
+    })
+    .catch(() => {
+      canWriteCombat = false
+    })
 
   const roundIntroBoard = document.querySelector('[data-kampf-round-intro]')
   const roundIntroLabel = document.querySelector('[data-kampf-round-intro-label]')
@@ -658,6 +668,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   }
 
   const reconcileCombat = async (rows, items) => {
+    if (!canWriteCombat) return
     if (isCombatNavMutationActive()) return
     const c = getCombat()
     if (!c.started) return
