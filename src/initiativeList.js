@@ -273,12 +273,28 @@ function layoutIniSwapBetween(ul, host, overlay) {
     const u = upperLi.getBoundingClientRect()
     const l = lowerLi.getBoundingClientRect()
     const col = refCol.getBoundingClientRect()
-    const midY = (u.bottom + l.top) / 2
+    const gapTop = u.bottom
+    const gapBot = l.top
+    const eps = 3
     const h = btn.offsetHeight || 18
+    const inner = gapBot - gapTop - 2 * eps
+    let topInViewport
+    if (inner >= h) {
+      // Unterhalb der oberen Zeile (kein Eindringen in Highlight/Rahmen)
+      topInViewport = gapTop + eps
+    } else {
+      // Sehr enger Spalt: mittig, aber strikt in [gapTop+eps, gapBot-eps-h] clampen
+      const mid = (gapTop + gapBot) / 2
+      topInViewport = mid - h / 2
+    }
+    topInViewport = Math.max(
+      gapTop + eps,
+      Math.min(topInViewport, gapBot - eps - h)
+    )
     btn.style.position = 'absolute'
     btn.style.left = `${col.left - hostR.left}px`
     btn.style.width = `${col.width}px`
-    btn.style.top = `${midY - hostR.top - h / 2}px`
+    btn.style.top = `${topInViewport - hostR.top}px`
   }
 }
 
@@ -553,6 +569,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         if (row.id === activeId) li.classList.add('init-row--active')
         li.dataset.itemId = row.id
         li.draggable = true
+        if (swapLowerByUpper.has(row.id)) {
+          li.classList.add('init-row--swap-gap-after')
+        }
         li.title =
           'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {

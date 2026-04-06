@@ -321,6 +321,11 @@ body {
     border-color 0.15s ease;
 }
 
+/* Extra Abstand nur wenn Tausch-Button zwischen dieser und der nächsten Zeile sitzt */
+.init-row--token-draggable.init-row--swap-gap-after {
+  margin-bottom: 1.15rem;
+}
+
 .init-row-main {
   display: grid;
   grid-template-columns:
