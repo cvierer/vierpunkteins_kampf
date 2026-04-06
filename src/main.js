@@ -9,7 +9,6 @@ import { setupTurnMarkerSync } from './turnMarker.js'
 
 document.querySelector('#app').innerHTML = `
   <header class="app-header">
-    <h1 class="app-title">vierpunkteins_kampf</h1>
     <div class="combat-bar" data-combat-root>
       <div class="combat-toolbar">
         <button type="button" class="btn btn--primary" data-combat-toggle>Start</button>

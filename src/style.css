@@ -24,35 +24,37 @@
   -webkit-text-size-adjust: 100%;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
   min-width: 280px;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
 }
 
 #app {
   margin: 0 auto;
-  padding: 0.85rem 1rem 1.1rem;
+  padding: 0.4rem 0.5rem 0.45rem;
   text-align: left;
+  box-sizing: border-box;
+  height: 100%;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .app-header {
-  margin-bottom: 0.85rem;
-}
-
-.app-title {
-  font-family: var(--font-heading);
-  font-size: 1.35rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  margin: 0 0 0.65rem;
-  line-height: 1.15;
+  margin-bottom: 0.35rem;
+  flex-shrink: 0;
 }
 
 .combat-bar {
-  padding: 0.55rem 0.65rem;
+  padding: 0.38rem 0.5rem;
   border-radius: var(--radius);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -62,7 +64,7 @@ body {
 .combat-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.35rem;
 }
 
 .combat-nav {
@@ -87,11 +89,11 @@ body {
 
 .btn {
   font-family: var(--font-heading);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.4rem 0.55rem;
+  padding: 0.3rem 0.45rem;
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: rgba(0, 0, 0, 0.25);
@@ -141,14 +143,19 @@ body {
 }
 
 .kampf-list-section {
-  margin-top: 0.25rem;
-  --init-col-btn: 1.5rem;
-  --init-col-gutter: 0.85rem;
+  margin-top: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
+  --init-col-btn: 1.28rem;
+  --init-col-gutter: 0.72rem;
   --init-col-ini: calc(4.75rem * 2 / 3);
-  --init-col-swap: 1.32rem;
-  --init-grid-gap: 0.42rem;
-  /* Flex-Gap zwischen Zeilen: einheitlich, unabhängig von aktivem Highlight */
-  --init-list-row-gap: 0.98rem;
+  --init-col-swap: 1.2rem;
+  --init-grid-gap: 0.3rem;
+  --init-list-row-gap: 0.4rem;
 }
 
 .kampf-list-head {
@@ -158,8 +165,9 @@ body {
     var(--init-col-swap);
   gap: var(--init-grid-gap);
   align-items: flex-end;
-  padding: 0 0.45rem 0.25rem;
-  margin-bottom: 0.1rem;
+  padding: 0 0.4rem 0.12rem;
+  margin-bottom: 0.06rem;
+  flex-shrink: 0;
   border-bottom: 1px solid rgba(127, 127, 127, 0.22);
 }
 
@@ -196,6 +204,9 @@ body {
   position: relative;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .init-ini-swap-overlay {
@@ -314,6 +325,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--init-list-row-gap);
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  /* Bei ≤18 Kämpfern typ. kein Scroll; bei mehr Einträgen/Phasen-Zeilen scrollbar */
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .init-row {
@@ -335,7 +352,7 @@ body {
   align-items: center;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.2rem 0;
+  padding: 0.08rem 0;
   border-radius: calc(var(--radius) - 1px);
   border: 1px solid transparent;
 }
@@ -383,7 +400,7 @@ body {
 
 .init-row-ini-swap__arr {
   display: block;
-  font-size: 0.95rem;
+  font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
   opacity: 0.95;
@@ -394,15 +411,15 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.22rem;
+  gap: 0.12rem;
   min-width: 0;
 }
 
 .init-row-phase-plus,
 .init-row-phase-minus {
   flex-shrink: 0;
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.22rem;
+  height: 1.22rem;
   padding: 0;
   margin: 0;
   border-radius: 4px;
@@ -439,15 +456,15 @@ body {
 }
 
 .init-row-phase-plus--small {
-  width: 1.15rem;
-  height: 1.15rem;
-  font-size: 0.82rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  font-size: 0.76rem;
 }
 
 .init-phase-gutter {
   position: relative;
   align-self: stretch;
-  min-height: 2.35rem;
+  min-height: 1.85rem;
 }
 
 .init-phase-gutter--empty {
@@ -567,9 +584,9 @@ body {
 
 /* Aktive Fläche: niedriger als die Zeile; Abstand zur Tausch-Spalte im Flex-Gap */
 .init-row--active .init-row-main {
-  padding-top: 0.1rem;
-  padding-bottom: 0.1rem;
-  margin-bottom: 0.14rem;
+  padding-top: 0.06rem;
+  padding-bottom: 0.06rem;
+  margin-bottom: 0.08rem;
   background: var(--color-active);
   border-color: var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);
@@ -608,7 +625,7 @@ body {
   min-width: 0;
   flex-shrink: 0;
   box-sizing: border-box;
-  padding: 0.28rem 0.45rem;
+  padding: 0.2rem 0.38rem;
   border-radius: 6px;
   border: 1px solid rgba(127, 127, 127, 0.4);
   background: rgba(0, 0, 0, 0.28);
