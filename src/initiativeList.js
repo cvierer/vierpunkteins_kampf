@@ -58,20 +58,17 @@ function buildIniKnotsExcluding(tokenEls, rowMap, excludeId) {
     const v = parseIniNumber(row?.initiative)
     if (v === null) continue
     const r = el.getBoundingClientRect()
-    const top = r.top
-    const bottom = Math.max(r.bottom, r.top + 1)
-    const mid = top + (bottom - top) / 2
-    knots.push({ top, bottom, mid, v, id })
+    const mid = r.top + r.height / 2
+    knots.push({ y: mid, v })
   }
-  knots.sort((a, b) => a.top - b.top)
+  knots.sort((a, b) => a.y - b.y)
   return knots
 }
 
 /**
- * INI aus Y: Über der sichtbaren Zeile eines Tokens gilt dessen INI (Plateau),
- * in den Lücken linear zwischen den Nachbarn, außerhalb der Liste extrapolieren.
- * So gibt es bei gleicher Ziel-INI zwei sinnvolle Zonen (über/unter der Zeile /
- * per Tie-Order), ohne dass sofort die nächsthöhere INI (z. B. 16 statt 15) greift.
+ * INI aus Y: gesamte Listenhöhe (+ Rand) linear auf [max+spread, min−spread].
+ * t ist unbegrenzt, damit Ziehen über/unter der Liste weiter extrapoliert.
+ * Bei mehreren gleichen INIs in der Liste liefert spread trotzdem nutzbare Steigung.
  */
 function lerpIniFromClientY(clientY, knots, listUl) {
   if (knots.length === 0) return null
@@ -82,39 +79,12 @@ function lerpIniFromClientY(clientY, knots, listUl) {
   const marginY = Math.max(56, ur.height * 0.45)
   const yTop = ur.top - marginY
   const yBot = ur.bottom + marginY
-  const spread = Math.max(12, (maxV - minV) * 0.55 + 8)
-
-  for (const k of knots) {
-    if (clientY >= k.top && clientY <= k.bottom) return k.v
-  }
-
-  const k0 = knots[0]
-  if (clientY < k0.top) {
-    const denom = Math.max(k0.top - yTop, 1e-6)
-    const t = (clientY - yTop) / denom
-    return k0.v + spread * (1 - t)
-  }
-
-  const kl = knots[knots.length - 1]
-  if (clientY > kl.bottom) {
-    const denom = Math.max(yBot - kl.bottom, 1e-6)
-    const t = (clientY - kl.bottom) / denom
-    return kl.v - spread * t
-  }
-
-  for (let i = 0; i < knots.length - 1; i++) {
-    const a = knots[i]
-    const b = knots[i + 1]
-    if (clientY > a.bottom && clientY < b.top) {
-      const y0 = a.bottom
-      const y1 = b.top
-      const denom = Math.max(y1 - y0, 1e-6)
-      const t = (clientY - y0) / denom
-      return a.v + t * (b.v - a.v)
-    }
-  }
-
-  return k0.v
+  const range = maxV - minV
+  const spread = Math.max(12, range * 0.55 + 8)
+  const vHigh = maxV + spread
+  const vLow = Math.max(0, minV - spread)
+  const t = (clientY - yTop) / Math.max(yBot - yTop, 1e-6)
+  return vHigh + t * (vLow - vHigh)
 }
 
 function clampIniContinuous(continuous) {
