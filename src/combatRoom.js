@@ -1,6 +1,9 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
-import { compareInitiativeRowsWithTieOrder } from './initiativeSort.js'
+import {
+  compareInitiativeRowsWithTieOrder,
+  initiativeCompareOnlyIni,
+} from './initiativeSort.js'
 
 const ID = 'vierpunkteins_kampf.tracker'
 export const COMBAT_KEY = `${ID}/combat`
@@ -152,6 +155,31 @@ export async function reorderIniTieToken(dragId, insertBeforeIndex, items) {
   if (!orderRespectsIniAndTie(next, rowMap)) return
   if (next.length === sortedIds.length && next.every((id, i) => id === sortedIds[i]))
     return
+  const order = ensureFullTieOrder(next, sortedIds)
+  await OBR.room.setMetadata({ [INI_TIE_ORDER_KEY]: order })
+  await pullIniTieOrderFromRoom()
+}
+
+/**
+ * Zwei in der Liste direkt aufeinanderfolgende Token mit gleicher INI tauschen.
+ * `upperId` muss der obere (zuerst agierende) Eintrag sein, `lowerId` der nächste.
+ */
+export async function swapAdjacentIniTiePair(upperId, lowerId, items) {
+  const sortedRows = collectSortedParticipants(items, tieOrderCache)
+  const sortedIds = sortedRows.map((r) => r.id)
+  const i = sortedIds.indexOf(upperId)
+  if (i < 0 || sortedIds[i + 1] !== lowerId) return
+  const a = sortedRows[i]
+  const b = sortedRows[i + 1]
+  if (initiativeCompareOnlyIni(a, b) !== 0) return
+  const next = [
+    ...sortedIds.slice(0, i),
+    lowerId,
+    upperId,
+    ...sortedIds.slice(i + 2),
+  ]
+  const rowMap = new Map(sortedRows.map((r) => [r.id, r]))
+  if (!orderRespectsIniAndTie(next, rowMap)) return
   const order = ensureFullTieOrder(next, sortedIds)
   await OBR.room.setMetadata({ [INI_TIE_ORDER_KEY]: order })
   await pullIniTieOrderFromRoom()

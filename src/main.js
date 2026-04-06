@@ -28,6 +28,7 @@ document.querySelector('#app').innerHTML = `
       <span class="kampf-h-spacer" aria-hidden="true"></span>
       <span class="kampf-col-label kampf-col-label--name">Name</span>
       <span class="kampf-col-label kampf-col-label--ini">INI</span>
+      <span class="kampf-h-spacer kampf-h-spacer--swap" aria-hidden="true"></span>
     </div>
     <div class="initiative-list-host" id="initiative-list-host">
       <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>

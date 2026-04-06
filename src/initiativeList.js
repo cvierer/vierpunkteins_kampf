@@ -11,6 +11,7 @@ import {
   onIniTieOrderChange,
   patchCombat,
   reorderIniTieToken,
+  swapAdjacentIniTiePair,
 } from './combatRoom.js'
 import { setTrackedParticipantIds } from './listState.js'
 import {
@@ -490,6 +491,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       combat.started && combat.currentItemId ? combat.currentItemId : null
 
     const merged = buildMergedDisplayRows(tokenRows, items, getIniTieOrder())
+    const swapLowerByUpper = new Map()
+    for (let ti = 0; ti < tokenRows.length - 1; ti++) {
+      const a = tokenRows[ti]
+      const b = tokenRows[ti + 1]
+      if (initiativeCompareOnlyIni(a, b) === 0) {
+        swapLowerByUpper.set(a.id, b.id)
+      }
+    }
+
     const frag = document.createDocumentFragment()
 
     for (const entry of merged) {
@@ -630,7 +640,39 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         })
         input.addEventListener('blur', commit)
 
-        main.append(btnCol, gutter, nameCol, input)
+        const swapCol = document.createElement('div')
+        swapCol.className = 'init-col-swap'
+        const swapWithId = swapLowerByUpper.get(row.id)
+        if (swapWithId) {
+          const swapBtn = document.createElement('button')
+          swapBtn.type = 'button'
+          swapBtn.className = 'init-row-ini-swap'
+          const arrDown = document.createElement('span')
+          arrDown.className = 'init-row-ini-swap__arr'
+          arrDown.setAttribute('aria-hidden', 'true')
+          arrDown.textContent = '↓'
+          const arrUp = document.createElement('span')
+          arrUp.className = 'init-row-ini-swap__arr'
+          arrUp.setAttribute('aria-hidden', 'true')
+          arrUp.textContent = '↑'
+          swapBtn.append(arrDown, arrUp)
+          swapBtn.title =
+            'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche INI)'
+          swapBtn.setAttribute(
+            'aria-label',
+            'Gleiche INI: mit darunterliegendem Eintrag die Reihenfolge tauschen'
+          )
+          swapBtn.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void OBR.scene.items.getItems().then((fresh) => {
+              void swapAdjacentIniTiePair(row.id, swapWithId, fresh)
+            })
+          })
+          swapCol.appendChild(swapBtn)
+        }
+
+        main.append(btnCol, gutter, nameCol, input, swapCol)
         li.appendChild(main)
         frag.appendChild(li)
       } else {
@@ -785,7 +827,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           })
         })
 
-        main.append(btnCol, gutter, nameCol, iniInput)
+        const swapSpacer = document.createElement('div')
+        swapSpacer.className = 'init-col-swap init-col-swap--phase'
+        swapSpacer.setAttribute('aria-hidden', 'true')
+
+        main.append(btnCol, gutter, nameCol, iniInput, swapSpacer)
         li.appendChild(main)
         frag.appendChild(li)
       }
