@@ -15,7 +15,6 @@ import {
 } from './combatRoom.js'
 import { setTrackedParticipantIds } from './listState.js'
 import {
-  compareInitiativeRowsWithTieOrder,
   initiativeCompareOnlyIni,
   initiativeRank,
 } from './initiativeSort.js'
@@ -126,6 +125,17 @@ function clientYFromLerpIniInverse(targetIni, knots, listUl) {
   const denom = vLow - vHigh
   const t = Math.abs(denom) < 1e-9 ? 0.5 : (tv - vHigh) / denom
   return yTop + t * (yBot - yTop)
+}
+
+/** Linie innerhalb der sichtbaren `ul`-Höhe halten (Host kann höher sein). */
+function clampDropLineTopPx(topPx, listHost, listUl) {
+  const hr = listHost.getBoundingClientRect()
+  const ur = listUl.getBoundingClientRect()
+  const pad = 3
+  const minRel = ur.top - hr.top + pad
+  const maxRel = ur.bottom - hr.top - pad
+  if (maxRel <= minRel) return Math.max(pad, minRel)
+  return Math.min(Math.max(topPx, minRel), maxRel)
 }
 
 /**
@@ -258,54 +268,6 @@ function computeDropProposal(
   return { proposedStr, willIni, knots, dragRow, curStr }
 }
 
-function sortedTokenIdsWithVirtualDragIni(items, tieOrderIds, dragId, iniStr) {
-  const sortedRows = collectSortedParticipants(items, tieOrderIds)
-  const idSet = new Set(sortedRows.map((r) => r.id))
-  const tieFiltered = tieOrderIds.filter((id) => idSet.has(id))
-  const mod = sortedRows.map((r) =>
-    r.id === dragId ? { ...r, initiative: iniStr } : r
-  )
-  mod.sort((a, b) =>
-    compareInitiativeRowsWithTieOrder(a, b, tieFiltered)
-  )
-  return mod.map((r) => r.id)
-}
-
-function virtualOrderToLineTopPx(order, dragId, tokenEls, listHost, listUl) {
-  const hr = listHost.getBoundingClientRect()
-  const ur = listUl.getBoundingClientRect()
-  const pad = 2
-  const rectFor = (id) => {
-    const el = tokenEls.find((e) => e.dataset.itemId === id)
-    return el?.getBoundingClientRect()
-  }
-  const k = order.indexOf(dragId)
-  if (k < 0 || order.length === 0) {
-    return Math.max(pad, ur.top - hr.top + pad)
-  }
-  if (order.length === 1) {
-    return Math.max(pad, ur.top - hr.top + pad)
-  }
-  if (k === 0) {
-    return Math.max(pad, ur.top - hr.top + pad)
-  }
-  if (k === order.length - 1) {
-    const prevR = rectFor(order[k - 1])
-    if (prevR) {
-      return Math.max(pad, (prevR.bottom + ur.bottom) / 2 - hr.top)
-    }
-    return Math.max(pad, ur.bottom - hr.top - pad)
-  }
-  const prevR = rectFor(order[k - 1])
-  const nextR = rectFor(order[k + 1])
-  if (prevR && nextR) {
-    return Math.max(pad, (prevR.bottom + nextR.top) / 2 - hr.top)
-  }
-  if (prevR) return Math.max(pad, (prevR.bottom + ur.top) / 2 - hr.top)
-  if (nextR) return Math.max(pad, (ur.bottom + nextR.top) / 2 - hr.top)
-  return Math.max(pad, ur.top - hr.top + ur.height / 2)
-}
-
 function clientYToInsertSlot(clientY, tokenEls) {
   const n = tokenEls.length
   if (n === 0) return 0
@@ -340,9 +302,21 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   if (n === 0) {
     return Math.max(pad, ur.top - hr.top + ur.height / 2)
   }
-  const rects = tokenEls.map((el) => el.getBoundingClientRect())
   if (slot <= 0) return Math.max(pad, ur.top - hr.top + pad)
-  if (slot >= n) return Math.max(pad, ur.bottom - hr.top - pad)
+  if (slot >= n) {
+    const last = tokenEls[n - 1].getBoundingClientRect()
+    return Math.max(pad, (last.bottom + ur.bottom) / 2 - hr.top)
+  }
+  const lower = tokenEls[slot]
+  const prev = lower.previousElementSibling
+  if (prev && prev.matches?.('li.init-row')) {
+    const mid =
+      (prev.getBoundingClientRect().bottom +
+        lower.getBoundingClientRect().top) /
+      2
+    return Math.max(pad, mid - hr.top)
+  }
+  const rects = tokenEls.map((el) => el.getBoundingClientRect())
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
@@ -442,29 +416,22 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     if (!listHost) return null
     const phaseRef = parsePhaseDrag(dragId)
     if (phaseRef && !willCommitIni) return null
-    if (willCommitIni && phaseRef) {
+    if (willCommitIni) {
       const knots = buildDragKnots(element, items, tieOrderIds, dragId)
       const v = parseIniNumber(proposedStr)
       if (v == null) return null
       const cy = clientYFromLerpIniInverse(v, knots, element)
       if (cy == null) return null
-      return cy - listHost.getBoundingClientRect().top
-    }
-    if (willCommitIni) {
-      const order = sortedTokenIdsWithVirtualDragIni(
-        items,
-        tieOrderIds,
-        dragId,
-        proposedStr
-      )
-      return virtualOrderToLineTopPx(order, dragId, tokenEls, listHost, element)
+      const topPx = cy - listHost.getBoundingClientRect().top
+      return clampDropLineTopPx(topPx, listHost, element)
     }
     const { validSlots } = computeValidIniTieInsertSlots(dragId, items)
     if (validSlots.length === 0) return null
     const raw = clientYToInsertSlot(clientY, tokenEls)
     const slot = pickNearestValidSlot(raw, validSlots)
     if (slot == null) return null
-    return insertSlotToLineTopPx(slot, tokenEls, listHost, element)
+    const topPx = insertSlotToLineTopPx(slot, tokenEls, listHost, element)
+    return clampDropLineTopPx(topPx, listHost, element)
   }
 
   const updateDragSession = (clientX, clientY, dragId) => {
