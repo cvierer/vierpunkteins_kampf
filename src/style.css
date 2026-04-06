@@ -327,27 +327,36 @@ body {
   width: 100%;
 }
 
+.init-col-swap--stretch {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
 .init-col-swap--phase {
   pointer-events: none;
 }
 
 .init-row-ini-swap {
   flex-shrink: 0;
-  display: inline-flex;
+  box-sizing: border-box;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  width: 1.45rem;
-  height: 1.85rem;
-  padding: 0.1rem 0;
+  gap: 0.12rem;
+  width: 100%;
+  min-height: 1.85rem;
+  padding: 0.2rem 0.1rem;
   margin: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   border: 1px solid rgba(201, 162, 39, 0.42);
   background: rgba(201, 162, 39, 0.1);
   color: var(--color-accent);
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 700;
   line-height: 0.85;
   cursor: pointer;
@@ -505,6 +514,11 @@ body {
   text-align: center;
   color: rgba(255, 160, 160, 0.95);
   border-color: rgba(200, 100, 100, 0.55);
+}
+
+.init-row--swap-stretch-upper {
+  position: relative;
+  z-index: 2;
 }
 
 .init-row--token-draggable {

@@ -251,6 +251,34 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
+/** Tausch-Button über oberes + unteres Token-`li` in der Höhe strecken. */
+function layoutIniSwapStretch(ul) {
+  for (const btn of ul.querySelectorAll('.init-row-ini-swap[data-ini-swap-lower]')) {
+    const lowerId = btn.dataset.iniSwapLower
+    const upperLi = btn.closest('li[data-item-id]')
+    const lowerLi = ul.querySelector(
+      `li.init-row--token-draggable[data-item-id="${CSS.escape(lowerId)}"]`
+    )
+    const swapCol = btn.parentElement
+    if (!upperLi || !lowerLi || !swapCol || upperLi === lowerLi) {
+      btn.style.position = ''
+      btn.style.top = ''
+      btn.style.height = ''
+      btn.style.left = ''
+      btn.style.right = ''
+      continue
+    }
+    const liR = upperLi.getBoundingClientRect()
+    const lowerR = lowerLi.getBoundingClientRect()
+    const colR = swapCol.getBoundingClientRect()
+    btn.style.position = 'absolute'
+    btn.style.left = '0'
+    btn.style.right = '0'
+    btn.style.top = `${liR.top - colR.top}px`
+    btn.style.height = `${Math.max(0, lowerR.bottom - liR.top)}px`
+  }
+}
+
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
@@ -273,6 +301,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let lastDragClientY = 0
   /** Feste X-Position der INI-Vorschau (nur Y folgt dem Zeiger). */
   let dragFloatAnchorX = 0
+
+  let swapStretchRo = null
 
   const hideDropLine = () => {
     dropLine.classList.remove(
@@ -515,6 +545,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         if (row.id === activeId) li.classList.add('init-row--active')
         li.dataset.itemId = row.id
         li.draggable = true
+        if (swapLowerByUpper.has(row.id)) {
+          li.classList.add('init-row--swap-stretch-upper')
+        }
         li.title =
           'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
@@ -644,9 +677,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapCol.className = 'init-col-swap'
         const swapWithId = swapLowerByUpper.get(row.id)
         if (swapWithId) {
+          swapCol.classList.add('init-col-swap--stretch')
           const swapBtn = document.createElement('button')
           swapBtn.type = 'button'
           swapBtn.className = 'init-row-ini-swap'
+          swapBtn.dataset.iniSwapLower = swapWithId
           const arrDown = document.createElement('span')
           arrDown.className = 'init-row-ini-swap__arr'
           arrDown.setAttribute('aria-hidden', 'true')
@@ -839,6 +874,19 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     element.replaceChildren(frag)
 
+    const runSwapStretch = () => layoutIniSwapStretch(element)
+    requestAnimationFrame(() => {
+      runSwapStretch()
+      requestAnimationFrame(runSwapStretch)
+    })
+    if (typeof ResizeObserver !== 'undefined') {
+      if (!swapStretchRo) {
+        swapStretchRo = new ResizeObserver(runSwapStretch)
+        swapStretchRo.observe(element)
+        if (listHost) swapStretchRo.observe(listHost)
+      }
+    }
+
     if (restoreFocusItemId) {
       const inp = element.querySelector(
         `li[data-item-id="${CSS.escape(restoreFocusItemId)}"] .init-row-init`
@@ -860,6 +908,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   onIniTieOrderChange(() => renderList(lastItems))
 
   return () => {
+    swapStretchRo?.disconnect()
+    swapStretchRo = null
     detachGlobalDragListeners()
     dropLine.remove()
     iniFloat.remove()
