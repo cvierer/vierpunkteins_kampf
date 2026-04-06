@@ -251,31 +251,34 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
-/** Tausch-Button über oberes + unteres Token-`li` in der Höhe strecken. */
-function layoutIniSwapStretch(ul) {
-  for (const btn of ul.querySelectorAll('.init-row-ini-swap[data-ini-swap-lower]')) {
+/** Tausch-Button in die Lücke zwischen zwei Token-Zeilen, X wie Swap-Spalte. */
+function layoutIniSwapBetween(ul, host, overlay) {
+  if (!host || !overlay) return
+  const hostR = host.getBoundingClientRect()
+  for (const btn of overlay.querySelectorAll('.init-row-ini-swap[data-ini-swap-upper]')) {
+    const upperId = btn.dataset.iniSwapUpper
     const lowerId = btn.dataset.iniSwapLower
-    const upperLi = btn.closest('li[data-item-id]')
+    const upperLi = ul.querySelector(
+      `li.init-row--token-draggable[data-item-id="${CSS.escape(upperId)}"]`
+    )
     const lowerLi = ul.querySelector(
       `li.init-row--token-draggable[data-item-id="${CSS.escape(lowerId)}"]`
     )
-    const swapCol = btn.parentElement
-    if (!upperLi || !lowerLi || !swapCol || upperLi === lowerLi) {
-      btn.style.position = ''
-      btn.style.top = ''
-      btn.style.height = ''
-      btn.style.left = ''
-      btn.style.right = ''
+    const refCol = upperLi?.querySelector('.init-col-swap')
+    if (!upperLi || !lowerLi || !refCol) {
+      btn.style.display = 'none'
       continue
     }
-    const liR = upperLi.getBoundingClientRect()
-    const lowerR = lowerLi.getBoundingClientRect()
-    const colR = swapCol.getBoundingClientRect()
+    btn.style.display = ''
+    const u = upperLi.getBoundingClientRect()
+    const l = lowerLi.getBoundingClientRect()
+    const col = refCol.getBoundingClientRect()
+    const midY = (u.bottom + l.top) / 2
+    const h = btn.offsetHeight || 18
     btn.style.position = 'absolute'
-    btn.style.left = '0'
-    btn.style.right = '0'
-    btn.style.top = `${liR.top - colR.top}px`
-    btn.style.height = `${Math.max(0, lowerR.bottom - liR.top)}px`
+    btn.style.left = `${col.left - hostR.left}px`
+    btn.style.width = `${col.width}px`
+    btn.style.top = `${midY - hostR.top - h / 2}px`
   }
 }
 
@@ -288,6 +291,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   dropLine.className = 'init-list-drop-line'
   dropLine.setAttribute('aria-hidden', 'true')
   if (listHost) listHost.appendChild(dropLine)
+
+  const swapOverlay = document.createElement('div')
+  swapOverlay.className = 'init-ini-swap-overlay'
+  swapOverlay.setAttribute('aria-hidden', 'true')
+  if (listHost) listHost.appendChild(swapOverlay)
 
   const iniFloat = document.createElement('div')
   iniFloat.className = 'init-drag-ini-float'
@@ -302,7 +310,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   /** Feste X-Position der INI-Vorschau (nur Y folgt dem Zeiger). */
   let dragFloatAnchorX = 0
 
-  let swapStretchRo = null
+  let swapLayoutRo = null
 
   const hideDropLine = () => {
     dropLine.classList.remove(
@@ -545,9 +553,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         if (row.id === activeId) li.classList.add('init-row--active')
         li.dataset.itemId = row.id
         li.draggable = true
-        if (swapLowerByUpper.has(row.id)) {
-          li.classList.add('init-row--swap-stretch-upper')
-        }
         li.title =
           'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
@@ -599,8 +604,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const phasePlus = document.createElement('button')
         phasePlus.type = 'button'
-        phasePlus.className = 'init-row-phase-plus'
-        phasePlus.textContent = '+'
+        phasePlus.className =
+          'init-row-phase-plus init-row-phase-plus--root init-row-phase-plus--stacked'
+        const phasePlusGlyph = document.createElement('span')
+        phasePlusGlyph.className = 'init-row-phase-plus__plus'
+        phasePlusGlyph.textContent = '+'
+        const phasePlusDown = document.createElement('span')
+        phasePlusDown.className = 'init-row-phase-plus__down'
+        phasePlusDown.setAttribute('aria-hidden', 'true')
+        phasePlusDown.textContent = '↓'
+        phasePlus.append(phasePlusGlyph, phasePlusDown)
         phasePlus.title =
           'INI-Phasen (4.1): öffnen / weitere Wurzel · Shift+Klick schließen'
         phasePlus.setAttribute('aria-label', 'INI-Phasen öffnen')
@@ -675,38 +688,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const swapCol = document.createElement('div')
         swapCol.className = 'init-col-swap'
-        const swapWithId = swapLowerByUpper.get(row.id)
-        if (swapWithId) {
-          swapCol.classList.add('init-col-swap--stretch')
-          const swapBtn = document.createElement('button')
-          swapBtn.type = 'button'
-          swapBtn.className = 'init-row-ini-swap'
-          swapBtn.dataset.iniSwapLower = swapWithId
-          const arrDown = document.createElement('span')
-          arrDown.className = 'init-row-ini-swap__arr'
-          arrDown.setAttribute('aria-hidden', 'true')
-          arrDown.textContent = '↓'
-          const arrUp = document.createElement('span')
-          arrUp.className = 'init-row-ini-swap__arr'
-          arrUp.setAttribute('aria-hidden', 'true')
-          arrUp.textContent = '↑'
-          swapBtn.append(arrDown, arrUp)
-          swapBtn.title =
-            'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche INI)'
-          swapBtn.setAttribute(
-            'aria-label',
-            'Gleiche INI: mit darunterliegendem Eintrag die Reihenfolge tauschen'
-          )
-          swapBtn.addEventListener('click', (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            void OBR.scene.items.getItems().then((fresh) => {
-              void swapAdjacentIniTiePair(row.id, swapWithId, fresh)
-            })
-          })
-          swapCol.appendChild(swapBtn)
-        }
-
         main.append(btnCol, gutter, nameCol, input, swapCol)
         li.appendChild(main)
         frag.appendChild(li)
@@ -874,16 +855,48 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     element.replaceChildren(frag)
 
-    const runSwapStretch = () => layoutIniSwapStretch(element)
+    swapOverlay.replaceChildren()
+    for (const [upperId, lowerId] of swapLowerByUpper.entries()) {
+      const swapBtn = document.createElement('button')
+      swapBtn.type = 'button'
+      swapBtn.className = 'init-row-ini-swap'
+      swapBtn.dataset.iniSwapUpper = upperId
+      swapBtn.dataset.iniSwapLower = lowerId
+      const arrUp = document.createElement('span')
+      arrUp.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--up'
+      arrUp.setAttribute('aria-hidden', 'true')
+      arrUp.textContent = '↑'
+      const arrDown = document.createElement('span')
+      arrDown.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--down'
+      arrDown.setAttribute('aria-hidden', 'true')
+      arrDown.textContent = '↓'
+      swapBtn.append(arrUp, arrDown)
+      swapBtn.title =
+        'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche INI)'
+      swapBtn.setAttribute(
+        'aria-label',
+        'Gleiche INI: mit darunterliegendem Eintrag die Reihenfolge tauschen'
+      )
+      swapBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void OBR.scene.items.getItems().then((fresh) => {
+          void swapAdjacentIniTiePair(upperId, lowerId, fresh)
+        })
+      })
+      swapOverlay.appendChild(swapBtn)
+    }
+
+    const runSwapLayout = () => layoutIniSwapBetween(element, listHost, swapOverlay)
     requestAnimationFrame(() => {
-      runSwapStretch()
-      requestAnimationFrame(runSwapStretch)
+      runSwapLayout()
+      requestAnimationFrame(runSwapLayout)
     })
     if (typeof ResizeObserver !== 'undefined') {
-      if (!swapStretchRo) {
-        swapStretchRo = new ResizeObserver(runSwapStretch)
-        swapStretchRo.observe(element)
-        if (listHost) swapStretchRo.observe(listHost)
+      if (!swapLayoutRo) {
+        swapLayoutRo = new ResizeObserver(runSwapLayout)
+        swapLayoutRo.observe(element)
+        if (listHost) swapLayoutRo.observe(listHost)
       }
     }
 
@@ -908,11 +921,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   onIniTieOrderChange(() => renderList(lastItems))
 
   return () => {
-    swapStretchRo?.disconnect()
-    swapStretchRo = null
+    swapLayoutRo?.disconnect()
+    swapLayoutRo = null
     detachGlobalDragListeners()
     dropLine.remove()
+    swapOverlay.remove()
     iniFloat.remove()
-    renderList(lastItems)
   }
 }
