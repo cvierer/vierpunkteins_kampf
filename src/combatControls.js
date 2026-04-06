@@ -16,6 +16,7 @@ import {
   RESET_ROUND_INTRO,
 } from './combatRoom.js'
 import { getTrackedParticipantIds } from './listState.js'
+import { resetAllKrCountersInScene } from './krCounters.js'
 
 async function combatTurnSteps() {
   const items = await OBR.scene.items.getItems()
@@ -103,6 +104,7 @@ export async function setupCombatControls(root) {
       ...RESET_ROUND_INTRO,
       ...combatPatchForStep(steps[0]),
     })
+    await resetAllKrCountersInScene()
   }
 
   const applyCombatNext = async () => {
@@ -134,6 +136,7 @@ export async function setupCombatControls(root) {
         ...combatPatchForStep(stepsCommit[0]),
         round: targetRound,
       })
+      await resetAllKrCountersInScene()
       return
     }
 

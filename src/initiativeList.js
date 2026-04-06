@@ -40,10 +40,45 @@ import {
   zaoRootKey,
 } from './phaseLinks.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
+import {
+  KR_ACTION,
+  KR_FREE_ACTION,
+  normalizeKrDigit,
+  patchKrCounterByDelta,
+} from './krCounters.js'
 
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
 const PHASE_DRAG_MARK = 'vierpphase|'
+
+function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
+  const addBtn = (field, val, labelDe) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'init-row-kr-counter'
+    b.textContent = String(val)
+    b.title = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–9)`
+    b.setAttribute('aria-label', `${labelDe}, Wert ${val}`)
+    b.disabled = !canEdit
+    if (canEdit) {
+      b.addEventListener('click', (e) => {
+        e.preventDefault()
+        void patchKrCounterByDelta(ownerItemId, field, 1)
+      })
+      b.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+        void patchKrCounterByDelta(ownerItemId, field, -1)
+      })
+    }
+    container.appendChild(b)
+  }
+  addBtn(KR_ACTION, normalizeKrDigit(trackerMeta?.[KR_ACTION]), 'Aktion')
+  addBtn(
+    KR_FREE_ACTION,
+    normalizeKrDigit(trackerMeta?.[KR_FREE_ACTION]),
+    'Freie Aktion'
+  )
+}
 
 function encodePhaseDrag(ownerId, linkId) {
   return `${PHASE_DRAG_MARK}${ownerId}|${linkId}`
@@ -851,6 +886,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const btnCol = document.createElement('div')
         btnCol.className = 'init-col-btn init-col-btn--phase-slot'
 
+        const slotRow = document.createElement('div')
+        slotRow.className = 'init-phase-slot-row'
+        appendKrCounterPair(slotRow, row.id, meta, canEdit)
+
         const plusAnchor = document.createElement('div')
         plusAnchor.className = 'init-phase-plus-anchor'
 
@@ -890,7 +929,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           plusAnchor.appendChild(countEl)
         }
 
-        btnCol.appendChild(plusAnchor)
+        slotRow.appendChild(plusAnchor)
+        btnCol.appendChild(slotRow)
 
         const gutter = document.createElement('div')
         gutter.className = 'init-phase-gutter init-phase-gutter--empty'
@@ -976,6 +1016,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ? 'init-col-btn init-col-btn--phase init-col-btn--zao'
           : 'init-col-btn init-col-btn--phase'
 
+        const ownerTrackerMeta =
+          ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
+        appendKrCounterPair(btnCol, ownerId, ownerTrackerMeta, canEdit)
+
         if (isZaoRoot) {
           const ephemeral = Boolean(link.expiresNextRound)
           const zaoRemove = document.createElement('button')
@@ -1030,7 +1074,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
           const chainPlus = document.createElement('button')
           chainPlus.type = 'button'
-          chainPlus.className = 'init-row-phase-plus init-row-phase-plus--small'
+          chainPlus.className = 'init-row-phase-plus'
           chainPlus.textContent = '+'
           chainPlus.title = 'Weitere INI-Phase anknüpfen'
           chainPlus.setAttribute('aria-label', 'Weitere Phase')

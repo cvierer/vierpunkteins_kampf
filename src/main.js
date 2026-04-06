@@ -26,10 +26,11 @@ appRoot.innerHTML = `
   <p id="standalone-hint" class="standalone-hint" hidden></p>
   <div class="kampf-list-section">
     <div class="kampf-list-head" aria-hidden="true">
-      <span
-        class="kampf-col-label kampf-col-label--za"
-        title="Zusätzliche Aktion"
-        >z.A.</span>
+      <div class="kampf-col-za-group">
+        <span class="kampf-col-label kampf-col-label--counter" title="Aktion">A.</span>
+        <span class="kampf-col-label kampf-col-label--counter" title="Freie Aktion">F.A.</span>
+        <span class="kampf-col-label kampf-col-label--za" title="Zusätzliche Aktion">z.A.</span>
+      </div>
       <span class="kampf-h-spacer" aria-hidden="true"></span>
       <span class="kampf-col-label kampf-col-label--name">Name</span>
       <span class="kampf-col-label kampf-col-label--ini">INI</span>

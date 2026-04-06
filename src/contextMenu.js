@@ -38,6 +38,8 @@ export function setupContextMenu() {
           for (const item of items) {
             item.metadata[`${ID}/metadata`] = {
               initiative: '',
+              krAction: 0,
+              krFreeAction: 0,
             }
           }
         })
