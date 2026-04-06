@@ -576,9 +576,8 @@ body {
 }
 
 .init-row-kr-counter--split {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
+  position: relative;
+  display: block;
   padding: 0;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.2);
@@ -588,16 +587,19 @@ body {
   border-color: var(--color-accent);
 }
 
-.init-row-kr-counter__fill {
-  flex: 1 1 auto;
-  order: 1;
-  min-width: 0;
-  align-self: stretch;
+.init-row-kr-counter--split .init-row-kr-counter__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
   opacity: 0;
   transition: opacity 0.1s ease;
+  pointer-events: none;
 }
 
-.init-row-kr-counter__fill--on {
+.init-row-kr-counter--ang .init-row-kr-counter__fill--on,
+.init-row-kr-counter--abw .init-row-kr-counter__fill--on {
+  left: 0;
+  right: 0;
   opacity: 1;
 }
 
@@ -609,28 +611,43 @@ body {
   background: #1565c0;
 }
 
+.init-row-kr-counter--fa .init-row-kr-counter__fill {
+  background: #7b1fa2;
+}
+
+.init-row-kr-counter--fa .init-row-kr-counter__fill--half {
+  left: 50%;
+  right: 0;
+  opacity: 1;
+}
+
+.init-row-kr-counter--fa .init-row-kr-counter__fill--full {
+  left: 0;
+  right: 0;
+  opacity: 1;
+}
+
 .init-row-kr-counter__digit {
-  order: 0;
-  flex: 0 0 0;
-  width: 0;
-  min-width: 0;
-  overflow: hidden;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
   color: rgba(255, 255, 255, 0.98);
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
   z-index: 2;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .init-row-kr-counter--has-digit .init-row-kr-counter__digit {
-  flex: 0 0 auto;
-  width: auto;
-  min-width: 0.42rem;
-  padding: 0 1px;
+  opacity: 1;
 }
 
 .init-row-kr-counter:disabled {
@@ -1061,6 +1078,10 @@ body {
 
   .init-row-kr-counter--abw .init-row-kr-counter__fill {
     background: #0d47a1;
+  }
+
+  .init-row-kr-counter--fa .init-row-kr-counter__fill {
+    background: #6a1b9a;
   }
 
   .phase-offset-input {

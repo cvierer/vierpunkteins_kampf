@@ -54,7 +54,7 @@ const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
 const PHASE_DRAG_MARK = 'vierpphase|'
 
-function applySplitCounterVisual(btn, v) {
+function applyAngAbwCounterVisual(btn, v) {
   const fill = btn.querySelector('.init-row-kr-counter__fill')
   const digit = btn.querySelector('.init-row-kr-counter__digit')
   if (!fill || !digit) return
@@ -63,10 +63,40 @@ function applySplitCounterVisual(btn, v) {
   digit.textContent = v >= 2 ? String(v) : ''
 }
 
+function applyFaCounterVisual(btn, v) {
+  const fill = btn.querySelector('.init-row-kr-counter__fill')
+  const digit = btn.querySelector('.init-row-kr-counter__digit')
+  if (!fill || !digit) return
+  fill.classList.remove(
+    'init-row-kr-counter__fill--half',
+    'init-row-kr-counter__fill--full',
+    'init-row-kr-counter__fill--on'
+  )
+  btn.classList.remove('init-row-kr-counter--has-digit')
+  digit.textContent = ''
+  if (v === 0) return
+  if (v === 1) {
+    fill.classList.add('init-row-kr-counter__fill--half')
+    return
+  }
+  fill.classList.add('init-row-kr-counter__fill--full')
+  if (v >= 3) {
+    digit.textContent = String(v)
+    btn.classList.add('init-row-kr-counter--has-digit')
+  }
+}
+
 function splitCounterAria(v, labelDe) {
   if (v === 0) return `${labelDe}, leer`
   if (v === 1) return `${labelDe}, markiert`
   return `${labelDe}, ${v}`
+}
+
+function faCounterAria(v) {
+  if (v === 0) return 'Freie Aktion, leer'
+  if (v === 1) return 'Freie Aktion, zur Hälfte gefüllt'
+  if (v === 2) return 'Freie Aktion, voll gefüllt'
+  return `Freie Aktion, ${v}`
 }
 
 function appendSplitKrCounter(
@@ -89,8 +119,8 @@ function appendSplitKrCounter(
   digit.setAttribute('aria-hidden', 'true')
   b.append(fill, digit)
   const v = normalizeKrDigit(value)
-  applySplitCounterVisual(b, v)
-  b.title = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–9, 1 = nur Farbe)`
+  applyAngAbwCounterVisual(b, v)
+  b.title = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–9, 1 = nur Farbe, 2–9 Zahl)`
   b.setAttribute('aria-label', splitCounterAria(v, labelDe))
   b.disabled = !canEdit
   if (canEdit) {
@@ -106,14 +136,23 @@ function appendSplitKrCounter(
   container.appendChild(b)
 }
 
-function appendSimpleFaCounter(container, ownerItemId, trackerMeta, canEdit) {
+function appendFaCounter(container, ownerItemId, trackerMeta, canEdit) {
   const val = normalizeKrDigit(trackerMeta?.[KR_FREE_ACTION])
   const b = document.createElement('button')
   b.type = 'button'
-  b.className = 'init-row-kr-counter'
-  b.textContent = String(val)
-  b.title = 'Freie Aktion: Linksklick +1, Rechtsklick −1 (0–9)'
-  b.setAttribute('aria-label', `Freie Aktion, Wert ${val}`)
+  b.className =
+    'init-row-kr-counter init-row-kr-counter--split init-row-kr-counter--fa'
+  const fill = document.createElement('span')
+  fill.className = 'init-row-kr-counter__fill'
+  fill.setAttribute('aria-hidden', 'true')
+  const digit = document.createElement('span')
+  digit.className = 'init-row-kr-counter__digit'
+  digit.setAttribute('aria-hidden', 'true')
+  b.append(fill, digit)
+  applyFaCounterVisual(b, val)
+  b.title =
+    'Freie Aktion: 1 = halb (rechts), 2 = voll, ab 3 Zahl · Linksklick +1, Rechtsklick −1'
+  b.setAttribute('aria-label', faCounterAria(val))
   b.disabled = !canEdit
   if (canEdit) {
     b.addEventListener('click', (e) => {
@@ -147,7 +186,7 @@ function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
     canEdit,
     'Abwehraktion'
   )
-  appendSimpleFaCounter(container, ownerItemId, trackerMeta, canEdit)
+  appendFaCounter(container, ownerItemId, trackerMeta, canEdit)
 }
 
 function encodePhaseDrag(ownerId, linkId) {
