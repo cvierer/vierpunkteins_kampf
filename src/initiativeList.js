@@ -643,10 +643,19 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     document.removeEventListener('wheel', onDocumentWheelWhileRow, wheelListenerOpts)
   }
 
-  const reconcileCombat = async (rows) => {
+  const phaseLinkExistsOnItem = (items, ownerId, linkId) => {
+    const it = items.find((i) => i.id === ownerId)
+    if (!it) return false
+    const p = normalizePhases(
+      it.metadata?.[TRACKER_ITEM_META_KEY]?.phases
+    )
+    return p.links.some((l) => l.id === linkId)
+  }
+
+  const reconcileCombat = async (rows, items) => {
     const c = getCombat()
     if (!c.started) return
-    const steps = buildCombatTurnSteps(rows, lastItems, getIniTieOrder())
+    const steps = buildCombatTurnSteps(rows, items, getIniTieOrder())
     if (steps.length === 0) {
       await patchCombat({
         started: false,
@@ -660,19 +669,38 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     const phaseId = c.currentPhaseLinkId
     const ownerStillThere = rows.some((r) => r.id === c.currentItemId)
-    if (ownerStillThere && phaseId) {
-      await patchCombat({ currentPhaseLinkId: null })
-      return
+
+    if (phaseId && ownerStillThere) {
+      const linkStillInMeta = phaseLinkExistsOnItem(
+        items,
+        c.currentItemId,
+        phaseId
+      )
+      if (!linkStillInMeta) {
+        await patchCombat({
+          ...combatPatchForStep(steps[0]),
+          round: c.round,
+        })
+        return
+      }
+      const cTokenOnly = { ...c, currentPhaseLinkId: null }
+      if (findCombatStepIndex(steps, cTokenOnly) >= 0) {
+        await patchCombat({ currentPhaseLinkId: null })
+        return
+      }
     }
 
-    await patchCombat(combatPatchForStep(steps[0]))
+    await patchCombat({
+      ...combatPatchForStep(steps[0]),
+      round: c.round,
+    })
   }
 
   const renderList = (items) => {
     lastItems = items
     const tokenRows = collectSortedParticipants(items, getIniTieOrder())
     setTrackedParticipantIds(tokenRows.map((r) => r.id))
-    void reconcileCombat(tokenRows)
+    void reconcileCombat(tokenRows, items)
 
     const combat = getCombat()
     const activeId =
@@ -1289,7 +1317,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
   OBR.scene.items.getItems().then(renderList)
   OBR.scene.items.onChange(renderList)
-  onCombatChange(() => renderList(lastItems))
+  onCombatChange(() => {
+    void OBR.scene.items.getItems().then(renderList)
+  })
   onIniTieOrderChange(() => renderList(lastItems))
   const offZaoTie = onZaoRootTieOrderChange(() => renderList(lastItems))
 

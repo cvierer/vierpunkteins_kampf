@@ -2,6 +2,7 @@ import OBR from '@owlbear-rodeo/sdk'
 import { collectSortedParticipants } from './participants.js'
 import {
   buildCombatTurnSteps,
+  clearEphemeralExtraIniRows,
   combatPatchForStep,
   findCombatStepIndex,
 } from './phaseLinks.js'
@@ -86,7 +87,7 @@ export async function setupCombatControls(root) {
   }
 
   const applyCombatNext = async () => {
-    const steps = await combatTurnSteps()
+    let steps = await combatTurnSteps()
     const c = getCombat()
     if (steps.length === 0) {
       await patchCombat({
@@ -104,7 +105,25 @@ export async function setupCombatControls(root) {
     }
     const nextIdx = (idx + 1) % steps.length
     const round = nextIdx === 0 ? c.round + 1 : c.round
-    await patchCombat({ ...combatPatchForStep(steps[nextIdx]), round })
+
+    let patchPayload = { ...combatPatchForStep(steps[nextIdx]), round }
+
+    if (nextIdx === 0) {
+      await clearEphemeralExtraIniRows()
+      steps = await combatTurnSteps()
+      if (steps.length === 0) {
+        await patchCombat({
+          started: false,
+          currentItemId: null,
+          currentPhaseLinkId: null,
+          round: 1,
+        })
+        return
+      }
+      patchPayload = { ...combatPatchForStep(steps[0]), round }
+    }
+
+    await patchCombat(patchPayload)
   }
 
   const applyCombatPrev = async () => {
