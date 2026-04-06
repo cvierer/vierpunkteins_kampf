@@ -37,6 +37,22 @@ import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
+const PHASE_DRAG_MARK = 'vierpphase|'
+
+function encodePhaseDrag(ownerId, linkId) {
+  return `${PHASE_DRAG_MARK}${ownerId}|${linkId}`
+}
+
+function parsePhaseDrag(dragId) {
+  if (typeof dragId !== 'string' || !dragId.startsWith(PHASE_DRAG_MARK)) {
+    return null
+  }
+  const rest = dragId.slice(PHASE_DRAG_MARK.length)
+  const i = rest.indexOf('|')
+  if (i < 0) return null
+  return { ownerId: rest.slice(0, i), linkId: rest.slice(i + 1) }
+}
+
 function isTokenDragTransfer(dataTransfer) {
   return (
     dataTransfer?.types &&
@@ -54,20 +70,62 @@ function parseIniNumber(s) {
   return Number.isFinite(n) ? n : null
 }
 
-function buildIniKnotsExcluding(tokenEls, rowMap, excludeId) {
+/** INI-Stützpunkte für vertikales Lerp: Token + Phasen-Zeilen (Ziel-INI). */
+function buildDragKnots(listElement, items, tieOrderIds, dragId) {
+  const rows = collectSortedParticipants(items, tieOrderIds)
+  const rowMap = new Map(rows.map((r) => [r.id, r]))
+  const phaseRef = parsePhaseDrag(dragId)
   const knots = []
-  for (const el of tokenEls) {
-    const id = el.dataset.itemId
-    if (!id || id === excludeId) continue
-    const row = rowMap.get(id)
-    const v = parseIniNumber(row?.initiative)
-    if (v === null) continue
-    const r = el.getBoundingClientRect()
-    const mid = r.top + r.height / 2
-    knots.push({ y: mid, v })
+  for (const el of listElement.querySelectorAll(
+    'li.init-row--token-draggable, li.init-row--phase'
+  )) {
+    const itemId = el.dataset.itemId
+    const linkId = el.dataset.phaseLinkId
+    const ownerId = el.dataset.phaseOwnerId
+    if (itemId) {
+      if (!phaseRef && itemId === dragId) continue
+      const row = rowMap.get(itemId)
+      const v = parseIniNumber(row?.initiative)
+      if (v === null) continue
+      const r = el.getBoundingClientRect()
+      knots.push({ y: r.top + r.height / 2, v })
+    } else if (linkId && ownerId) {
+      if (
+        phaseRef &&
+        ownerId === phaseRef.ownerId &&
+        linkId === phaseRef.linkId
+      ) {
+        continue
+      }
+      const v = parseIniNumber(el.dataset.dragKnotIni)
+      if (v === null) continue
+      const r = el.getBoundingClientRect()
+      knots.push({ y: r.top + r.height / 2, v })
+    }
   }
   knots.sort((a, b) => a.y - b.y)
   return knots
+}
+
+/** Umkehrung von lerpIniFromClientY: Ziel-INI → Client-Y (für Drop-Linie beim Phasen-Zug). */
+function clientYFromLerpIniInverse(targetIni, knots, listUl) {
+  if (!Number.isFinite(targetIni)) return null
+  const ur = listUl.getBoundingClientRect()
+  const vs = knots.map((k) => k.v)
+  if (vs.length === 0) return ur.top + ur.height / 2
+  const minV = Math.min(...vs)
+  const maxV = Math.max(...vs)
+  const marginY = Math.max(56, ur.height * 0.45)
+  const yTop = ur.top - marginY
+  const yBot = ur.bottom + marginY
+  const range = maxV - minV
+  const spread = Math.max(12, range * 0.55 + 8)
+  const vHigh = maxV + spread
+  const vLow = Math.max(0, minV - spread)
+  const tv = Math.max(vLow, Math.min(vHigh, targetIni))
+  const denom = vLow - vHigh
+  const t = Math.abs(denom) < 1e-9 ? 0.5 : (tv - vHigh) / denom
+  return yTop + t * (yBot - yTop)
 }
 
 /**
@@ -129,7 +187,17 @@ function composeProposedIniFromDragIntPart(replacementIntPart, currentIniStr) {
   return formatIniStorage(newNum)
 }
 
-function dragProposesIniChange(proposedStr, curStr, dragRow, dragId) {
+function dragProposesIniChange(proposedStr, curStr, dragRow, dragId, phaseRef) {
+  if (phaseRef) {
+    if (!dragRow) return false
+    const id = phaseRef.linkId
+    return (
+      initiativeCompareOnlyIni(
+        { id, initiative: proposedStr, name: dragRow.name },
+        { id, initiative: curStr, name: dragRow.name }
+      ) !== 0
+    )
+  }
   if (!dragRow) return false
   return (
     initiativeCompareOnlyIni(
@@ -144,15 +212,32 @@ function computeDropProposal(
   dragId,
   items,
   tieOrderIds,
-  tokenEls,
+  listElement,
   wheelNudge,
   listUl
 ) {
   const rows = collectSortedParticipants(items, tieOrderIds)
   const rowMap = new Map(rows.map((r) => [r.id, r]))
-  const dragRow = rowMap.get(dragId)
-  const curStr = dragRow?.initiative ?? ''
-  const knots = buildIniKnotsExcluding(tokenEls, rowMap, dragId)
+  const phaseRef = parsePhaseDrag(dragId)
+  let dragRow
+  let curStr
+  if (phaseRef) {
+    dragRow = rowMap.get(phaseRef.ownerId)
+    const it = items.find((i) => i.id === phaseRef.ownerId)
+    const links = normalizePhases(
+      it?.metadata?.[TRACKER_ITEM_META_KEY]?.phases
+    ).links
+    const h = hookIniForLink(
+      phaseRef.linkId,
+      dragRow?.initiative ?? '',
+      links
+    )
+    curStr = formatHookDisplay(h)
+  } else {
+    dragRow = rowMap.get(dragId)
+    curStr = dragRow?.initiative ?? ''
+  }
+  const knots = buildDragKnots(listElement, items, tieOrderIds, dragId)
   const previewCont = clampIniContinuous(
     lerpIniFromClientY(clientY, knots, listUl)
   )
@@ -163,7 +248,13 @@ function computeDropProposal(
   }
   const intPart = Math.max(0, baseInt + wheelNudge)
   const proposedStr = composeProposedIniFromDragIntPart(intPart, curStr)
-  const willIni = dragProposesIniChange(proposedStr, curStr, dragRow, dragId)
+  const willIni = dragProposesIniChange(
+    proposedStr,
+    curStr,
+    dragRow,
+    dragId,
+    phaseRef
+  )
   return { proposedStr, willIni, knots, dragRow, curStr }
 }
 
@@ -349,6 +440,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     tokenEls
   ) => {
     if (!listHost) return null
+    const phaseRef = parsePhaseDrag(dragId)
+    if (phaseRef && !willCommitIni) return null
+    if (willCommitIni && phaseRef) {
+      const knots = buildDragKnots(element, items, tieOrderIds, dragId)
+      const v = parseIniNumber(proposedStr)
+      if (v == null) return null
+      const cy = clientYFromLerpIniInverse(v, knots, element)
+      if (cy == null) return null
+      return cy - listHost.getBoundingClientRect().top
+    }
     if (willCommitIni) {
       const order = sortedTokenIdsWithVirtualDragIni(
         items,
@@ -377,10 +478,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       dragId,
       lastItems,
       getIniTieOrder(),
-      tokenEls,
+      element,
       dragWheelNudge,
       element
     )
+    const draggingPhase = Boolean(parsePhaseDrag(dragId))
 
     if (dragRow && rowDragActive) {
       iniFloat.replaceChildren()
@@ -390,12 +492,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       nameEl.title = dragRow.name || ''
       const main = document.createElement('div')
       main.className = 'init-drag-ini-float-main'
-      main.textContent = `INI ${proposedStr}`
+      main.textContent = draggingPhase
+        ? `Z.A. INI ${proposedStr}`
+        : `INI ${proposedStr}`
       const mode = document.createElement('div')
       mode.className = 'init-drag-ini-float-mode'
       mode.textContent = willIni
         ? 'Loslassen: neuen Wert übernehmen'
-        : 'Loslassen: Reihenfolge tauschen'
+        : draggingPhase
+          ? ''
+          : 'Loslassen: Reihenfolge tauschen'
       iniFloat.append(nameEl, main, mode)
       iniFloat.style.left = `${dragFloatAnchorX}px`
       iniFloat.style.top = `${clientY + 12}px`
@@ -428,6 +534,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     hideIniFloat()
     if (!dragId || !listHost) return
     void OBR.scene.items.getItems().then((fresh) => {
+      const phaseRef = parsePhaseDrag(dragId)
       const tokenElsFresh = [
         ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
       ]
@@ -436,10 +543,35 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         dragId,
         fresh,
         getIniTieOrder(),
-        tokenElsFresh,
+        element,
         wheelAtDrop,
         element
       )
+      if (phaseRef) {
+        if (willIni) {
+          const ownerRow = collectSortedParticipants(
+            fresh,
+            getIniTieOrder()
+          ).find((r) => r.id === phaseRef.ownerId)
+          const ownerIni = ownerRow?.initiative ?? ''
+          const it = fresh.find((i) => i.id === phaseRef.ownerId)
+          const links = normalizePhases(
+            it?.metadata?.[TRACKER_ITEM_META_KEY]?.phases
+          ).links
+          void tryCommitPhaseTargetIni(
+            phaseRef.ownerId,
+            phaseRef.linkId,
+            proposedStr,
+            ownerIni,
+            links
+          ).then(async (res) => {
+            if (!res.ok && res.reason === 'NEG_INI') {
+              void removePhaseLink(phaseRef.ownerId, phaseRef.linkId)
+            }
+          })
+        }
+        return
+      }
       if (willIni) {
         restoreFocusItemId = dragId
         void OBR.scene.items
@@ -726,9 +858,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const li = document.createElement('li')
         li.className =
           'init-row init-row--phase' +
-          (isZaoRoot ? ' init-row--phase-zao' : '')
+          (isZaoRoot ? ' init-row--phase-zao init-row--phase-draggable' : '')
         li.dataset.phaseOwnerId = ownerId
         li.dataset.phaseLinkId = link.id
+        li.dataset.dragKnotIni = formatHookDisplay(hookIni)
 
         const main = document.createElement('div')
         main.className =
@@ -819,7 +952,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           phaseZaoMeta.className = 'init-phase-zao-meta'
           const iniActLabel = document.createElement('span')
           iniActLabel.className = 'init-phase-zao-ini-label'
-          iniActLabel.textContent = 'INI z. Aktion'
+          iniActLabel.textContent = 'Z.A.'
           const nameEl = document.createElement('span')
           nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
@@ -947,6 +1080,54 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           main.append(btnCol, phaseGutter, phaseNameCol, iniInput, swapSpacer)
         }
         li.appendChild(main)
+
+        if (isZaoRoot) {
+          const phasePayload = encodePhaseDrag(ownerId, link.id)
+          li.draggable = true
+          li.title =
+            'Z.A. ziehen: INI wie bei Hauptzeilen setzen (Loslassen / Mausrad ±1). Nicht von ×, Schloss oder Eingabefeldern ziehen.'
+          li.addEventListener('dragstart', (e) => {
+            if (e.target.closest('button, input, textarea, select')) {
+              e.preventDefault()
+              return
+            }
+            e.dataTransfer.setData(TOKEN_DRAG_MIME, phasePayload)
+            e.dataTransfer.setData('text/plain', phasePayload)
+            e.dataTransfer.effectAllowed = 'move'
+            rowDragActive = true
+            dragWheelNudge = 0
+            activeDragRowId = phasePayload
+            lastDragClientX = e.clientX
+            lastDragClientY = e.clientY
+            const hr = listHost?.getBoundingClientRect()
+            dragFloatAnchorX = hr
+              ? Math.round(hr.left + 8)
+              : Math.round(li.getBoundingClientRect().left)
+            const dragImg = document.createElement('canvas')
+            dragImg.width = 1
+            dragImg.height = 1
+            e.dataTransfer.setDragImage(dragImg, 0, 0)
+            li.classList.add('init-row--dragging')
+            attachGlobalDragListeners()
+            requestAnimationFrame(() => {
+              updateDragSession(e.clientX, e.clientY, phasePayload)
+            })
+          })
+          li.addEventListener('drag', (e) => {
+            if (!li.classList.contains('init-row--dragging')) return
+            updateDragSession(e.clientX, e.clientY, phasePayload)
+          })
+          li.addEventListener('dragend', () => {
+            detachGlobalDragListeners()
+            rowDragActive = false
+            dragWheelNudge = 0
+            activeDragRowId = null
+            li.classList.remove('init-row--dragging')
+            hideDropLine()
+            hideIniFloat()
+          })
+        }
+
         frag.appendChild(li)
       }
     }

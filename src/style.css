@@ -714,26 +714,36 @@ body {
   border-color: rgba(200, 100, 100, 0.55);
 }
 
-.init-row--token-draggable {
+.init-row--token-draggable,
+.init-row--phase-zao.init-row--phase-draggable {
   cursor: grab;
 }
 
-.init-row--token-draggable:active {
+.init-row--token-draggable:active,
+.init-row--phase-zao.init-row--phase-draggable:active {
   cursor: grabbing;
 }
 
-.init-row--token-draggable .init-row-name {
+.init-row--token-draggable .init-row-name,
+.init-row--phase-zao.init-row--phase-draggable .init-row-name {
   cursor: default;
 }
 
-.init-row--token-draggable .init-row-init {
+.init-row--token-draggable .init-row-init,
+.init-row--phase-zao.init-row--phase-draggable .init-row-init {
   cursor: text;
 }
 
 .init-row--token-draggable .init-row-phase-plus,
 .init-row--token-draggable .init-row-phase-minus,
-.init-row--token-draggable .init-row-ini-swap {
+.init-row--token-draggable .init-row-ini-swap,
+.init-row--phase-zao.init-row--phase-draggable .init-row-zao-remove,
+.init-row--phase-zao.init-row--phase-draggable .init-row-zao-padlock {
   cursor: pointer;
+}
+
+.init-row--phase-zao.init-row--phase-draggable .phase-offset-input {
+  cursor: text;
 }
 
 .init-row--dragging {
