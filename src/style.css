@@ -343,6 +343,7 @@ body {
   padding: 0.08rem 0;
   border-radius: calc(var(--radius) - 1px);
   border: 1px solid transparent;
+  position: relative;
 }
 
 .init-col-swap {
@@ -577,9 +578,29 @@ body {
   padding-top: 0.06rem;
   padding-bottom: 0.06rem;
   margin-bottom: 0.08rem;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Highlight endet rechts vor der Tausch-Spalte (bis inkl. INI-Feld). */
+.init-row--active .init-row-main::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: calc(var(--init-col-swap) + var(--init-grid-gap));
+  top: 0;
+  bottom: 0;
+  border-radius: calc(var(--radius) - 1px);
   background: var(--color-active);
-  border-color: var(--color-border);
+  border: 1px solid var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);
+  pointer-events: none;
+}
+
+.init-row--active .init-row-main > * {
+  position: relative;
+  z-index: 1;
 }
 
 .init-row--active .init-row-name {
