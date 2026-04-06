@@ -30,9 +30,11 @@ import {
   onNamePhasePlusClick,
   removeLastRootPhase,
   removePhaseLink,
+  togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
   tryCommitPhaseTargetIni,
 } from './phaseLinks.js'
+import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
@@ -728,9 +730,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           (isZaoRoot ? ' init-row-main--phase-zao' : '')
 
         const btnCol = document.createElement('div')
-        btnCol.className = 'init-col-btn init-col-btn--phase'
+        btnCol.className = isZaoRoot
+          ? 'init-col-btn init-col-btn--phase init-col-btn--zao'
+          : 'init-col-btn init-col-btn--phase'
 
         if (isZaoRoot) {
+          const ephemeral = Boolean(link.expiresNextRound)
           const zaoRemove = document.createElement('button')
           zaoRemove.type = 'button'
           zaoRemove.className = 'init-row-zao-remove'
@@ -742,7 +747,26 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             e.stopPropagation()
             void removePhaseLink(ownerId, link.id)
           })
-          btnCol.appendChild(zaoRemove)
+          const padlockBtn = document.createElement('button')
+          padlockBtn.type = 'button'
+          padlockBtn.className = 'init-row-zao-padlock'
+          padlockBtn.innerHTML = zaoPadlockInnerHtml(ephemeral)
+          padlockBtn.title = ephemeral
+            ? 'Einmalig: wird zu Beginn der nächsten Kampfrunde entfernt'
+            : 'Dauerhaft: bleibt in weiteren Kampfrunden erhalten'
+          padlockBtn.setAttribute(
+            'aria-label',
+            ephemeral
+              ? 'Einmalig, entfernt sich zu Beginn der nächsten Kampfrunde'
+              : 'Dauerhaft über Kampfrunden behalten'
+          )
+          padlockBtn.setAttribute('aria-pressed', ephemeral ? 'true' : 'false')
+          padlockBtn.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void togglePhaseLinkExpiresNextRound(ownerId, link.id)
+          })
+          btnCol.append(zaoRemove, padlockBtn)
         } else {
           const phaseMinus = document.createElement('button')
           phaseMinus.type = 'button'
@@ -787,10 +811,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         if (isZaoRoot) {
           phaseZaoMeta = document.createElement('div')
           phaseZaoMeta.className = 'init-phase-zao-meta'
-          const dash = document.createElement('span')
-          dash.className = 'init-phase-zao-dash'
-          dash.textContent = '-'
-          dash.setAttribute('aria-hidden', 'true')
           const iniActLabel = document.createElement('span')
           iniActLabel.className = 'init-phase-zao-ini-label'
           iniActLabel.textContent = 'INI z. Aktion'
@@ -798,7 +818,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
           nameEl.title = `Zusätzliche Aktion · ${ownerName}`
-          phaseZaoMeta.append(dash, offsetInput, iniActLabel, nameEl)
+          phaseZaoMeta.append(offsetInput, iniActLabel, nameEl)
         } else {
           phaseGutter = document.createElement('div')
           phaseGutter.className = 'init-phase-gutter'

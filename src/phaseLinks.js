@@ -26,11 +26,16 @@ export function normalizePhases(raw) {
   for (const l of linksIn) {
     if (!l || typeof l !== 'object' || typeof l.id !== 'string') continue
     ids.add(l.id)
-    links.push({
+    const parentId = typeof l.parentId === 'string' ? l.parentId : null
+    const entry = {
       id: l.id,
-      parentId: typeof l.parentId === 'string' ? l.parentId : null,
+      parentId,
       offset: clampStoredOffset(l.offset),
-    })
+    }
+    if (parentId === null) {
+      entry.expiresNextRound = Boolean(l.expiresNextRound)
+    }
+    links.push(entry)
   }
   const valid = new Set(
     links.filter((l) => l.parentId === null || ids.has(l.parentId)).map((l) => l.id)
@@ -191,9 +196,76 @@ export function addPhaseChildLink(itemId, parentLinkId, ownerIniStr) {
 export function removePhaseLink(itemId, linkId) {
   return patchItemPhases(itemId, (p) => {
     const cut = collectSubtreeIds(p.links, linkId)
+    const nextLinks = p.links.filter((l) => !cut.has(l.id))
     return {
       ...p,
-      links: p.links.filter((l) => !cut.has(l.id)),
+      links: nextLinks,
+      rowPanelOpen: nextLinks.length === 0 ? false : p.rowPanelOpen,
+    }
+  })
+}
+
+export function togglePhaseLinkExpiresNextRound(itemId, linkId) {
+  return patchItemPhases(itemId, (p) => {
+    const link = p.links.find((l) => l.id === linkId)
+    if (!link || link.parentId !== null) return p
+    return {
+      ...p,
+      links: p.links.map((l) =>
+        l.id === linkId
+          ? { ...l, expiresNextRound: !l.expiresNextRound }
+          : l
+      ),
+    }
+  })
+}
+
+function linksWithoutEphemeralRoots(links) {
+  const roots = links.filter(
+    (l) => l.parentId === null && l.expiresNextRound
+  )
+  if (roots.length === 0) return links
+  const cut = new Set()
+  for (const r of roots) {
+    for (const id of collectSubtreeIds(links, r.id)) {
+      cut.add(id)
+    }
+  }
+  return links.filter((l) => !cut.has(l.id))
+}
+
+/**
+ * Entfernt Wurzel-Links mit expiresNextRound (offenes Schloss), z. B. nach Kampfrundenwechsel.
+ */
+export async function clearEphemeralExtraIniRows() {
+  const items = await OBR.scene.items.getItems((item) =>
+    Boolean(item.metadata?.[TRACKER_ITEM_META_KEY])
+  )
+  const updates = []
+  for (const item of items) {
+    const meta = item.metadata[TRACKER_ITEM_META_KEY]
+    if (!meta) continue
+    const p = normalizePhases(meta.phases)
+    if (p.links.length === 0) continue
+    const nextLinks = linksWithoutEphemeralRoots(p.links)
+    if (nextLinks.length === p.links.length) continue
+    updates.push({
+      id: item.id,
+      phases: {
+        ...p,
+        links: nextLinks,
+        rowPanelOpen: nextLinks.length === 0 ? false : p.rowPanelOpen,
+      },
+    })
+  }
+  if (updates.length === 0) return
+  const byId = new Map(updates.map((u) => [u.id, u]))
+  await OBR.scene.items.updateItems(updates.map((u) => u.id), (drafts) => {
+    for (const d of drafts) {
+      const u = byId.get(d.id)
+      if (!u) continue
+      const m = d.metadata[TRACKER_ITEM_META_KEY]
+      if (m) m.phases = normalizePhases(u.phases)
     }
   })
 }

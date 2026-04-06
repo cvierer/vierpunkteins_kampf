@@ -406,6 +406,14 @@ body {
   min-width: 0;
 }
 
+.init-col-btn--zao {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.22rem;
+}
+
 .init-row-phase-plus,
 .init-row-phase-minus {
   flex-shrink: 0;
@@ -482,6 +490,42 @@ body {
   outline-offset: 1px;
 }
 
+.init-row-zao-padlock {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 1.22rem;
+  height: 1.22rem;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--color-accent);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.init-row-zao-padlock:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.init-row-zao-padlock:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.55);
+  outline-offset: 1px;
+}
+
+.init-row-zao-padlock__icon {
+  display: block;
+  width: 0.78rem;
+  height: 0.78rem;
+}
+
 .init-phase-gutter {
   position: relative;
   align-self: stretch;
@@ -544,6 +588,7 @@ body {
 }
 
 .init-row-main--phase-zao {
+  --init-col-btn: calc(2 * 1.22rem + 0.22rem);
   grid-template-columns:
     var(--init-col-btn) minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
 }
@@ -557,14 +602,6 @@ body {
   align-items: center;
   gap: 0.32rem;
   min-width: 0;
-}
-
-.init-phase-zao-dash {
-  flex-shrink: 0;
-  color: var(--color-ink-muted);
-  font-size: 0.95rem;
-  line-height: 1;
-  user-select: none;
 }
 
 .init-phase-zao-ini-label {
@@ -787,6 +824,17 @@ body {
   .init-row-zao-remove:hover {
     border-color: rgba(122, 46, 46, 0.5);
     background: rgba(122, 46, 46, 0.12);
+  }
+
+  .init-row-zao-padlock {
+    border-color: rgba(139, 74, 28, 0.4);
+    background: rgba(139, 74, 28, 0.1);
+    color: var(--color-accent);
+  }
+
+  .init-row-zao-padlock:hover {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
   }
 
   .btn {

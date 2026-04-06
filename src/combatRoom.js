@@ -1,4 +1,5 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { clearEphemeralExtraIniRows } from './phaseLinks.js'
 import { collectSortedParticipants } from './participants.js'
 import {
   compareInitiativeRowsWithTieOrder,
@@ -201,6 +202,7 @@ export async function initCombatRoom() {
 }
 
 export async function patchCombat(partial) {
+  const prevRound = cache.round
   const merged = { ...cache, ...partial }
   if (
     partial.currentPhaseLinkId === undefined &&
@@ -212,4 +214,7 @@ export async function patchCombat(partial) {
   const next = normalize(merged)
   await OBR.room.setMetadata({ [COMBAT_KEY]: next })
   await pullFromRoom()
+  if (next.started && next.round > prevRound) {
+    await clearEphemeralExtraIniRows()
+  }
 }
