@@ -219,6 +219,37 @@ body {
   box-sizing: border-box;
 }
 
+.kampf-round-intro-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  margin: 0 0 0.35rem;
+  padding: 0.4rem 0.55rem;
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  border: 1px solid rgba(201, 162, 39, 0.42);
+  background: rgba(201, 162, 39, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.kampf-round-intro-banner[hidden] {
+  display: none !important;
+}
+
+.kampf-round-intro-banner__text {
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(230, 205, 130, 0.95);
+  line-height: 1.2;
+  text-align: center;
+}
+
 .init-ini-swap-overlay {
   position: absolute;
   inset: 0;

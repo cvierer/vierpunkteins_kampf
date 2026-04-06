@@ -22,12 +22,29 @@ function defaultCombat() {
     round: 1,
     currentItemId: null,
     currentPhaseLinkId: null,
+    roundIntroPending: false,
+    roundIntroPrevRound: null,
+    roundIntroPrevItemId: null,
+    roundIntroPrevPhaseLinkId: null,
   }
 }
+
+/** Felder zurücksetzen, wenn Runden-Zwischenbildschirm nicht aktiv sein soll. */
+export const RESET_ROUND_INTRO = Object.freeze({
+  roundIntroPending: false,
+  roundIntroPrevRound: null,
+  roundIntroPrevItemId: null,
+  roundIntroPrevPhaseLinkId: null,
+})
 
 function normalize(raw) {
   const d = defaultCombat()
   if (!raw || typeof raw !== 'object') return d
+  const pr =
+    typeof raw.roundIntroPrevRound === 'number' &&
+    Number.isFinite(raw.roundIntroPrevRound)
+      ? Math.max(1, Math.floor(raw.roundIntroPrevRound))
+      : null
   return {
     started: Boolean(raw.started),
     round: Math.max(1, Math.floor(Number(raw.round)) || 1),
@@ -36,6 +53,16 @@ function normalize(raw) {
     currentPhaseLinkId:
       typeof raw.currentPhaseLinkId === 'string'
         ? raw.currentPhaseLinkId
+        : null,
+    roundIntroPending: Boolean(raw.roundIntroPending),
+    roundIntroPrevRound: pr,
+    roundIntroPrevItemId:
+      typeof raw.roundIntroPrevItemId === 'string'
+        ? raw.roundIntroPrevItemId
+        : null,
+    roundIntroPrevPhaseLinkId:
+      typeof raw.roundIntroPrevPhaseLinkId === 'string'
+        ? raw.roundIntroPrevPhaseLinkId
         : null,
   }
 }
@@ -103,7 +130,11 @@ async function pullFromRoom() {
     next.started === cache.started &&
     next.round === cache.round &&
     next.currentItemId === cache.currentItemId &&
-    next.currentPhaseLinkId === cache.currentPhaseLinkId
+    next.currentPhaseLinkId === cache.currentPhaseLinkId &&
+    next.roundIntroPending === cache.roundIntroPending &&
+    next.roundIntroPrevRound === cache.roundIntroPrevRound &&
+    next.roundIntroPrevItemId === cache.roundIntroPrevItemId &&
+    next.roundIntroPrevPhaseLinkId === cache.roundIntroPrevPhaseLinkId
   if (same) return
   cache = next
   notify()

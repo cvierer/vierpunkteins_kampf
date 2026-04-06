@@ -12,6 +12,7 @@ import {
   onIniTieOrderChange,
   patchCombat,
   reorderIniTieToken,
+  RESET_ROUND_INTRO,
   swapAdjacentIniTiePair,
 } from './combatRoom.js'
 import { setTrackedParticipantIds } from './listState.js'
@@ -385,6 +386,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
 
+  const roundIntroBanner = document.querySelector('[data-kampf-round-intro]')
+  const roundIntroLabel = document.querySelector('[data-kampf-round-intro-label]')
+
   /** Enthält `ul` + Swap-Overlay, scrollt gemeinsam mit `.initiative-list-scroll`. */
   const listContentRoot = element.parentElement
   const listScrollEl = listContentRoot?.parentElement ?? null
@@ -657,6 +661,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     if (isCombatNavMutationActive()) return
     const c = getCombat()
     if (!c.started) return
+    if (c.roundIntroPending) return
     const steps = buildCombatTurnSteps(rows, items, getIniTieOrder())
     if (steps.length === 0) {
       await patchCombat({
@@ -664,6 +669,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         currentItemId: null,
         currentPhaseLinkId: null,
         round: 1,
+        ...RESET_ROUND_INTRO,
       })
       return
     }
@@ -705,11 +711,23 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     void reconcileCombat(tokenRows, items)
 
     const combat = getCombat()
+    const introActive = Boolean(combat.started && combat.roundIntroPending)
+    if (roundIntroBanner && roundIntroLabel) {
+      roundIntroBanner.hidden = !introActive
+      roundIntroLabel.textContent = introActive
+        ? `Kampfrunde ${combat.round}`
+        : ''
+    }
     const activeId =
-      combat.started && combat.currentItemId ? combat.currentItemId : null
-    const activePhaseLinkId = combat.started
-      ? combat.currentPhaseLinkId
-      : null
+      combat.started &&
+      combat.currentItemId &&
+      !combat.roundIntroPending
+        ? combat.currentItemId
+        : null
+    const activePhaseLinkId =
+      combat.started && !combat.roundIntroPending
+        ? combat.currentPhaseLinkId
+        : null
 
     const merged = buildMergedDisplayRows(tokenRows, items, getIniTieOrder())
     const swapLowerByUpper = new Map()
@@ -1274,7 +1292,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         lastTurnScrollKey = ''
         return
       }
-      const turnKey = `${cNow.currentItemId ?? ''}\0${cNow.currentPhaseLinkId ?? ''}\0${cNow.round}`
+      const turnKey = `${cNow.roundIntroPending ? 'i' : 'z'}\0${cNow.currentItemId ?? ''}\0${cNow.currentPhaseLinkId ?? ''}\0${cNow.round}`
       if (turnKey === lastTurnScrollKey) return
       lastTurnScrollKey = turnKey
       const active = element.querySelector('li.init-row--active')

@@ -10,6 +10,7 @@ import {
   getIniTieOrder,
   onCombatChange,
   patchCombat,
+  RESET_ROUND_INTRO,
 } from './combatRoom.js'
 import { getTrackedParticipantIds } from './listState.js'
 
@@ -59,6 +60,12 @@ export async function setupCombatControls(root) {
         : 'Kampfrunde —'
     }
 
+    if (btnNext) {
+      btnNext.title = c.started && c.roundIntroPending
+        ? 'Ersten Zug der neuen Kampfrunde setzen (höchste INI)'
+        : ''
+    }
+
     const canNav = isGm && c.started && ids.length > 0
     setGmDisabled(btnToggle, !isGm || (!c.started && ids.length === 0))
     setGmDisabled(btnPrev, !canNav)
@@ -73,6 +80,7 @@ export async function setupCombatControls(root) {
         round: 1,
         currentItemId: null,
         currentPhaseLinkId: null,
+        ...RESET_ROUND_INTRO,
       })
       return
     }
@@ -81,29 +89,68 @@ export async function setupCombatControls(root) {
     await patchCombat({
       started: true,
       round: 1,
+      ...RESET_ROUND_INTRO,
       ...combatPatchForStep(steps[0]),
     })
   }
 
   const applyCombatNext = async () => {
+    const c0 = getCombat()
+    if (c0.started && c0.roundIntroPending) {
+      const stepsCommit = await combatTurnSteps()
+      if (stepsCommit.length === 0) {
+        await patchCombat({
+          started: false,
+          round: 1,
+          currentItemId: null,
+          currentPhaseLinkId: null,
+          ...RESET_ROUND_INTRO,
+        })
+        return
+      }
+      await patchCombat({
+        ...RESET_ROUND_INTRO,
+        ...combatPatchForStep(stepsCommit[0]),
+      })
+      return
+    }
+
     const steps = await combatTurnSteps()
     const c = getCombat()
     if (steps.length === 0) {
       await patchCombat({
         started: false,
+        round: 1,
         currentItemId: null,
         currentPhaseLinkId: null,
-        round: 1,
+        ...RESET_ROUND_INTRO,
       })
       return
     }
     const idx = findCombatStepIndex(steps, c)
     if (idx < 0) {
-      await patchCombat({ ...combatPatchForStep(steps[0]) })
+      await patchCombat({
+        ...RESET_ROUND_INTRO,
+        ...combatPatchForStep(steps[0]),
+      })
       return
     }
     const nextIdx = (idx + 1) % steps.length
     const round = nextIdx === 0 ? c.round + 1 : c.round
+
+    if (nextIdx === 0) {
+      await patchCombat({
+        round,
+        roundIntroPending: true,
+        currentItemId: null,
+        currentPhaseLinkId: null,
+        roundIntroPrevRound: c.round,
+        roundIntroPrevItemId: c.currentItemId,
+        roundIntroPrevPhaseLinkId: c.currentPhaseLinkId,
+      })
+      return
+    }
+
     await patchCombat({
       ...combatPatchForStep(steps[nextIdx]),
       round,
@@ -111,20 +158,38 @@ export async function setupCombatControls(root) {
   }
 
   const applyCombatPrev = async () => {
+    const cIntro = getCombat()
+    if (cIntro.started && cIntro.roundIntroPending) {
+      await patchCombat({
+        roundIntroPending: false,
+        round: cIntro.roundIntroPrevRound ?? cIntro.round,
+        currentItemId: cIntro.roundIntroPrevItemId,
+        currentPhaseLinkId: cIntro.roundIntroPrevPhaseLinkId,
+        roundIntroPrevRound: null,
+        roundIntroPrevItemId: null,
+        roundIntroPrevPhaseLinkId: null,
+      })
+      return
+    }
+
     const steps = await combatTurnSteps()
     const c = getCombat()
     if (steps.length === 0) {
       await patchCombat({
         started: false,
+        round: 1,
         currentItemId: null,
         currentPhaseLinkId: null,
-        round: 1,
+        ...RESET_ROUND_INTRO,
       })
       return
     }
     const idx = findCombatStepIndex(steps, c)
     if (idx < 0) {
-      await patchCombat({ ...combatPatchForStep(steps[0]) })
+      await patchCombat({
+        ...RESET_ROUND_INTRO,
+        ...combatPatchForStep(steps[0]),
+      })
       return
     }
     const prevIdx = (idx - 1 + steps.length) % steps.length
