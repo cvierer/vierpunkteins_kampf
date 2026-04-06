@@ -126,20 +126,8 @@ body {
 }
 
 .btn--nav {
-  min-width: 2rem;
-  padding: 0.28rem 0.35rem;
-  font-family: var(--font-body);
-  font-size: 1rem;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  opacity: 0.72;
-  border-color: rgba(127, 127, 127, 0.28);
-  background: transparent;
-}
-
-.btn--nav:hover:not(:disabled) {
-  opacity: 1;
+  min-width: 4.9rem;
+  text-align: center;
 }
 
 .kampf-list-section {

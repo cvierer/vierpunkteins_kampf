@@ -13,9 +13,9 @@ document.querySelector('#app').innerHTML = `
       <div class="combat-toolbar">
         <button type="button" class="btn btn--primary" data-combat-toggle>Start</button>
         <div class="combat-nav" role="group" aria-label="Zug und Runde">
-          <button type="button" class="btn btn--nav" data-combat-prev aria-label="Vorheriger Zug">&lt;</button>
+          <button type="button" class="btn btn--nav" data-combat-prev aria-label="Vorheriger Zug">Zurück</button>
           <span class="combat-round-label" data-combat-round>Kampfrunde —</span>
-          <button type="button" class="btn btn--nav" data-combat-next aria-label="Nächster Zug">&gt;</button>
+          <button type="button" class="btn btn--nav" data-combat-next aria-label="Nächster Zug">Weiter</button>
         </div>
       </div>
     </div>
