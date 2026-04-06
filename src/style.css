@@ -377,6 +377,16 @@ body {
     border-color 0.15s ease;
 }
 
+.init-row--locked input[readonly] {
+  opacity: 0.78;
+  cursor: default;
+}
+
+.init-row--locked button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .init-row-main {
   display: grid;
   grid-template-columns:

@@ -1,4 +1,5 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { isGmSync } from './editAccess.js'
 import {
   compareInitiativeRows,
   compareInitiativeRowsWithTieOrder,
@@ -70,6 +71,7 @@ export async function swapAdjacentZaoRootKeys(
   items,
   tieOrderIds
 ) {
+  if (!isGmSync()) return
   const tokenRows = collectSortedParticipants(items, tieOrderIds)
   const merged = buildMergedDisplayRows(tokenRows, items, tieOrderIds)
   const zaoIdx = (k) =>

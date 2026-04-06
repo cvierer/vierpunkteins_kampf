@@ -1,4 +1,5 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { isGmSync } from './editAccess.js'
 import {
   clearEphemeralExtraIniRows,
   pullZaoRootTieOrderFromRoom,
@@ -201,6 +202,7 @@ export function computeValidIniTieInsertSlots(dragId, items) {
  * gleiche INI = manuelle Reihenfolge über Raum-Metadaten).
  */
 export async function reorderIniTieToken(dragId, insertBeforeIndex, items) {
+  if (!isGmSync()) return
   const sortedRows = collectSortedParticipants(items, tieOrderCache)
   const sortedIds = sortedRows.map((r) => r.id)
   if (!sortedIds.includes(dragId)) return
@@ -221,6 +223,7 @@ export async function reorderIniTieToken(dragId, insertBeforeIndex, items) {
  * `upperId` muss der obere (zuerst agierende) Eintrag sein, `lowerId` der nächste.
  */
 export async function swapAdjacentIniTiePair(upperId, lowerId, items) {
+  if (!isGmSync()) return
   const sortedRows = collectSortedParticipants(items, tieOrderCache)
   const sortedIds = sortedRows.map((r) => r.id)
   const i = sortedIds.indexOf(upperId)

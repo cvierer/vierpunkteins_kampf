@@ -1,5 +1,6 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { assetUrl } from './assetUrl.js'
+import { canEditSceneItem, isEditAccessReady } from './editAccess.js'
 
 const ID = 'vierpunkteins_kampf.tracker'
 
@@ -26,11 +27,14 @@ export function setupContextMenu() {
       },
     ],
     onClick(context) {
-      const addToInitiative = context.items.every(
+      if (!isEditAccessReady()) return
+      const allowed = context.items.filter(canEditSceneItem)
+      if (allowed.length === 0) return
+      const addToInitiative = allowed.every(
         (item) => item.metadata[`${ID}/metadata`] === undefined
       )
       if (addToInitiative) {
-        OBR.scene.items.updateItems(context.items, (items) => {
+        OBR.scene.items.updateItems(allowed, (items) => {
           for (const item of items) {
             item.metadata[`${ID}/metadata`] = {
               initiative: '',
@@ -38,7 +42,7 @@ export function setupContextMenu() {
           }
         })
       } else {
-        OBR.scene.items.updateItems(context.items, (items) => {
+        OBR.scene.items.updateItems(allowed, (items) => {
           for (const item of items) {
             delete item.metadata[`${ID}/metadata`]
           }

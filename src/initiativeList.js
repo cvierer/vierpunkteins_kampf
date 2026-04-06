@@ -1,4 +1,5 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { canEditSceneItem, isGmSync } from './editAccess.js'
 import {
   collectSortedParticipants,
   TRACKER_ITEM_META_KEY,
@@ -385,16 +386,6 @@ function layoutIniSwapBetween(ul, host, overlay) {
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
-  let canWriteCombat = false
-
-  void OBR.player
-    .getRole()
-    .then((role) => {
-      canWriteCombat = role === 'GM'
-    })
-    .catch(() => {
-      canWriteCombat = false
-    })
 
   const roundIntroBoard = document.querySelector('[data-kampf-round-intro]')
   const roundIntroLabel = document.querySelector('[data-kampf-round-intro-label]')
@@ -542,6 +533,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     if (!dragId || !listContentRoot) return
     void OBR.scene.items.getItems().then((fresh) => {
       const phaseRef = parsePhaseDrag(dragId)
+      if (phaseRef) {
+        const ownerIt = fresh.find((i) => i.id === phaseRef.ownerId)
+        if (!canEditSceneItem(ownerIt)) return
+      } else {
+        const tokenIt = fresh.find((i) => i.id === dragId)
+        if (!canEditSceneItem(tokenIt)) return
+      }
       const tokenElsFresh = [
         ...element.querySelectorAll('li.init-row:not(.init-row--phase)'),
       ]
@@ -668,7 +666,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   }
 
   const reconcileCombat = async (rows, items) => {
-    if (!canWriteCombat) return
+    if (!isGmSync()) return
     if (isCombatNavMutationActive()) return
     const c = getCombat()
     if (!c.started) return
@@ -782,18 +780,19 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     for (const entry of merged) {
       if (entry.kind === 'token') {
         const row = entry.row
-        const meta = items.find((i) => i.id === row.id)?.metadata?.[
-          TRACKER_ITEM_META_KEY
-        ]
+        const tokenSceneItem = items.find((i) => i.id === row.id)
+        const canEdit = canEditSceneItem(tokenSceneItem)
+        const meta = tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
         const phases = normalizePhases(meta?.phases)
 
         const li = document.createElement('li')
         li.className = 'init-row init-row--token-draggable'
+        if (!canEdit) li.classList.add('init-row--locked')
         if (row.id === activeId && !activePhaseLinkId) {
           li.classList.add('init-row--active')
         }
         li.dataset.itemId = row.id
-        li.draggable = true
+        li.draggable = canEdit
         li.title =
           'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
         li.addEventListener('dragstart', (e) => {
@@ -872,8 +871,14 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         phasePlus.addEventListener('click', (e) => {
           e.preventDefault()
           e.stopPropagation()
+          if (!canEdit) return
           void onNamePhasePlusClick(row.id, { shiftKey: e.shiftKey }, row.initiative)
         })
+        phasePlus.disabled = !canEdit
+        if (!canEdit) {
+          phasePlus.title =
+            'Nur Spielleitung oder Besitzer dieses Tokens (Z.A. / Phasen)'
+        }
 
         plusAnchor.appendChild(phasePlus)
         if (rootCount > 0) {
@@ -912,8 +917,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         input.spellcheck = false
         input.value = row.initiative
         input.setAttribute('aria-label', 'INI')
+        input.readOnly = !canEdit
+        if (!canEdit) {
+          input.title = 'Nur Besitzer dieses Tokens oder Spielleitung'
+        }
 
         const commit = () => {
+          if (!canEdit) return
           const next = input.value.trim()
           if (next === row.initiative) return
           restoreFocusItemId = row.id
@@ -940,12 +950,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         frag.appendChild(li)
       } else {
         const { ownerId, ownerName, ownerIniStr, link, hookIni } = entry
+        const ownerSceneItem = items.find((i) => i.id === ownerId)
+        const canEdit = canEditSceneItem(ownerSceneItem)
         const isZaoRoot = link.parentId === null
 
         const li = document.createElement('li')
         li.className =
           'init-row init-row--phase' +
           (isZaoRoot ? ' init-row--phase-zao init-row--phase-draggable' : '')
+        if (!canEdit) li.classList.add('init-row--locked')
         li.dataset.phaseOwnerId = ownerId
         li.dataset.phaseLinkId = link.id
         li.dataset.dragKnotIni = formatHookDisplay(hookIni)
@@ -974,8 +987,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           zaoRemove.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
+            if (!canEdit) return
             void removePhaseLink(ownerId, link.id)
           })
+          zaoRemove.disabled = !canEdit
           const padlockBtn = document.createElement('button')
           padlockBtn.type = 'button'
           padlockBtn.className = 'init-row-zao-padlock'
@@ -993,8 +1008,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           padlockBtn.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
+            if (!canEdit) return
             void togglePhaseLinkExpiresNextRound(ownerId, link.id)
           })
+          padlockBtn.disabled = !canEdit
           btnCol.append(zaoRemove, padlockBtn)
         } else {
           const phaseMinus = document.createElement('button')
@@ -1006,8 +1023,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           phaseMinus.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
+            if (!canEdit) return
             void removePhaseLink(ownerId, link.id)
           })
+          phaseMinus.disabled = !canEdit
 
           const chainPlus = document.createElement('button')
           chainPlus.type = 'button'
@@ -1018,8 +1037,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           chainPlus.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
+            if (!canEdit) return
             void addPhaseChildLink(ownerId, link.id, ownerIniStr)
           })
+          chainPlus.disabled = !canEdit
 
           btnCol.append(phaseMinus, chainPlus)
         }
@@ -1032,7 +1053,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           : 'phase-offset-input'
         offsetInput.value = String(link.offset)
         offsetInput.setAttribute('aria-label', 'Phasen später')
-        offsetInput.title = 'INI-Phasen später (4.1)'
+        offsetInput.title = canEdit
+          ? 'INI-Phasen später (4.1)'
+          : 'Nur Besitzer dieses Tokens oder Spielleitung'
+        offsetInput.readOnly = !canEdit
 
         let phaseZaoMeta = null
         let phaseGutter = null
@@ -1080,6 +1104,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniInput.spellcheck = false
         iniInput.value = formatHookDisplay(hookIni)
         iniInput.setAttribute('aria-label', 'Ziel-INI')
+        iniInput.readOnly = !canEdit
+        if (!canEdit) {
+          iniInput.title = 'Nur Besitzer dieses Tokens oder Spielleitung'
+        }
 
         const runRemoveAfterIniError = async () => {
           iniInput.value = 'INI < 0'
@@ -1095,6 +1123,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           }
         })
         iniInput.addEventListener('blur', () => {
+          if (!canEdit) return
           void OBR.scene.items.getItems().then((freshItems) => {
             const ownerRow = collectSortedParticipants(
               freshItems,
@@ -1136,6 +1165,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           }
         })
         offsetInput.addEventListener('blur', () => {
+          if (!canEdit) return
           void OBR.scene.items.getItems().then((freshItems) => {
             const ownerRow = collectSortedParticipants(
               freshItems,
@@ -1176,7 +1206,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         if (isZaoRoot) {
           const phasePayload = encodePhaseDrag(ownerId, link.id)
-          li.draggable = true
+          li.draggable = canEdit
           li.title =
             'Z.A. ziehen: INI wie bei Hauptzeilen setzen (Loslassen / Mausrad ±1). Nicht von ×, Schloss oder Eingabefeldern ziehen.'
           li.addEventListener('dragstart', (e) => {
@@ -1237,7 +1267,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     element.replaceChildren(frag)
 
     swapOverlay.replaceChildren()
-    for (const [upperId, lowerId] of swapLowerByUpper.entries()) {
+    if (isGmSync()) {
+      for (const [upperId, lowerId] of swapLowerByUpper.entries()) {
       const swapBtn = document.createElement('button')
       swapBtn.type = 'button'
       swapBtn.className = 'init-row-ini-swap'
@@ -1265,10 +1296,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           void swapAdjacentIniTiePair(upperId, lowerId, fresh)
         })
       })
-      swapOverlay.appendChild(swapBtn)
-    }
+        swapOverlay.appendChild(swapBtn)
+      }
 
-    for (const [upperKey, lowerKey] of zaoSwapLowerByUpper.entries()) {
+      for (const [upperKey, lowerKey] of zaoSwapLowerByUpper.entries()) {
       const swapBtn = document.createElement('button')
       swapBtn.type = 'button'
       swapBtn.className = 'init-row-ini-swap'
@@ -1301,7 +1332,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           )
         })
       })
-      swapOverlay.appendChild(swapBtn)
+        swapOverlay.appendChild(swapBtn)
+      }
     }
 
     const scrollActiveRowIfTurnChanged = () => {
@@ -1360,8 +1392,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   })
   onIniTieOrderChange(() => renderList(lastItems))
   const offZaoTie = onZaoRootTieOrderChange(() => renderList(lastItems))
+  const offPlayer = OBR.player.onChange(() => {
+    void OBR.scene.items.getItems().then(renderList)
+  })
 
   return () => {
+    offPlayer()
     offZaoTie()
     if (listScrollEl) {
       listScrollEl.removeEventListener('scroll', runSwapLayout, { passive: true })

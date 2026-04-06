@@ -1,6 +1,7 @@
 import './style.css'
 import { BUILD_VERSION } from './buildVersion.js'
 import OBR from '@owlbear-rodeo/sdk'
+import { initEditAccess } from './editAccess.js'
 import { setupContextMenu } from './contextMenu.js'
 import { setupInitiativeList } from './initiativeList.js'
 import { initCombatRoom } from './combatRoom.js'
@@ -72,6 +73,7 @@ if (buildVerEl) {
 if (OBR.isAvailable) {
   OBR.onReady(async () => {
     await initCombatRoom()
+    await initEditAccess()
     const combatRoot = document.querySelector('[data-combat-root]')
     const { refreshBar } = await setupCombatControls(combatRoot)
     setupTurnMarkerSync()
