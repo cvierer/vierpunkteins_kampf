@@ -1,0 +1,15 @@
+---
+description: After code changes in this repo, commit and push to GitHub (origin/main).
+alwaysApply: true
+---
+
+# Git: direkt nach Änderungen pushen
+
+Wenn du in diesem Repository **Code oder Konfiguration** geändert hast und die Aufgabe abgeschlossen ist:
+
+1. `git status` prüfen.
+2. Sinnvolle Dateien stagen (`git add`), **keine** Secrets oder Build-Artefakte committen.
+3. Einen klaren Commit mit kurzer englischer oder deutscher Nachricht erstellen.
+4. **`git push origin main`** ausführen (oder den aktuellen Branch zum passenden Upstream pushen).
+
+Bei Fehlern (Konflikte, abgelehntes Push) nicht aufgeben: kurz melden und beheben bzw. den Nutzer informieren.
