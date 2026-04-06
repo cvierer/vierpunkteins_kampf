@@ -146,9 +146,9 @@ body {
   --init-col-gutter: 0.85rem;
   --init-col-ini: calc(4.75rem * 2 / 3);
   --init-col-swap: 1.32rem;
-  --init-grid-gap: 0.5rem;
-  /* Abstand zwischen allen Zeilen = äußere Höhe des Tausch-Buttons (box-sizing: border-box) */
-  --init-list-row-gap: 1.05rem;
+  --init-grid-gap: 0.42rem;
+  /* Flex-Gap zwischen Zeilen: einheitlich, unabhängig von aktivem Highlight */
+  --init-list-row-gap: 0.98rem;
 }
 
 .kampf-list-head {
@@ -335,7 +335,7 @@ body {
   align-items: center;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.35rem 0;
+  padding: 0.2rem 0;
   border-radius: calc(var(--radius) - 1px);
   border: 1px solid transparent;
 }
@@ -565,9 +565,11 @@ body {
   box-shadow: none;
 }
 
-/* Aktive Fläche wie im Screendesign: nur über die eigentliche Zeile,
-   nicht unter den schwebenden Tausch-Button hinein. */
+/* Aktive Fläche: niedriger als die Zeile; Abstand zur Tausch-Spalte im Flex-Gap */
 .init-row--active .init-row-main {
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  margin-bottom: 0.14rem;
   background: var(--color-active);
   border-color: var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);

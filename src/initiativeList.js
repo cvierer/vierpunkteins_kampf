@@ -251,7 +251,7 @@ function insertSlotToLineTopPx(slot, tokenEls, listHost, listUl) {
   return Math.max(pad, (rects[slot - 1].bottom + rects[slot].top) / 2 - hr.top)
 }
 
-/** Tausch-Button exakt in der Listenlücke (gap = --init-list-row-gap), X wie Swap-Spalte des oberen Tokens. */
+/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (einheitlich für alle Zeilen). */
 function layoutIniSwapBetween(ul, host, overlay) {
   if (!host || !overlay) return
   const hostR = host.getBoundingClientRect()
@@ -271,10 +271,8 @@ function layoutIniSwapBetween(ul, host, overlay) {
       continue
     }
     btn.style.display = ''
-    const prevMain = prev.querySelector('.init-row-main')
-    const lowerMain = lowerLi.querySelector('.init-row-main')
-    const gapTop = (prevMain ?? prev).getBoundingClientRect().bottom
-    const gapBot = (lowerMain ?? lowerLi).getBoundingClientRect().top
+    const gapTop = prev.getBoundingClientRect().bottom
+    const gapBot = lowerLi.getBoundingClientRect().top
     const h = Math.max(0, gapBot - gapTop)
     if (h < 1) {
       btn.style.display = 'none'
