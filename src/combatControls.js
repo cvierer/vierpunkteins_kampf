@@ -19,6 +19,13 @@ async function combatTurnSteps() {
   return buildCombatTurnSteps(rows, items, getIniTieOrder())
 }
 
+function isTypingTarget(el) {
+  if (!el || !(el instanceof Element)) return false
+  return Boolean(
+    el.closest('input, textarea, select, [contenteditable="true"]')
+  )
+}
+
 export async function setupCombatControls(root) {
   if (!root) {
     return { refreshBar: () => {}, cleanup: () => {} }
@@ -58,7 +65,7 @@ export async function setupCombatControls(root) {
     setGmDisabled(btnNext, !canNav)
   }
 
-  btnToggle?.addEventListener('click', async () => {
+  const applyCombatStartStop = async () => {
     const c = getCombat()
     if (c.started) {
       await patchCombat({
@@ -76,9 +83,9 @@ export async function setupCombatControls(root) {
       round: 1,
       ...combatPatchForStep(steps[0]),
     })
-  })
+  }
 
-  btnNext?.addEventListener('click', async () => {
+  const applyCombatNext = async () => {
     const steps = await combatTurnSteps()
     const c = getCombat()
     if (steps.length === 0) {
@@ -98,9 +105,9 @@ export async function setupCombatControls(root) {
     const nextIdx = (idx + 1) % steps.length
     const round = nextIdx === 0 ? c.round + 1 : c.round
     await patchCombat({ ...combatPatchForStep(steps[nextIdx]), round })
-  })
+  }
 
-  btnPrev?.addEventListener('click', async () => {
+  const applyCombatPrev = async () => {
     const steps = await combatTurnSteps()
     const c = getCombat()
     if (steps.length === 0) {
@@ -123,7 +130,29 @@ export async function setupCombatControls(root) {
       round = Math.max(1, c.round - 1)
     }
     await patchCombat({ ...combatPatchForStep(steps[prevIdx]), round })
-  })
+  }
+
+  btnToggle?.addEventListener('click', () => void applyCombatStartStop())
+
+  btnNext?.addEventListener('click', () => void applyCombatNext())
+
+  btnPrev?.addEventListener('click', () => void applyCombatPrev())
+
+  const onCombatKeyDown = (e) => {
+    if (!isGm) return
+    if (isTypingTarget(e.target)) return
+    const c = getCombat()
+    const canNav = c.started && getTrackedParticipantIds().length > 0
+    if (!canNav) return
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      void applyCombatNext()
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault()
+      void applyCombatPrev()
+    }
+  }
+  document.addEventListener('keydown', onCombatKeyDown)
 
   const unsub = onCombatChange(refreshBar)
   refreshBar()
@@ -132,6 +161,7 @@ export async function setupCombatControls(root) {
     refreshBar,
     cleanup: () => {
       unsub()
+      document.removeEventListener('keydown', onCombatKeyDown)
     },
   }
 }

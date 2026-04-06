@@ -179,6 +179,13 @@ body {
   line-height: 1;
 }
 
+.kampf-col-label--za {
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0.06em;
+  box-sizing: border-box;
+}
+
 .kampf-col-label--name {
   min-width: 0;
 }

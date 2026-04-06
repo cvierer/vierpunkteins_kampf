@@ -23,7 +23,10 @@ document.querySelector('#app').innerHTML = `
   <p id="standalone-hint" class="standalone-hint" hidden></p>
   <div class="kampf-list-section">
     <div class="kampf-list-head" aria-hidden="true">
-      <span class="kampf-h-spacer" aria-hidden="true"></span>
+      <span
+        class="kampf-col-label kampf-col-label--za"
+        title="Zusätzliche Aktion"
+        >z.A.</span>
       <span class="kampf-h-spacer" aria-hidden="true"></span>
       <span class="kampf-col-label kampf-col-label--name">Name</span>
       <span class="kampf-col-label kampf-col-label--ini">INI</span>

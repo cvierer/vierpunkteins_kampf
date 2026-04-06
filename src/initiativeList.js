@@ -323,6 +323,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   let dragFloatAnchorX = 0
 
   let swapLayoutRo = null
+  /** Nur bei geändertem Zug/Runde scrollen, nicht bei jedem List-Update. */
+  let lastTurnScrollKey = ''
 
   const hideDropLine = () => {
     dropLine.classList.remove(
@@ -984,9 +986,31 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     }
 
     const runSwapLayout = () => layoutIniSwapBetween(element, listHost, swapOverlay)
+
+    const scrollActiveRowIfTurnChanged = () => {
+      const cNow = getCombat()
+      if (!cNow.started) {
+        lastTurnScrollKey = ''
+        return
+      }
+      const turnKey = `${cNow.currentItemId ?? ''}\0${cNow.currentPhaseLinkId ?? ''}\0${cNow.round}`
+      if (turnKey === lastTurnScrollKey) return
+      lastTurnScrollKey = turnKey
+      const active = element.querySelector('li.init-row--active')
+      if (!active) return
+      active.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      })
+    }
+
     requestAnimationFrame(() => {
       runSwapLayout()
-      requestAnimationFrame(runSwapLayout)
+      requestAnimationFrame(() => {
+        runSwapLayout()
+        scrollActiveRowIfTurnChanged()
+      })
     })
     if (typeof ResizeObserver !== 'undefined') {
       if (!swapLayoutRo) {
