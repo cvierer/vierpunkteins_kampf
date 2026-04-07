@@ -199,7 +199,14 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
   for (const item of trackerItems) {
     const st = getState(item)
     if (st.max <= 0 || st.rem <= 0 || st.p2Round == null || st.p2Ini == null) continue
-    if (curr.round !== st.p2Round) continue
+    if (curr.round < st.p2Round) continue
+    const thresholdUnreachable =
+      Number.isFinite(st.p2Ini) && st.p2Ini < 0
+    if (thresholdUnreachable) {
+      if (curr.round <= st.p2Round) continue
+      setState(item.id, st.max, st.rem - 1, null, null)
+      continue
+    }
     if (currCtx.activeIni == null || currCtx.activeIni > st.p2Ini) continue
     setState(item.id, st.max, st.rem - 1, null, null)
   }
