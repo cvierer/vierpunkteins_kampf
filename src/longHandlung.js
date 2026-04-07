@@ -110,7 +110,6 @@ export async function commitLhValue(itemId, text) {
   const n =
     trimmed === '' ? 0 : Math.floor(Number(trimmed.replace(',', '.')))
   if (trimmed !== '' && (!Number.isFinite(n) || n < 0)) return
-  const combat = getCombat()
   await OBR.scene.items.updateItems([itemId], (drafts) => {
     for (const d of drafts) {
       const m = d.metadata[TRACKER_ITEM_META_KEY]
@@ -122,29 +121,9 @@ export async function commitLhValue(itemId, text) {
         delete m[LH_P2_TARGET_INI]
       } else {
         m[LH_MAX] = n
-        const ownerIni = parseIni(m.initiative)
-        const applyFirstNow =
-          combat.started &&
-          !combat.roundIntroPending &&
-          combat.currentItemId === itemId &&
-          ownerIni !== null
-        if (!applyFirstNow) {
-          m[LH_REM] = n
-          delete m[LH_P2_ROUND]
-          delete m[LH_P2_TARGET_INI]
-          continue
-        }
-        const rem = n - 1
-        if (rem <= 0) {
-          m[LH_MAX] = 0
-          m[LH_REM] = 0
-          delete m[LH_P2_ROUND]
-          delete m[LH_P2_TARGET_INI]
-          continue
-        }
-        m[LH_REM] = rem
-        m[LH_P2_ROUND] = combat.round
-        m[LH_P2_TARGET_INI] = ownerIni - 8
+        m[LH_REM] = n
+        delete m[LH_P2_ROUND]
+        delete m[LH_P2_TARGET_INI]
       }
     }
   })
