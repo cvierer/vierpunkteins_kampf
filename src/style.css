@@ -665,14 +665,14 @@ body {
   padding: 0;
   border: 0;
   border-radius: 3px;
-  background: transparent;
+  background: #ffffff;
   color: #0d0d0d;
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.22rem;
   text-align: center;
-  text-shadow: 0 0 1px rgba(255, 255, 255, 0.75);
+  text-shadow: none;
   cursor: default;
 }
 
