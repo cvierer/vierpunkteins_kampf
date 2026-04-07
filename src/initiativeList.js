@@ -33,6 +33,7 @@ import {
   onNamePhasePlusClick,
   onZaoRootTieOrderChange,
   removePhaseLink,
+  ROUND_END_STEP_ID,
   sortedLinksForLayout,
   swapAdjacentZaoRootKeys,
   togglePhaseLinkExpiresNextRound,
@@ -311,7 +312,7 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
   const phaseRef = parsePhaseDrag(dragId)
   const knots = []
   for (const el of listElement.querySelectorAll(
-    'li.init-row--token-draggable, li.init-row--phase'
+    'li.init-row--token-draggable, li.init-row--phase, li.init-row--round-end'
   )) {
     const itemId = el.dataset.itemId
     const linkId = el.dataset.phaseLinkId
@@ -320,6 +321,11 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
       if (!phaseRef && itemId === dragId) continue
       const row = rowMap.get(itemId)
       const v = parseIniNumber(row?.initiative)
+      if (v === null) continue
+      const r = el.getBoundingClientRect()
+      knots.push({ y: r.top + r.height / 2, v })
+    } else if (el.classList.contains('init-row--round-end')) {
+      const v = parseIniNumber(el.dataset.dragKnotIni)
       if (v === null) continue
       const r = el.getBoundingClientRect()
       knots.push({ y: r.top + r.height / 2, v })
@@ -1178,6 +1184,27 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapCol.className = 'init-col-swap'
         main.append(btnCol, gutter, nameCol, input, swapCol)
         li.appendChild(main)
+        frag.appendChild(li)
+      } else if (entry.kind === 'roundEnd') {
+        const li = document.createElement('li')
+        li.className = 'init-row init-row--round-end'
+        li.dataset.dragKnotIni = '0'
+        if (activeId === ROUND_END_STEP_ID && !activePhaseLinkId) {
+          li.classList.add('init-row--active')
+        }
+        const bar = document.createElement('div')
+        bar.className = 'init-row-round-end-bar'
+        const ruleL = document.createElement('span')
+        ruleL.className = 'init-row-round-end-rule'
+        ruleL.setAttribute('aria-hidden', 'true')
+        const label = document.createElement('span')
+        label.className = 'init-row-round-end-label'
+        label.textContent = `Ende der Kampfrunde ${combat.round}`
+        const ruleR = document.createElement('span')
+        ruleR.className = 'init-row-round-end-rule'
+        ruleR.setAttribute('aria-hidden', 'true')
+        bar.append(ruleL, label, ruleR)
+        li.appendChild(bar)
         frag.appendChild(li)
       } else {
         const { ownerId, ownerName, ownerIniStr, link, hookIni } = entry

@@ -2,6 +2,7 @@ import OBR from '@owlbear-rodeo/sdk'
 import { isGmSync } from './editAccess.js'
 import { getCombat } from './combatRoom.js'
 import {
+  buildCombatTurnSteps,
   buildMergedDisplayRows,
   findCombatStepIndex,
 } from './phaseLinks.js'
@@ -46,11 +47,7 @@ function parseIni(value) {
 
 function getCurrentStepContext(rows, items, tieOrderIds, combat) {
   const merged = buildMergedDisplayRows(rows, items, tieOrderIds)
-  const steps = merged.map((e) =>
-    e.kind === 'token'
-      ? { kind: 'token', id: e.row.id }
-      : { kind: 'phase', ownerId: e.ownerId, linkId: e.link.id }
-  )
+  const steps = buildCombatTurnSteps(rows, items, tieOrderIds)
   const idx = findCombatStepIndex(steps, combat)
   const ownerIniById = new Map(rows.map((r) => [r.id, parseIni(r.initiative)]))
   if (idx < 0 || idx >= merged.length) {
@@ -58,11 +55,13 @@ function getCurrentStepContext(rows, items, tieOrderIds, combat) {
   }
   const current = merged[idx]
   const activeIni =
-    current.kind === 'token'
-      ? parseIni(current.row.initiative)
-      : Number.isFinite(current.hookIni)
-        ? current.hookIni
-        : null
+    current.kind === 'roundEnd'
+      ? null
+      : current.kind === 'token'
+        ? parseIni(current.row.initiative)
+        : Number.isFinite(current.hookIni)
+          ? current.hookIni
+          : null
   return { idx, activeIni, ownerIniById }
 }
 

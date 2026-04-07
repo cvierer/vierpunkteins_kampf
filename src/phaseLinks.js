@@ -12,6 +12,9 @@ import {
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
 
+/** Synthetischer Zug „Ende der Kampfrunde“ (INI intern 0); kein Szenen-Token. */
+export const ROUND_END_STEP_ID = `${TRACKER_ID}/roundEndStep`
+
 /** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der 2.A.-Wurzeln ownerId:linkId */
 let zaoRootTieOrderByIniCache = {}
 
@@ -558,6 +561,10 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
     return compareInitiativeRows(sa, sb)
   })
 
+  if (tokenRows.length > 0) {
+    entries.push({ kind: 'roundEnd' })
+  }
+
   return entries
 }
 
@@ -569,7 +576,9 @@ export function buildCombatTurnSteps(tokenRows, items, tieOrderIds = []) {
   return buildMergedDisplayRows(tokenRows, items, tieOrderIds).map((e) =>
     e.kind === 'token'
       ? { kind: 'token', id: e.row.id }
-      : { kind: 'phase', ownerId: e.ownerId, linkId: e.link.id }
+      : e.kind === 'roundEnd'
+        ? { kind: 'roundEnd', id: ROUND_END_STEP_ID }
+        : { kind: 'phase', ownerId: e.ownerId, linkId: e.link.id }
   )
 }
 
@@ -577,14 +586,21 @@ export function combatPatchForStep(step) {
   if (step.kind === 'token') {
     return { currentItemId: step.id, currentPhaseLinkId: null }
   }
+  if (step.kind === 'roundEnd') {
+    return { currentItemId: step.id, currentPhaseLinkId: null }
+  }
   return { currentItemId: step.ownerId, currentPhaseLinkId: step.linkId }
 }
 
 export function findCombatStepIndex(steps, combat) {
   const phaseId = combat.currentPhaseLinkId
-  return steps.findIndex((s) =>
-    s.kind === 'token'
-      ? s.id === combat.currentItemId && !phaseId
-      : s.ownerId === combat.currentItemId && s.linkId === phaseId
-  )
+  return steps.findIndex((s) => {
+    if (s.kind === 'roundEnd') {
+      return s.id === combat.currentItemId && !phaseId
+    }
+    if (s.kind === 'token') {
+      return s.id === combat.currentItemId && !phaseId
+    }
+    return s.ownerId === combat.currentItemId && s.linkId === phaseId
+  })
 }

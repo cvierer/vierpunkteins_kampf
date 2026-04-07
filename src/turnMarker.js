@@ -1,5 +1,6 @@
 import OBR, { buildLabel } from '@owlbear-rodeo/sdk'
 import { getCombat, onCombatChange } from './combatRoom.js'
+import { ROUND_END_STEP_ID } from './phaseLinks.js'
 
 const TRACKER = 'vierpunkteins_kampf.tracker'
 const TURN_MARKER_META = `${TRACKER}/turnMarker`
@@ -36,7 +37,8 @@ async function applyTurnMarker() {
     if (
       !combat.started ||
       !combat.currentItemId ||
-      combat.roundIntroPending
+      combat.roundIntroPending ||
+      combat.currentItemId === ROUND_END_STEP_ID
     ) {
       if (markerIds.length > 0) {
         await OBR.scene.items.deleteItems(markerIds)
