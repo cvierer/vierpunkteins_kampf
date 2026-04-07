@@ -20,7 +20,7 @@ export async function syncActionChrome(items) {
   await OBR.action.setIcon(assetUrl('action-sword-active.svg'))
   const baseName = activeRow?.name?.trim() || 'Zug'
   const label = combat.currentPhaseLinkId
-    ? `${baseName} · Z.A.`
+    ? `${baseName} · 2. Aktionsphase`
     : baseName
   await OBR.action.setTitle(`${label} · Runde ${combat.round}`)
 }

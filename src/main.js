@@ -31,7 +31,7 @@ appRoot.innerHTML = `
         <span class="kampf-col-label kampf-col-label--counter" title="Abwehraktion">Abw.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Freie Aktion">F.A.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Längerfristige Handlung">L.H.</span>
-        <span class="kampf-col-label kampf-col-label--za" title="Zusätzliche Aktion">z.A.</span>
+        <span class="kampf-col-label kampf-col-label--za" title="2. Aktionsphase">2.A.</span>
       </div>
       <span class="kampf-h-spacer" aria-hidden="true"></span>
       <span class="kampf-col-label kampf-col-label--name">Name</span>

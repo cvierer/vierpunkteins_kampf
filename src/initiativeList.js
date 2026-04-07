@@ -100,6 +100,12 @@ function faCounterAria(v) {
   return `Freie Aktion, ${v}`
 }
 
+function actionPhaseRangeLabel(rootCount) {
+  if (rootCount <= 0) return '2. Aktionsphase'
+  if (rootCount === 1) return '2. Aktionsphase'
+  return `2.–${rootCount + 1}. Aktionsphase`
+}
+
 function appendSplitKrCounter(
   container,
   ownerItemId,
@@ -719,7 +725,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       const main = document.createElement('div')
       main.className = 'init-drag-ini-float-main'
       main.textContent = draggingPhase
-        ? `Z.A. INI ${proposedStr}`
+        ? `2.A. INI ${proposedStr}`
         : `INI ${proposedStr}`
       const mode = document.createElement('div')
       mode.className = 'init-drag-ini-float-mode'
@@ -1075,12 +1081,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         phasePlus.className = 'init-row-phase-plus init-row-phase-plus--in-slot'
         phasePlus.textContent = '+'
         phasePlus.title =
-          'INI-Phasen (4.1): öffnen / weitere Wurzel · Shift+Klick schließen'
+          '2. Aktionsphase (4.1): öffnen / weitere 2. Aktionsphase · Shift+Klick schließen'
         phasePlus.setAttribute(
           'aria-label',
           rootCount > 0
-            ? `INI-Phasen (${rootCount} zusätzliche Aktionen)`
-            : 'INI-Phasen öffnen'
+            ? actionPhaseRangeLabel(rootCount)
+            : '2. Aktionsphase öffnen'
         )
         phasePlus.addEventListener('click', (e) => {
           e.preventDefault()
@@ -1091,15 +1097,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         phasePlus.disabled = !canEdit
         if (!canEdit) {
           phasePlus.title =
-            'Nur Spielleitung oder Besitzer dieses Tokens (Z.A. / Phasen)'
+            'Nur Spielleitung oder Besitzer dieses Tokens (2. Aktionsphase / Phasen)'
         }
 
         plusAnchor.appendChild(phasePlus)
         if (rootCount > 0) {
           const countEl = document.createElement('span')
           countEl.className = 'init-phase-root-count'
-          countEl.textContent = String(rootCount)
-          countEl.title = `${rootCount} zusätzliche Aktion(en)`
+          countEl.textContent = String(rootCount + 1)
+          countEl.title = actionPhaseRangeLabel(rootCount)
           countEl.setAttribute('aria-hidden', 'true')
           plusAnchor.appendChild(countEl)
         }
@@ -1201,8 +1207,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           zaoRemove.type = 'button'
           zaoRemove.className = 'init-row-zao-remove'
           zaoRemove.textContent = '×'
-          zaoRemove.title = 'Zusätzliche Aktion entfernen'
-          zaoRemove.setAttribute('aria-label', 'Zusätzliche Aktion entfernen')
+          zaoRemove.title = '2. Aktionsphase entfernen'
+          zaoRemove.setAttribute('aria-label', '2. Aktionsphase entfernen')
           zaoRemove.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -1285,11 +1291,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           phaseZaoMeta.className = 'init-phase-zao-meta'
           const iniActLabel = document.createElement('span')
           iniActLabel.className = 'init-phase-zao-ini-label'
-          iniActLabel.textContent = 'Z.A.'
+          const ownerPhases = normalizePhases(ownerTrackerMeta?.phases)
+          const rootLinks = ownerPhases.links.filter((l) => l.parentId === null)
+          const rootIdx = rootLinks.findIndex((l) => l.id === link.id)
+          const phaseNum = rootIdx >= 0 ? rootIdx + 2 : 2
+          iniActLabel.textContent = `${phaseNum}.A.`
           const nameEl = document.createElement('span')
           nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
-          nameEl.title = `Zusätzliche Aktion · ${ownerName}`
+          nameEl.title = `${phaseNum}. Aktionsphase · ${ownerName}`
           phaseZaoMeta.append(offsetInput, iniActLabel, nameEl)
         } else {
           phaseGutter = document.createElement('div')
@@ -1302,7 +1312,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           const nameEl = document.createElement('span')
           nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
-          nameEl.title = 'Zusätzliche INI-Phase dieses Charakters'
+          nameEl.title = 'Weitere INI-Phase dieses Charakters'
           phaseNameCol.appendChild(nameEl)
         }
 
@@ -1427,7 +1437,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           const phasePayload = encodePhaseDrag(ownerId, link.id)
           li.draggable = canEdit
           li.title =
-            'Z.A. ziehen: INI wie bei Hauptzeilen setzen (Loslassen / Mausrad ±1). Nicht von ×, Schloss oder Eingabefeldern ziehen.'
+            '2.A. ziehen: INI wie bei Hauptzeilen setzen (Loslassen / Mausrad ±1). Nicht von ×, Schloss oder Eingabefeldern ziehen.'
           li.addEventListener('dragstart', (e) => {
             if (e.target.closest('button, input, textarea, select')) {
               e.preventDefault()
@@ -1533,11 +1543,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       arrDown.setAttribute('aria-hidden', 'true')
       arrDown.textContent = '↓'
       swapBtn.append(arrUp, arrDown)
-      swapBtn.title =
-        'Reihenfolge mit dem nächsten Z.A.-Eintrag tauschen (gleiche INI)'
+        swapBtn.title =
+          'Reihenfolge mit dem nächsten 2.A.-Eintrag tauschen (gleiche INI)'
       swapBtn.setAttribute(
         'aria-label',
-        'Gleiche INI: Zusätzliche Aktion mit darunterliegendem Z.A.-Eintrag tauschen'
+          'Gleiche INI: 2. Aktionsphase mit darunterliegendem 2.A.-Eintrag tauschen'
       )
       swapBtn.addEventListener('click', (e) => {
         e.preventDefault()
