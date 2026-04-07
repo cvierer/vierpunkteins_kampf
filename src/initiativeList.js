@@ -117,7 +117,8 @@ function appendSplitKrCounter(
   kind,
   value,
   canEdit,
-  labelDe
+  labelDe,
+  titleExtra = ''
 ) {
   const b = document.createElement('button')
   b.type = 'button'
@@ -131,7 +132,8 @@ function appendSplitKrCounter(
   b.append(fill, digit)
   const v = normalizeKrDigit(value)
   applyAngAbwCounterVisual(b, v)
-  b.title = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–9, 1 = nur Farbe, 2–9 Zahl)`
+  const baseTitle = `${labelDe}: Linksklick +1, Rechtsklick −1 (0–10, 1 = nur Farbe, 2–10 Zahl)`
+  b.title = titleExtra ? `${baseTitle} ${titleExtra}` : baseTitle
   b.setAttribute('aria-label', splitCounterAria(v, labelDe))
   b.disabled = !canEdit
   if (canEdit) {
@@ -162,7 +164,7 @@ function appendFaCounter(container, ownerItemId, trackerMeta, canEdit) {
   b.append(fill, digit)
   applyFaCounterVisual(b, val)
   b.title =
-    'Freie Aktion: 1 = halb (links), 2 = voll, ab 3 Zahl · Linksklick +1, Rechtsklick −1'
+    'Freie Aktion: 1 = halb (links), 2 = voll, ab 3 Zahl · Linksklick +1, Rechtsklick −1 (0–10)'
   b.setAttribute('aria-label', faCounterAria(val))
   b.disabled = !canEdit
   if (canEdit) {
@@ -204,7 +206,8 @@ function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
     'sra',
     readKrSra(trackerMeta),
     canEdit,
-    'Sonstige reguläre Aktionen'
+    'Sonstige reguläre Aktionen',
+    '— Dazu zählen: Atem Holen, Bewegen, Position, Taktik.'
   )
   appendFaCounter(container, ownerItemId, trackerMeta, canEdit)
   appendLhCell(container, ownerItemId, trackerMeta, canEdit)

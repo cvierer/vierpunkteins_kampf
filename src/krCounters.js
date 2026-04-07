@@ -10,12 +10,16 @@ export const KR_FREE_ACTION = 'krFreeAction'
 /** @deprecated Altes Feld; wird nur noch beim Lesen für Migration genutzt. */
 const LEGACY_KR_ACTION = 'krAction'
 
-/** Ziffer 0–9 aus gespeichertem Wert. */
+/** Obergrenze Ang./Abw./S.R.A./F.A. (zyklisch 10→0 bzw. 0→10). */
+export const KR_COUNTER_MAX = 10
+
+/** Ziffer 0–10 aus gespeichertem Wert. */
 export function normalizeKrDigit(raw) {
   let n = Math.floor(Number(raw))
   if (!Number.isFinite(n)) return 0
-  n %= 10
-  return n < 0 ? n + 10 : n
+  if (n < 0) n = 0
+  if (n > KR_COUNTER_MAX) n = KR_COUNTER_MAX
+  return n
 }
 
 export function readKrAng(meta) {
@@ -34,16 +38,17 @@ export function readKrSra(meta) {
 }
 
 /**
- * Links +1 (9→0), Rechts −1 (0→9).
+ * Links +1 (10→0), Rechts −1 (0→10).
  */
 export async function patchKrCounterByDelta(itemId, field, delta) {
   const inc = delta > 0
+  const mod = KR_COUNTER_MAX + 1
   await OBR.scene.items.updateItems([itemId], (drafts) => {
     for (const draft of drafts) {
       const m = draft.metadata[TRACKER_ITEM_META_KEY]
       if (!m) continue
       const cur = normalizeKrDigit(m[field])
-      m[field] = inc ? (cur + 1) % 10 : (cur + 9) % 10
+      m[field] = inc ? (cur + 1) % mod : (cur + mod - 1) % mod
     }
   })
 }
