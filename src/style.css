@@ -970,19 +970,13 @@ body {
   border-color: rgba(200, 100, 100, 0.55);
 }
 
-.init-row--token-draggable,
-.init-row--phase-zao.init-row--phase-draggable {
+.init-row-name--drag-ini {
   cursor: grab;
+  user-select: none;
 }
 
-.init-row--token-draggable:active,
-.init-row--phase-zao.init-row--phase-draggable:active {
+.init-row-name--drag-ini:active {
   cursor: grabbing;
-}
-
-.init-row--token-draggable .init-row-name,
-.init-row--phase-zao.init-row--phase-draggable .init-row-name {
-  cursor: default;
 }
 
 .init-row--token-draggable .init-row-init,
