@@ -138,8 +138,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
-  /* Ang., Abw., F.A., L.H., z.A. (+) à 1.22rem + Gaps */
-  --init-col-btn: calc(5 * 1.22rem + 4 * 0.22rem);
+  /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) à 1.22rem + Gaps */
+  --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
   --init-col-gutter: 0.72rem;
   --init-col-ini: calc(4.75rem * 2 / 3);
   --init-col-swap: 1.2rem;
@@ -491,7 +491,7 @@ body {
   gap: 0.22rem;
 }
 
-/* A., F.A., z.A.+ in einer Zeile (1.22rem hoch). */
+/* Ang., Abw., S.R.A., F.A., L.H., 2.A.+ in einer Zeile (1.22rem hoch). */
 .init-col-btn--phase-slot {
   flex-direction: row;
   align-items: center;
@@ -597,7 +597,8 @@ body {
 }
 
 .init-row-kr-counter--ang .init-row-kr-counter__fill--on,
-.init-row-kr-counter--abw .init-row-kr-counter__fill--on {
+.init-row-kr-counter--abw .init-row-kr-counter__fill--on,
+.init-row-kr-counter--sra .init-row-kr-counter__fill--on {
   left: 0;
   right: 0;
   opacity: 1;
@@ -609,6 +610,10 @@ body {
 
 .init-row-kr-counter--abw .init-row-kr-counter__fill {
   background: #1565c0;
+}
+
+.init-row-kr-counter--sra .init-row-kr-counter__fill {
+  background: #f9a825;
 }
 
 .init-row-kr-counter--fa .init-row-kr-counter__fill {
@@ -884,7 +889,7 @@ body {
 .init-row-main--phase {
   position: relative;
   --init-phase-gutter-inner: 3.28rem;
-  --init-col-btn: calc(5 * 1.22rem + 4 * 0.22rem);
+  --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
   grid-template-columns:
     var(--init-col-btn) var(--init-phase-gutter-inner) minmax(0, 1fr)
     var(--init-col-ini) var(--init-col-swap);
@@ -899,7 +904,7 @@ body {
 }
 
 .init-row-main--phase-zao {
-  --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
+  --init-col-btn: calc(7 * 1.22rem + 6 * 0.22rem);
   grid-template-columns:
     var(--init-col-btn) minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
 }
@@ -1133,6 +1138,10 @@ body {
 
   .init-row-kr-counter--abw .init-row-kr-counter__fill {
     background: #0d47a1;
+  }
+
+  .init-row-kr-counter--sra .init-row-kr-counter__fill {
+    background: #f57f17;
   }
 
   .init-row-kr-counter--fa .init-row-kr-counter__fill {

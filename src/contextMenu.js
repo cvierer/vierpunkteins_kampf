@@ -40,6 +40,7 @@ export function setupContextMenu() {
               initiative: '',
               krAng: 0,
               krAbw: 0,
+              krSra: 0,
               krFreeAction: 0,
               lhMax: 0,
               lhRemaining: 0,

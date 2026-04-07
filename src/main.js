@@ -29,6 +29,7 @@ appRoot.innerHTML = `
       <div class="kampf-col-za-group">
         <span class="kampf-col-label kampf-col-label--counter" title="Angriffsaktion">Ang.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Abwehraktion">Abw.</span>
+        <span class="kampf-col-label kampf-col-label--counter" title="Sonstige reguläre Aktionen (Atem holen, Bewegen, Position, Taktik)">S.R.A.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Freie Aktion">F.A.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Längerfristige Handlung">L.H.</span>
         <span class="kampf-col-label kampf-col-label--za" title="2. Aktionsphase">2.A.</span>

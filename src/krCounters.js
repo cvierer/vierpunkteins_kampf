@@ -3,6 +3,8 @@ import { TRACKER_ITEM_META_KEY } from './participants.js'
 
 export const KR_ANG = 'krAng'
 export const KR_ABW = 'krAbw'
+/** Sonstige reguläre Aktionen (z. B. Atem holen, Bewegen, Position, Taktik) */
+export const KR_SRA = 'krSra'
 export const KR_FREE_ACTION = 'krFreeAction'
 
 /** @deprecated Altes Feld; wird nur noch beim Lesen für Migration genutzt. */
@@ -27,6 +29,10 @@ export function readKrAbw(meta) {
   return normalizeKrDigit(meta?.[KR_ABW])
 }
 
+export function readKrSra(meta) {
+  return normalizeKrDigit(meta?.[KR_SRA])
+}
+
 /**
  * Links +1 (9→0), Rechts −1 (0→9).
  */
@@ -42,7 +48,7 @@ export async function patchKrCounterByDelta(itemId, field, delta) {
   })
 }
 
-/** Alle Kampfteilnehmer: Ang./Abw./F.A. auf 0 (neue Kampfrunde / Kampfstart). */
+/** Alle Kampfteilnehmer: Ang./Abw./S.R.A./F.A. auf 0 (neue Kampfrunde / Kampfstart). */
 export async function resetAllKrCountersInScene() {
   const items = await OBR.scene.items.getItems((item) =>
     Boolean(item.metadata?.[TRACKER_ITEM_META_KEY])
@@ -56,6 +62,7 @@ export async function resetAllKrCountersInScene() {
         if (m) {
           m[KR_ANG] = 0
           m[KR_ABW] = 0
+          m[KR_SRA] = 0
           m[KR_FREE_ACTION] = 0
           delete m[LEGACY_KR_ACTION]
         }

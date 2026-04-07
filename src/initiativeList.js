@@ -45,10 +45,12 @@ import {
   KR_ABW,
   KR_ANG,
   KR_FREE_ACTION,
+  KR_SRA,
   normalizeKrDigit,
   patchKrCounterByDelta,
   readKrAbw,
   readKrAng,
+  readKrSra,
 } from './krCounters.js'
 import { commitLhValue, readLhState, runLongHandlungAfterCombatUpdate } from './longHandlung.js'
 
@@ -193,6 +195,15 @@ function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
     readKrAbw(trackerMeta),
     canEdit,
     'Abwehraktion'
+  )
+  appendSplitKrCounter(
+    container,
+    ownerItemId,
+    KR_SRA,
+    'sra',
+    readKrSra(trackerMeta),
+    canEdit,
+    'Sonstige reguläre Aktionen'
   )
   appendFaCounter(container, ownerItemId, trackerMeta, canEdit)
   appendLhCell(container, ownerItemId, trackerMeta, canEdit)
