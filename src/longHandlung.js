@@ -150,7 +150,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     return
   }
 
-  if (!prev || !prev.started || prev.roundIntroPending) {
+  if (!prev || !prev.started) {
     lhPrevCombat = combatSnapshot(curr)
     return
   }

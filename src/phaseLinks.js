@@ -202,8 +202,11 @@ function linkDepth(linkId, map) {
 
 export function sortedLinksForLayout(links) {
   const map = buildLinkMap(links)
+  const indexById = new Map(links.map((l, i) => [l.id, i]))
   return [...links].sort(
-    (a, b) => linkDepth(a.id, map) - linkDepth(b.id, map) || a.id.localeCompare(b.id)
+    (a, b) =>
+      linkDepth(a.id, map) - linkDepth(b.id, map) ||
+      (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0)
   )
 }
 
