@@ -1054,71 +1054,42 @@ body {
   font-weight: 600;
 }
 
-/* Rundenden-Zeile: kein voller Zeilen-Highlight (nur links + Namens-Schleier) */
-.init-row--round-end.init-row--active .init-row-main--round-end::before {
-  display: none;
-}
-
-.init-row--round-end.init-row--active .init-row-main--round-end {
-  margin-bottom: 0;
-}
-
-/* Ende der Kampfrunde: gleiches Grid wie Token; Trenner nur über linker Kontroll-Spalte */
+/* Ende der Kampfrunde: reiner Trennstrich + Text, kein INI-Feld */
 .init-row--round-end {
   margin: 0;
-  padding: 0 0.45rem;
+  padding: 0.2rem 0.45rem 0.28rem;
   list-style: none;
-}
-
-.init-row-main--round-end {
-  padding-top: 0.06rem;
-  padding-bottom: 0.06rem;
-}
-
-.init-row-round-end-left {
-  display: flex;
-  align-items: center;
-  justify-content: stretch;
-  min-height: 0.68rem;
-  position: relative;
-  padding: 0.08rem 0.06rem;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(139, 105, 20, 0.14);
-  box-sizing: border-box;
 }
 
 .init-row-round-end-bar {
   display: flex;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.5rem;
   width: 100%;
-  min-height: 0.55rem;
+  min-height: 0.85rem;
   position: relative;
-  z-index: 1;
 }
 
-.init-row--round-end.init-row--active .init-row-round-end-left {
-  border-color: var(--color-border);
-}
-
-.init-row--round-end.init-row--active .init-row-round-end-left::before {
+.init-row--round-end.init-row--active .init-row-round-end-bar::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: 4px;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: calc(100% + 0.14rem);
+  border-radius: calc(var(--radius) - 1px);
   background: var(--color-active);
   border: 1px solid var(--color-border);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.12);
   pointer-events: none;
-  z-index: 0;
 }
 
 .init-row-round-end-rule {
   flex: 1;
-  min-width: 0.28rem;
+  min-width: 0.5rem;
   height: 1px;
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.14);
   align-self: center;
 }
 
@@ -1127,50 +1098,16 @@ body {
   z-index: 1;
   flex-shrink: 0;
   font-family: var(--font-heading);
-  font-size: 0.52rem;
-  letter-spacing: 0.03em;
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
   color: var(--color-ink-muted);
   text-align: center;
   white-space: nowrap;
-  line-height: 1.15;
-  max-width: 5.2rem;
 }
 
 .init-row--round-end.init-row--active .init-row-round-end-label {
   color: var(--color-accent);
   font-weight: 600;
-}
-
-/* Leichter Schleier in der Namensspalte — darunter bleibt die Liste (Reihenfolge) lesbar */
-.init-row-round-end-name-veil {
-  min-height: 0.55rem;
-  position: relative;
-  align-self: stretch;
-}
-
-.init-row-round-end-name-veil::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: 5px;
-  background: rgba(255, 253, 248, 0.42);
-  border: 1px solid rgba(139, 105, 20, 0.07);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.init-row--round-end.init-row--active .init-row-round-end-name-veil::before {
-  background: rgba(139, 74, 28, 0.06);
-  border-color: rgba(139, 105, 20, 0.16);
-}
-
-.init-row-round-end-ini-ph,
-.init-row-round-end-swap-ph {
-  min-height: 1px;
-  pointer-events: none;
 }
 
 .init-row-name-col {
