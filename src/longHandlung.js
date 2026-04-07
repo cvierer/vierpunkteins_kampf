@@ -5,6 +5,7 @@ import {
   buildCombatTurnSteps,
   buildMergedDisplayRows,
   findCombatStepIndex,
+  ROUND_END_STEP_ID,
 } from './phaseLinks.js'
 import {
   collectSortedParticipants,
@@ -54,9 +55,10 @@ function getCurrentStepContext(rows, items, tieOrderIds, combat) {
     return { idx: -1, activeIni: null, ownerIniById }
   }
   const current = merged[idx]
+  // Rundende: intern INI 0 — für L.H.-Schwelle (ownerIni−8) wie niedrigste INI zählen
   const activeIni =
     current.kind === 'roundEnd'
-      ? null
+      ? 0
       : current.kind === 'token'
         ? parseIni(current.row.initiative)
         : Number.isFinite(current.hookIni)
@@ -128,8 +130,13 @@ export async function commitLhValue(itemId, text) {
   })
 }
 
+/** Ab wann der 2. L.H.-Abzug in derselben KR per INI-Schwelle möglich ist (Token-INI − 8). */
+const LH_SECOND_INI_THRESHOLD_OFFSET = 8
+
 /**
- * Nach Kampf-Metadaten-Update: 2. Abzug (8 Schritte später), dann 1. Abzug beim „Dran“-Wechsel.
+ * Nach Kampf-Metadaten-Update: 2. Abzug (INI ≤ Token-INI−8), dann 1. Abzug beim „Dran“-Wechsel.
+ * Bei INI ≥ 8 sind damit bis zu 2 Abzüge pro KR möglich; am Rundenden (INI 0) wird ein ausstehender
+ * 2. Abzug derselben KR nachgezogen.
  * Nur GM schreibt; Zähler bleiben über Kampfrunden erhalten.
  */
 export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
@@ -219,7 +226,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     const stNow = getState(item)
     const newRem = stNow.rem - 1
     const clamped = Math.max(0, newRem)
-    const p2Ini = ownerIni - 8
+    const p2Ini = ownerIni - LH_SECOND_INI_THRESHOLD_OFFSET
     const shouldArmSecond = clamped > 0 && Number.isFinite(p2Ini)
     setState(
       item.id,
@@ -228,6 +235,25 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
       shouldArmSecond ? curr.round : null,
       shouldArmSecond ? p2Ini : null
     )
+  }
+
+  const onRoundEnd =
+    curr.currentItemId === ROUND_END_STEP_ID && !curr.currentPhaseLinkId
+  if (onRoundEnd) {
+    for (const item of trackerItems) {
+      const st = getState(item)
+      const ownerIni = currCtx.ownerIniById.get(item.id)
+      if (st.max <= 0 || st.rem <= 0 || ownerIni == null) continue
+      if (ownerIni < LH_SECOND_INI_THRESHOLD_OFFSET) continue
+      if (
+        st.p2Round !== curr.round ||
+        st.p2Ini == null ||
+        st.p2Ini < 0
+      ) {
+        continue
+      }
+      setState(item.id, st.max, st.rem - 1, null, null)
+    }
   }
 
   const changed = []

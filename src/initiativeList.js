@@ -1195,6 +1195,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         if (activeId === ROUND_END_STEP_ID && !activePhaseLinkId) {
           li.classList.add('init-row--active')
         }
+        const main = document.createElement('div')
+        main.className = 'init-row-main init-row-main--round-end'
+
+        const leftBand = document.createElement('div')
+        leftBand.className = 'init-row-round-end-left'
         const bar = document.createElement('div')
         bar.className = 'init-row-round-end-bar'
         const ruleL = document.createElement('span')
@@ -1207,7 +1212,26 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ruleR.className = 'init-row-round-end-rule'
         ruleR.setAttribute('aria-hidden', 'true')
         bar.append(ruleL, label, ruleR)
-        li.appendChild(bar)
+        leftBand.appendChild(bar)
+
+        const gutter = document.createElement('div')
+        gutter.className = 'init-phase-gutter init-phase-gutter--empty'
+        gutter.setAttribute('aria-hidden', 'true')
+
+        const nameVeil = document.createElement('div')
+        nameVeil.className = 'init-row-round-end-name-veil'
+        nameVeil.setAttribute('aria-hidden', 'true')
+
+        const iniPh = document.createElement('div')
+        iniPh.className = 'init-row-round-end-ini-ph'
+        iniPh.setAttribute('aria-hidden', 'true')
+
+        const swapPh = document.createElement('div')
+        swapPh.className = 'init-col-swap init-row-round-end-swap-ph'
+        swapPh.setAttribute('aria-hidden', 'true')
+
+        main.append(leftBand, gutter, nameVeil, iniPh, swapPh)
+        li.appendChild(main)
         frag.appendChild(li)
       } else {
         const { ownerId, ownerName, ownerIniStr, link, hookIni } = entry
