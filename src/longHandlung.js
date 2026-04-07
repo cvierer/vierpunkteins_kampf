@@ -5,17 +5,38 @@ import {
   buildCombatTurnSteps,
   buildMergedDisplayRows,
   findCombatStepIndex,
-  ROUND_END_STEP_ID,
 } from './phaseLinks.js'
 import {
   collectSortedParticipants,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
 
+/** Anzeige / Kuchen: Zielwert und aktueller Rest */
 export const LH_MAX = 'lhMax'
 export const LH_REM = 'lhRemaining'
-export const LH_P2_ROUND = 'lhPendingSecondRound'
-export const LH_P2_TARGET_INI = 'lhPendingSecondTargetIni'
+
+/** Max. L.H.-Abzüge pro KR (Standard 2; später pro Held anpassbar). */
+export const LH_ACTIONS_PER_KR = 'lhActionsPerKr'
+
+/**
+ * Abstand auf dem INI-Lineal zwischen aufeinanderfolgenden Auslösern (Standard −8).
+ * Auslöser k liegt bei heroIni + k * step (k = 0 … actions−1); nur Stufen ≥ 0 zählen.
+ */
+export const LH_TRIGGER_INI_STEP = 'lhTriggerIniStep'
+
+/** Kampfrunde, für die lhKrFiredMask gilt */
+export const LH_KR_FIRED_ROUND = 'lhKrFiredRound'
+
+/** Bitmaske: Auslöser k wurde in dieser KR bereits verbraucht */
+export const LH_KR_FIRED_MASK = 'lhKrFiredMask'
+
+const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
+const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
+
+export const DEFAULT_LH_ACTIONS_PER_KR = 2
+export const DEFAULT_LH_TRIGGER_INI_STEP = -8
+
+const MAX_ACTIONS = 8
 
 let lhPrevCombat = null
 
@@ -27,18 +48,6 @@ function combatSnapshot(c) {
     currentItemId: c.currentItemId,
     currentPhaseLinkId: c.currentPhaseLinkId,
   }
-}
-
-function stepActiveForOwner(combat, ownerId) {
-  if (!combat.started || combat.roundIntroPending) return false
-  if (!combat.currentItemId) return false
-  return combat.currentItemId === ownerId
-}
-
-function transitionedToOwner(prev, curr, ownerId) {
-  return (
-    stepActiveForOwner(curr, ownerId) && !stepActiveForOwner(prev, ownerId)
-  )
 }
 
 function parseIni(value) {
@@ -55,7 +64,6 @@ function getCurrentStepContext(rows, items, tieOrderIds, combat) {
     return { idx: -1, activeIni: null, ownerIniById }
   }
   const current = merged[idx]
-  // Rundende: intern INI 0 — für L.H.-Schwelle (ownerIni−8) wie niedrigste INI zählen
   const activeIni =
     current.kind === 'roundEnd'
       ? 0
@@ -75,21 +83,52 @@ function isBackward(prev, curr, prevIdx, currIdx) {
   return false
 }
 
-function normalizeP2Round(raw) {
+function stripLegacyLhKeys(m) {
+  delete m[LEGACY_LH_P2_ROUND]
+  delete m[LEGACY_LH_P2_INI]
+}
+
+function normalizeActionsPerKr(raw) {
   const n = Math.floor(Number(raw))
-  return Number.isFinite(n) && n > 0 ? n : null
+  if (!Number.isFinite(n)) return DEFAULT_LH_ACTIONS_PER_KR
+  return Math.min(MAX_ACTIONS, Math.max(1, n))
 }
 
-function normalizeP2TargetIni(raw) {
+function normalizeTriggerStep(raw) {
+  if (raw == null || raw === '') return DEFAULT_LH_TRIGGER_INI_STEP
   const n = Number(raw)
-  return Number.isFinite(n) ? n : null
+  if (!Number.isFinite(n) || n === 0) return DEFAULT_LH_TRIGGER_INI_STEP
+  return n
 }
 
-function readPending(meta) {
-  if (!meta || typeof meta !== 'object') return { p2Round: null, p2Ini: null }
+function normalizeFiredRound(raw) {
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n >= 1 ? n : null
+}
+
+function normalizeFiredMask(raw) {
+  const n = Math.floor(Number(raw))
+  if (!Number.isFinite(n) || n < 0) return 0
+  return n & 0xff
+}
+
+/**
+ * Mechanik-Parameter (Defaults für spätere Helden-Anpassung).
+ */
+export function readLhMechanics(meta) {
+  if (!meta || typeof meta !== 'object') {
+    return {
+      actionsPerKr: DEFAULT_LH_ACTIONS_PER_KR,
+      triggerIniStep: DEFAULT_LH_TRIGGER_INI_STEP,
+      firedRound: null,
+      firedMask: 0,
+    }
+  }
   return {
-    p2Round: normalizeP2Round(meta[LH_P2_ROUND]),
-    p2Ini: normalizeP2TargetIni(meta[LH_P2_TARGET_INI]),
+    actionsPerKr: normalizeActionsPerKr(meta[LH_ACTIONS_PER_KR]),
+    triggerIniStep: normalizeTriggerStep(meta[LH_TRIGGER_INI_STEP]),
+    firedRound: normalizeFiredRound(meta[LH_KR_FIRED_ROUND]),
+    firedMask: normalizeFiredMask(meta[LH_KR_FIRED_MASK]),
   }
 }
 
@@ -103,41 +142,69 @@ export function readLhState(meta) {
   return { max, rem }
 }
 
+/** Auslöser-INI auf dem Lineal [heroIni … 0]; nur Einträge ≥ 0. */
+export function lhTriggerInisOnRuler(heroIni, mechanics) {
+  const H = heroIni
+  if (!Number.isFinite(H)) return []
+  const n = mechanics.actionsPerKr
+  const step = mechanics.triggerIniStep
+  const out = []
+  for (let k = 0; k < n; k++) {
+    const T = H + k * step
+    if (Number.isFinite(T) && T >= 0) out.push(T)
+  }
+  return out
+}
+
+function triggerIniForIndex(heroIni, k, step) {
+  return heroIni + k * step
+}
+
+function crossedForward(prevIni, currIni, T) {
+  if (!Number.isFinite(T) || T < 0) return false
+  if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
+  return prevIni > T && currIni <= T
+}
+
+function crossedBackward(prevIni, currIni, T) {
+  if (!Number.isFinite(T) || T < 0) return false
+  if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
+  return prevIni <= T && currIni > T
+}
+
 /**
- * L.H.-Wert setzen (leer / 0 = aus). Setzt max = rem = n und löscht ausstehenden 2. Abzug.
+ * L.H.-Wert setzen (leer / 0 = aus). Setzt max = rem = n; KR-Maske zurück.
  */
 export async function commitLhValue(itemId, text) {
   const trimmed = String(text ?? '').trim()
   const n =
     trimmed === '' ? 0 : Math.floor(Number(trimmed.replace(',', '.')))
   if (trimmed !== '' && (!Number.isFinite(n) || n < 0)) return
+  const round = getCombat().started ? getCombat().round : 1
   await OBR.scene.items.updateItems([itemId], (drafts) => {
     for (const d of drafts) {
       const m = d.metadata[TRACKER_ITEM_META_KEY]
       if (!m) continue
+      stripLegacyLhKeys(m)
       if (n <= 0) {
         m[LH_MAX] = 0
         m[LH_REM] = 0
-        delete m[LH_P2_ROUND]
-        delete m[LH_P2_TARGET_INI]
+        delete m[LH_KR_FIRED_ROUND]
+        delete m[LH_KR_FIRED_MASK]
       } else {
         m[LH_MAX] = n
         m[LH_REM] = n
-        delete m[LH_P2_ROUND]
-        delete m[LH_P2_TARGET_INI]
+        m[LH_KR_FIRED_ROUND] = round
+        m[LH_KR_FIRED_MASK] = 0
       }
     }
   })
 }
 
-/** Ab wann der 2. L.H.-Abzug in derselben KR per INI-Schwelle möglich ist (Token-INI − 8). */
-const LH_SECOND_INI_THRESHOLD_OFFSET = 8
-
 /**
- * Nach Kampf-Metadaten-Update: 2. Abzug (INI ≤ Token-INI−8), dann 1. Abzug beim „Dran“-Wechsel.
- * Bei INI ≥ 8 sind damit bis zu 2 Abzüge pro KR möglich; am Rundenden (INI 0) wird ein ausstehender
- * 2. Abzug derselben KR nachgezogen.
- * Nur GM schreibt; Zähler bleiben über Kampfrunden erhalten.
+ * Nach Kampf-Navigation: INI-Lineal von heroIni bis 0. Pro gültigem Auslöser höchstens
+ * ein Abzug pro KR; vorwärts über Stufe = −1 Rest, zurück = +1 (Maske).
+ * Nur GM schreibt.
  */
 export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
   const curr = getCombat()
@@ -165,128 +232,146 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
   const movedBack = isBackward(prev, curr, prevCtx.idx, currCtx.idx)
   const trackerItems = items.filter((i) => i.metadata?.[TRACKER_ITEM_META_KEY])
 
-  /** @type {Map<string, { max: number, rem: number, p2Round: number | null, p2Ini: number | null }>} */
+  const prevIniRaw = prevCtx.activeIni
+  const currIni = currCtx.activeIni
+
+  const roundAdvanced =
+    Number.isFinite(curr.round) &&
+    Number.isFinite(prev.round) &&
+    curr.round > prev.round
+  const roundDecreased =
+    Number.isFinite(curr.round) &&
+    Number.isFinite(prev.round) &&
+    curr.round < prev.round
+
+  const prevIni =
+    roundAdvanced && Number.isFinite(currIni)
+      ? Number.POSITIVE_INFINITY
+      : prevIniRaw
+
+  /** @type {Map<string, { max: number, rem: number, mechanics: ReturnType<typeof readLhMechanics> }>} */
   const byId = new Map()
 
-  const setState = (id, max, rem, p2Round, p2Ini) => {
-    let nextMax = max
-    let nextRem = Math.max(0, rem)
-    let nextRound = p2Round
-    let nextIni = p2Ini
-    if (nextRem <= 0) {
-      nextMax = 0
-      nextRem = 0
-      nextRound = null
-      nextIni = null
-    }
-    byId.set(id, {
-      max: nextMax,
-      rem: nextRem,
-      p2Round: nextRound,
-      p2Ini: nextIni,
-    })
-  }
-
-  const getState = (item) => {
+  const getPack = (item) => {
     const ex = byId.get(item.id)
     if (ex) return ex
     const meta = item.metadata[TRACKER_ITEM_META_KEY]
-    return { ...readLhState(meta), ...readPending(meta) }
-  }
-
-  if (movedBack) {
-    for (const item of trackerItems) {
-      const st = getState(item)
-      if (st.max <= 0) continue
-      setState(item.id, st.max, st.max, null, null)
+    const st = readLhState(meta)
+    const mech = readLhMechanics(meta)
+    let firedRound = mech.firedRound
+    let firedMask = mech.firedMask
+    if (firedRound !== curr.round) {
+      firedRound = curr.round
+      firedMask = 0
     }
+    const pack = {
+      max: st.max,
+      rem: st.rem,
+      mechanics: {
+        ...mech,
+        firedRound,
+        firedMask,
+      },
+    }
+    byId.set(item.id, pack)
+    return pack
   }
 
   for (const item of trackerItems) {
-    const st = getState(item)
-    if (st.max <= 0 || st.rem <= 0 || st.p2Round == null || st.p2Ini == null) continue
-    if (curr.round < st.p2Round) continue
-    const thresholdUnreachable =
-      Number.isFinite(st.p2Ini) && st.p2Ini < 0
-    if (thresholdUnreachable) {
-      if (curr.round <= st.p2Round) continue
-      setState(item.id, st.max, st.rem - 1, null, null)
-      continue
-    }
-    if (currCtx.activeIni == null || currCtx.activeIni > st.p2Ini) continue
-    setState(item.id, st.max, st.rem - 1, null, null)
-  }
+    const meta = item.metadata[TRACKER_ITEM_META_KEY]
+    if (!readLhState(meta).max) continue
 
-  for (const item of trackerItems) {
-    const st = getState(item)
-    if (st.max <= 0 || st.rem <= 0) continue
-    if (!transitionedToOwner(prev, curr, item.id)) continue
-    const ownerIni = currCtx.ownerIniById.get(item.id)
-    if (ownerIni == null) continue
-    const stNow = getState(item)
-    const newRem = stNow.rem - 1
-    const clamped = Math.max(0, newRem)
-    const p2Ini = ownerIni - LH_SECOND_INI_THRESHOLD_OFFSET
-    const shouldArmSecond = clamped > 0 && Number.isFinite(p2Ini)
-    setState(
-      item.id,
-      stNow.max,
-      clamped,
-      shouldArmSecond ? curr.round : null,
-      shouldArmSecond ? p2Ini : null
-    )
-  }
+    const H = currCtx.ownerIniById.get(item.id)
+    if (!Number.isFinite(H)) continue
 
-  const onRoundEnd =
-    curr.currentItemId === ROUND_END_STEP_ID && !curr.currentPhaseLinkId
-  if (onRoundEnd) {
-    for (const item of trackerItems) {
-      const st = getState(item)
-      const ownerIni = currCtx.ownerIniById.get(item.id)
-      if (st.max <= 0 || st.rem <= 0 || ownerIni == null) continue
-      if (ownerIni < LH_SECOND_INI_THRESHOLD_OFFSET) continue
-      if (
-        st.p2Round !== curr.round ||
-        st.p2Ini == null ||
-        st.p2Ini < 0
-      ) {
-        continue
+    const pack = getPack(item)
+
+    const { actionsPerKr, triggerIniStep } = pack.mechanics
+    let mask = pack.mechanics.firedMask
+    let rem = pack.rem
+
+    if (roundDecreased) {
+      rem = pack.max
+      mask = 0
+    } else if (movedBack) {
+      for (let k = actionsPerKr - 1; k >= 0; k--) {
+        const T = triggerIniForIndex(H, k, triggerIniStep)
+        if (!Number.isFinite(T) || T < 0) continue
+        if (!crossedBackward(prevIniRaw, currIni, T)) continue
+        const bit = 1 << k
+        if (!(mask & bit)) continue
+        mask &= ~bit
+        rem = Math.min(pack.max, rem + 1)
       }
-      setState(item.id, st.max, st.rem - 1, null, null)
+    } else {
+      for (let k = 0; k < actionsPerKr; k++) {
+        const T = triggerIniForIndex(H, k, triggerIniStep)
+        if (!Number.isFinite(T) || T < 0) continue
+        if (!crossedForward(prevIni, currIni, T)) continue
+        const bit = 1 << k
+        if (mask & bit) continue
+        if (rem <= 0) break
+        mask |= bit
+        rem -= 1
+      }
+    }
+
+    pack.mechanics.firedRound = curr.round
+    pack.mechanics.firedMask = mask
+    if (rem <= 0) {
+      pack.max = 0
+      pack.rem = 0
+      pack.mechanics.firedMask = 0
+    } else {
+      pack.rem = rem
     }
   }
 
   const changed = []
   for (const item of trackerItems) {
     if (!byId.has(item.id)) continue
-    const next = byId.get(item.id)
-    const prevSt = readLhState(item.metadata[TRACKER_ITEM_META_KEY])
-    const prevPending = readPending(item.metadata[TRACKER_ITEM_META_KEY])
-    if (
-      next.rem === prevSt.rem &&
-      next.max === prevSt.max &&
-      next.p2Round === prevPending.p2Round &&
-      next.p2Ini === prevPending.p2Ini
-    ) {
-      continue
-    }
-    changed.push({ id: item.id, ...next })
+    const p = byId.get(item.id)
+    const meta = item.metadata[TRACKER_ITEM_META_KEY]
+    const prevSt = readLhState(meta)
+    const prevMech = readLhMechanics(meta)
+
+    const sameRem = p.rem === prevSt.rem && p.max === prevSt.max
+    const sameRound = p.mechanics.firedRound === prevMech.firedRound
+    const sameMask = p.mechanics.firedMask === prevMech.firedMask
+    const sameActions =
+      normalizeActionsPerKr(meta[LH_ACTIONS_PER_KR]) === p.mechanics.actionsPerKr
+    const sameStep =
+      normalizeTriggerStep(meta[LH_TRIGGER_INI_STEP]) ===
+      p.mechanics.triggerIniStep
+
+    if (sameRem && sameRound && sameMask && sameActions && sameStep) continue
+
+    changed.push({
+      id: item.id,
+      max: p.max,
+      rem: p.rem,
+      actionsPerKr: p.mechanics.actionsPerKr,
+      triggerIniStep: p.mechanics.triggerIniStep,
+      firedRound: p.mechanics.firedRound,
+      firedMask: p.mechanics.firedMask,
+    })
   }
 
   if (changed.length > 0) {
-    const byIdPatch = new Map(changed.map((c) => [c.id, c]))
+    const patch = new Map(changed.map((c) => [c.id, c]))
     await OBR.scene.items.updateItems(changed.map((c) => c.id), (drafts) => {
       for (const d of drafts) {
-        const p = byIdPatch.get(d.id)
+        const p = patch.get(d.id)
         if (!p) continue
         const m = d.metadata[TRACKER_ITEM_META_KEY]
         if (!m) continue
+        stripLegacyLhKeys(m)
         m[LH_MAX] = p.max
         m[LH_REM] = p.rem
-        if (p.p2Round == null) delete m[LH_P2_ROUND]
-        else m[LH_P2_ROUND] = p.p2Round
-        if (p.p2Ini == null) delete m[LH_P2_TARGET_INI]
-        else m[LH_P2_TARGET_INI] = p.p2Ini
+        m[LH_ACTIONS_PER_KR] = p.actionsPerKr
+        m[LH_TRIGGER_INI_STEP] = p.triggerIniStep
+        m[LH_KR_FIRED_ROUND] = p.firedRound
+        m[LH_KR_FIRED_MASK] = p.firedMask
       }
     })
   }

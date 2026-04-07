@@ -240,7 +240,7 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   inp.maxLength = 3
   inp.value = st.max > 0 ? String(st.rem) : ''
   inp.title =
-    'Längerfristige Handlung: Ziel (z. B. 7). Pro KR −2 — beim Dran und 8 INI-Schritte später. Leer = aus.'
+    'Längerfristige Handlung: Ziel (z. B. 7). Pro KR bis zu zwei Abzüge, wenn die INI-Stufen des Tokens und (Standard: 8 Schritte darunter, ≥ 0) auf dem Lineal zur KR passen. Zurück = rückgängig. Leer = aus.'
   inp.setAttribute(
     'aria-label',
     st.max > 0
