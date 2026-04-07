@@ -2,7 +2,7 @@ import OBR from '@owlbear-rodeo/sdk'
 import { isGmSync } from './editAccess.js'
 import { getCombat } from './combatRoom.js'
 import {
-  buildCombatTurnSteps,
+  buildMergedDisplayRows,
   findCombatStepIndex,
 } from './phaseLinks.js'
 import {
@@ -12,9 +12,8 @@ import {
 
 export const LH_MAX = 'lhMax'
 export const LH_REM = 'lhRemaining'
-export const LH_P2 = 'lhPendingSecondOrdinal'
-
-const LH_STEPS_DELAY = 8
+export const LH_P2_ROUND = 'lhPendingSecondRound'
+export const LH_P2_TARGET_INI = 'lhPendingSecondTargetIni'
 
 let lhPrevCombat = null
 
@@ -40,25 +39,67 @@ function transitionedToOwner(prev, curr, ownerId) {
   )
 }
 
-function combatOrdinal(combat, steps) {
-  const n = steps.length
-  if (n === 0) return 0
+function parseIni(value) {
+  const n = Number(String(value ?? '').trim().replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+function getCurrentStepContext(rows, items, tieOrderIds, combat) {
+  const merged = buildMergedDisplayRows(rows, items, tieOrderIds)
+  const steps = merged.map((e) =>
+    e.kind === 'token'
+      ? { kind: 'token', id: e.row.id }
+      : { kind: 'phase', ownerId: e.ownerId, linkId: e.link.id }
+  )
   const idx = findCombatStepIndex(steps, combat)
-  const i = idx >= 0 ? idx : 0
-  return (combat.round - 1) * n + i
+  const ownerIniById = new Map(rows.map((r) => [r.id, parseIni(r.initiative)]))
+  if (idx < 0 || idx >= merged.length) {
+    return { idx: -1, activeIni: null, ownerIniById }
+  }
+  const current = merged[idx]
+  const activeIni =
+    current.kind === 'token'
+      ? parseIni(current.row.initiative)
+      : Number.isFinite(current.hookIni)
+        ? current.hookIni
+        : null
+  return { idx, activeIni, ownerIniById }
+}
+
+function isBackward(prev, curr, prevIdx, currIdx) {
+  if (!prev) return false
+  if (curr.round < prev.round) return true
+  if (curr.round > prev.round) return false
+  if (currIdx >= 0 && prevIdx >= 0) return currIdx < prevIdx
+  return false
+}
+
+function normalizeP2Round(raw) {
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+function normalizeP2TargetIni(raw) {
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+function readPending(meta) {
+  if (!meta || typeof meta !== 'object') return { p2Round: null, p2Ini: null }
+  return {
+    p2Round: normalizeP2Round(meta[LH_P2_ROUND]),
+    p2Ini: normalizeP2TargetIni(meta[LH_P2_TARGET_INI]),
+  }
 }
 
 export function readLhState(meta) {
   if (!meta || typeof meta !== 'object') {
-    return { max: 0, rem: 0, p2: null }
+    return { max: 0, rem: 0 }
   }
   const max = Math.max(0, Math.floor(Number(meta[LH_MAX])) || 0)
   let rem = Math.max(0, Math.floor(Number(meta[LH_REM])) || 0)
   if (rem > max && max > 0) rem = max
-  const p2raw = meta[LH_P2]
-  const p2 =
-    typeof p2raw === 'number' && Number.isFinite(p2raw) ? p2raw : null
-  return { max, rem, p2 }
+  return { max, rem }
 }
 
 /**
@@ -76,11 +117,13 @@ export async function commitLhValue(itemId, text) {
       if (n <= 0) {
         m[LH_MAX] = 0
         m[LH_REM] = 0
-        delete m[LH_P2]
+        delete m[LH_P2_ROUND]
+        delete m[LH_P2_TARGET_INI]
       } else {
         m[LH_MAX] = n
         m[LH_REM] = n
-        delete m[LH_P2]
+        delete m[LH_P2_ROUND]
+        delete m[LH_P2_TARGET_INI]
       }
     }
   })
@@ -100,9 +143,9 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
   }
 
   const rows = collectSortedParticipants(items, tieOrderIds)
-  const steps = buildCombatTurnSteps(rows, items, tieOrderIds)
+  const currCtx = getCurrentStepContext(rows, items, tieOrderIds, curr)
 
-  if (steps.length === 0 || !isGmSync()) {
+  if (currCtx.idx < 0 || !isGmSync()) {
     lhPrevCombat = combatSnapshot(curr)
     return
   }
@@ -112,43 +155,73 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     return
   }
 
-  const ordCurr = combatOrdinal(curr, steps)
+  const prevCtx = getCurrentStepContext(rows, items, tieOrderIds, prev)
+  const movedBack = isBackward(prev, curr, prevCtx.idx, currCtx.idx)
   const trackerItems = items.filter((i) => i.metadata?.[TRACKER_ITEM_META_KEY])
 
-  /** @type {Map<string, { max: number, rem: number, p2: number | null }>} */
+  /** @type {Map<string, { max: number, rem: number, p2Round: number | null, p2Ini: number | null }>} */
   const byId = new Map()
 
-  const setState = (id, max, rem, p2) => {
+  const setState = (id, max, rem, p2Round, p2Ini) => {
+    let nextMax = max
+    let nextRem = Math.max(0, rem)
+    let nextRound = p2Round
+    let nextIni = p2Ini
+    if (nextRem <= 0) {
+      nextMax = 0
+      nextRem = 0
+      nextRound = null
+      nextIni = null
+    }
     byId.set(id, {
-      max,
-      rem: Math.max(0, rem),
-      p2,
+      max: nextMax,
+      rem: nextRem,
+      p2Round: nextRound,
+      p2Ini: nextIni,
     })
   }
 
   const getState = (item) => {
     const ex = byId.get(item.id)
     if (ex) return ex
-    return readLhState(item.metadata[TRACKER_ITEM_META_KEY])
+    const meta = item.metadata[TRACKER_ITEM_META_KEY]
+    return { ...readLhState(meta), ...readPending(meta) }
+  }
+
+  if (movedBack) {
+    for (const item of trackerItems) {
+      const st = getState(item)
+      if (st.max <= 0) continue
+      setState(item.id, st.max, st.max, null, null)
+    }
   }
 
   for (const item of trackerItems) {
     const st = getState(item)
-    if (st.max <= 0 || st.rem <= 0 || st.p2 == null) continue
-    if (ordCurr < st.p2) continue
-    setState(item.id, st.max, st.rem - 1, null)
+    if (st.max <= 0 || st.rem <= 0 || st.p2Round == null || st.p2Ini == null) continue
+    if (curr.round !== st.p2Round) continue
+    if (currCtx.activeIni == null || currCtx.activeIni > st.p2Ini) continue
+    setState(item.id, st.max, st.rem - 1, null, null)
   }
 
   for (const item of trackerItems) {
     const st = getState(item)
     if (st.max <= 0 || st.rem <= 0) continue
     if (!transitionedToOwner(prev, curr, item.id)) continue
+    const ownerIni = currCtx.ownerIniById.get(item.id)
+    if (ownerIni == null) continue
     const stNow = getState(item)
     const newRem = stNow.rem - 1
     const clamped = Math.max(0, newRem)
-    const p2Next =
-      clamped > 0 ? ordCurr + LH_STEPS_DELAY : null
-    setState(item.id, stNow.max, clamped, p2Next)
+    const p2Ini = ownerIni - 8
+    const shouldArmSecond = clamped > 0 && Number.isFinite(p2Ini)
+    setState(
+      item.id,
+      stNow.max,
+      clamped,
+      shouldArmSecond ? curr.round : null,
+      shouldArmSecond ? p2Ini : null
+    )
   }
 
   const changed = []
@@ -156,10 +229,12 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     if (!byId.has(item.id)) continue
     const next = byId.get(item.id)
     const prevSt = readLhState(item.metadata[TRACKER_ITEM_META_KEY])
+    const prevPending = readPending(item.metadata[TRACKER_ITEM_META_KEY])
     if (
       next.rem === prevSt.rem &&
       next.max === prevSt.max &&
-      next.p2 === prevSt.p2
+      next.p2Round === prevPending.p2Round &&
+      next.p2Ini === prevPending.p2Ini
     ) {
       continue
     }
@@ -176,8 +251,10 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         if (!m) continue
         m[LH_MAX] = p.max
         m[LH_REM] = p.rem
-        if (p.p2 == null) delete m[LH_P2]
-        else m[LH_P2] = p.p2
+        if (p.p2Round == null) delete m[LH_P2_ROUND]
+        else m[LH_P2_ROUND] = p.p2Round
+        if (p.p2Ini == null) delete m[LH_P2_TARGET_INI]
+        else m[LH_P2_TARGET_INI] = p.p2Ini
       }
     })
   }
