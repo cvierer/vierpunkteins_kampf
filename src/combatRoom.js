@@ -71,7 +71,7 @@ function normalize(raw) {
 let cache = defaultCombat()
 let tieOrderCache = []
 
-/** Bei Runden+1 während ephemerer Z.A.-Entfernung vor Raum-Metadaten: reconcile nicht gegen alte KR patchen. */
+/** Bei Runden+1 während ephemerer 2.A.-Entfernung vor Raum-Metadaten: reconcile nicht gegen alte KR patchen. */
 let combatNavMutationDepth = 0
 
 export function beginCombatNavMutation() {

@@ -546,7 +546,7 @@ function pickNearestValidSlot(rawSlot, validSlots) {
   return best
 }
 
-/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (Token oder Z.A.-Wurzel). */
+/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (Token oder 2.A.-Wurzel). */
 function layoutIniSwapBetween(ul, host, overlay) {
   if (!host || !overlay) return
   const hostR = host.getBoundingClientRect()

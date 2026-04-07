@@ -12,7 +12,7 @@ import {
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
 
-/** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der Z.A.-Wurzeln ownerId:linkId */
+/** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der 2.A.-Wurzeln ownerId:linkId */
 let zaoRootTieOrderByIniCache = {}
 
 const zaoOrderListeners = new Set()
@@ -63,7 +63,7 @@ export function zaoRootKey(ownerId, linkId) {
 }
 
 /**
- * Zwei direkt untereinander stehende Z.A.-Wurzeln mit gleicher Ziel-INI tauschen (Kampflisten-Reihenfolge).
+ * Zwei direkt untereinander stehende 2.A.-Wurzeln mit gleicher Ziel-INI tauschen (Kampflisten-Reihenfolge).
  */
 export async function swapAdjacentZaoRootKeys(
   keyUpper,
