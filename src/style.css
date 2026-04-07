@@ -932,6 +932,7 @@ body {
   white-space: nowrap;
 }
 
+/* 2.A.-Zeile: Offset wie L.H.-Kästchen (1.22rem, gleicher Rahmen) */
 .phase-offset-input--zao-inline {
   position: relative;
   left: auto;
@@ -939,6 +940,29 @@ body {
   transform: none;
   flex-shrink: 0;
   z-index: auto;
+  width: 1.22rem;
+  min-width: 1.22rem;
+  max-width: 1.22rem;
+  height: 1.22rem;
+  min-height: 1.22rem;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+}
+
+.phase-offset-input--zao-inline:focus {
+  outline: 2px solid rgba(201, 162, 39, 0.55);
+  outline-offset: 0;
+  border-color: var(--color-accent);
+}
+
+.phase-offset-input--zao-inline.phase-offset-input--error {
+  font-size: 0.58rem;
 }
 
 .init-phase-zao-meta .init-row-name {
