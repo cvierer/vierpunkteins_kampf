@@ -463,6 +463,7 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
     const it = items.find((i) => i.id === id)
     return it?.metadata?.[TRACKER_ITEM_META_KEY]
   }
+  const rootOrderByOwner = new Map()
 
   const tokenIds = new Set(tokenRows.map((r) => r.id))
   const tieFiltered = tieOrderIds.filter((id) => tokenIds.has(id))
@@ -473,6 +474,13 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
     entries.push({ kind: 'token', row })
     const meta = metaOf(row.id)
     const phases = normalizePhases(meta?.phases)
+    const roots = sortedLinksForLayout(phases.links).filter(
+      (l) => l.parentId === null
+    )
+    rootOrderByOwner.set(
+      row.id,
+      new Map(roots.map((l, i) => [l.id, i]))
+    )
     if (!phases.rowPanelOpen || phases.links.length === 0) continue
 
     for (const link of sortedLinksForLayout(phases.links)) {
@@ -509,6 +517,18 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
       const ha = formatIniForSort(a.hookIni)
       const hb = formatIniForSort(b.hookIni)
       if (ha === hb) {
+        if (a.ownerId === b.ownerId) {
+          const ord = rootOrderByOwner.get(a.ownerId)
+          const oa = ord?.get(a.link.id)
+          const ob = ord?.get(b.link.id)
+          if (
+            typeof oa === 'number' &&
+            typeof ob === 'number' &&
+            oa !== ob
+          ) {
+            return oa - ob
+          }
+        }
         const bucket = zaoRootTieOrderByIniCache[ha]
         const ka = zaoRootKey(a.ownerId, a.link.id)
         const kb = zaoRootKey(b.ownerId, b.link.id)

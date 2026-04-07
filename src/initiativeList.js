@@ -33,6 +33,7 @@ import {
   onNamePhasePlusClick,
   onZaoRootTieOrderChange,
   removePhaseLink,
+  sortedLinksForLayout,
   swapAdjacentZaoRootKeys,
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
@@ -1292,7 +1293,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           const iniActLabel = document.createElement('span')
           iniActLabel.className = 'init-phase-zao-ini-label'
           const ownerPhases = normalizePhases(ownerTrackerMeta?.phases)
-          const rootLinks = ownerPhases.links.filter((l) => l.parentId === null)
+          const rootLinks = sortedLinksForLayout(ownerPhases.links).filter(
+            (l) => l.parentId === null
+          )
           const rootIdx = rootLinks.findIndex((l) => l.id === link.id)
           const phaseNum = rootIdx >= 0 ? rootIdx + 2 : 2
           iniActLabel.textContent = `${phaseNum}.A.`
