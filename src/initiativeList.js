@@ -1009,58 +1009,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           li.classList.add('init-row--active')
         }
         li.dataset.itemId = row.id
-        li.draggable = canEdit
-        li.title =
-          'Zeile ziehen: auch weit über/unter der Liste loslassen (INI-Extrapolation). Mausrad ±1. INI-Hinweis links fest, nur vertikal. Nicht von +/− oder INI-Feld ziehen.'
-        li.addEventListener('dragstart', (e) => {
-          if (e.target.closest('button, input, textarea, select')) {
-            e.preventDefault()
-            return
-          }
-          e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
-          e.dataTransfer.setData('text/plain', row.id)
-          e.dataTransfer.effectAllowed = 'move'
-          rowDragActive = true
-          dragWheelNudge = 0
-          dragEdgeSlowSteps = 0
-          dragEdgeAccumMs = 0
-          dragEdgeZone = null
-          dragSessionLastTs = 0
-          activeDragRowId = row.id
-          lastDragClientX = e.clientX
-          lastDragClientY = e.clientY
-          const hr =
-            listScrollEl?.getBoundingClientRect() ??
-            listContentRoot?.getBoundingClientRect()
-          dragFloatAnchorX = hr
-            ? Math.round(hr.left + 8)
-            : Math.round(li.getBoundingClientRect().left)
-          const dragImg = document.createElement('canvas')
-          dragImg.width = 1
-          dragImg.height = 1
-          e.dataTransfer.setDragImage(dragImg, 0, 0)
-          li.classList.add('init-row--dragging')
-          attachGlobalDragListeners()
-          requestAnimationFrame(() => {
-            updateDragSession(e.clientX, e.clientY, row.id)
-          })
-        })
-        li.addEventListener('drag', (e) => {
-          if (!li.classList.contains('init-row--dragging')) return
-          updateDragSession(e.clientX, e.clientY, row.id)
-        })
-        li.addEventListener('dragend', () => {
-          detachGlobalDragListeners()
-          rowDragActive = false
-          dragWheelNudge = 0
-          dragEdgeSlowSteps = 0
-          dragEdgeAccumMs = 0
-          dragEdgeZone = null
-          dragSessionLastTs = 0
-          activeDragRowId = null
-          li.classList.remove('init-row--dragging')
-          hideIniFloat()
-        })
+        li.draggable = false
 
         const main = document.createElement('div')
         main.className = 'init-row-main'
@@ -1123,8 +1072,59 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const nameEl = document.createElement('span')
         nameEl.className = 'init-row-name'
-        nameEl.textContent = row.name
-        nameEl.title = 'Doppelklick: Token fokussieren'
+        if (canEdit) {
+          nameEl.classList.add('init-row-name--drag-ini')
+          nameEl.draggable = true
+          nameEl.title =
+            'Ziehen: INI-Extrapolation (weit über/unter der Liste loslassen, Mausrad ±1, nur vertikal). Doppelklick: Token fokussieren.'
+          nameEl.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData(TOKEN_DRAG_MIME, row.id)
+            e.dataTransfer.setData('text/plain', row.id)
+            e.dataTransfer.effectAllowed = 'move'
+            rowDragActive = true
+            dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
+            activeDragRowId = row.id
+            lastDragClientX = e.clientX
+            lastDragClientY = e.clientY
+            const hr =
+              listScrollEl?.getBoundingClientRect() ??
+              listContentRoot?.getBoundingClientRect()
+            dragFloatAnchorX = hr
+              ? Math.round(hr.left + 8)
+              : Math.round(li.getBoundingClientRect().left)
+            const dragImg = document.createElement('canvas')
+            dragImg.width = 1
+            dragImg.height = 1
+            e.dataTransfer.setDragImage(dragImg, 0, 0)
+            li.classList.add('init-row--dragging')
+            attachGlobalDragListeners()
+            requestAnimationFrame(() => {
+              updateDragSession(e.clientX, e.clientY, row.id)
+            })
+          })
+          nameEl.addEventListener('drag', (e) => {
+            if (!li.classList.contains('init-row--dragging')) return
+            updateDragSession(e.clientX, e.clientY, row.id)
+          })
+          nameEl.addEventListener('dragend', () => {
+            detachGlobalDragListeners()
+            rowDragActive = false
+            dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
+            activeDragRowId = null
+            li.classList.remove('init-row--dragging')
+            hideIniFloat()
+          })
+        } else {
+          nameEl.title = 'Doppelklick: Token fokussieren'
+        }
         nameEl.addEventListener('dblclick', () => {
           void OBR.player.select([row.id], true)
         })
@@ -1287,6 +1287,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         let phaseZaoMeta = null
         let phaseGutter = null
         let phaseNameCol = null
+        /** @type {HTMLSpanElement | null} */
+        let zaoIniDragNameEl = null
         if (isZaoRoot) {
           phaseZaoMeta = document.createElement('div')
           phaseZaoMeta.className = 'init-phase-zao-meta'
@@ -1302,7 +1304,14 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           const nameEl = document.createElement('span')
           nameEl.className = 'init-row-name'
           nameEl.textContent = ownerName
-          nameEl.title = `${phaseNum}. Aktionsphase · ${ownerName}`
+          zaoIniDragNameEl = nameEl
+          nameEl.title = canEdit
+            ? `${phaseNum}. Aktionsphase · ${ownerName} · Ziehen: Ziel-INI wie bei Hauptzeilen (Loslassen / Mausrad ±1).`
+            : `${phaseNum}. Aktionsphase · ${ownerName}`
+          if (canEdit) {
+            nameEl.classList.add('init-row-name--drag-ini')
+            nameEl.draggable = true
+          }
           phaseZaoMeta.append(offsetInput, iniActLabel, nameEl)
         } else {
           phaseGutter = document.createElement('div')
@@ -1436,16 +1445,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
         li.appendChild(main)
 
-        if (isZaoRoot) {
+        if (isZaoRoot && canEdit && zaoIniDragNameEl) {
           const phasePayload = encodePhaseDrag(ownerId, link.id)
-          li.draggable = canEdit
-          li.title =
-            '2.A. ziehen: INI wie bei Hauptzeilen setzen (Loslassen / Mausrad ±1). Nicht von ×, Schloss oder Eingabefeldern ziehen.'
-          li.addEventListener('dragstart', (e) => {
-            if (e.target.closest('button, input, textarea, select')) {
-              e.preventDefault()
-              return
-            }
+          li.draggable = false
+          zaoIniDragNameEl.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData(TOKEN_DRAG_MIME, phasePayload)
             e.dataTransfer.setData('text/plain', phasePayload)
             e.dataTransfer.effectAllowed = 'move'
@@ -1474,11 +1477,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
               updateDragSession(e.clientX, e.clientY, phasePayload)
             })
           })
-          li.addEventListener('drag', (e) => {
+          zaoIniDragNameEl.addEventListener('drag', (e) => {
             if (!li.classList.contains('init-row--dragging')) return
             updateDragSession(e.clientX, e.clientY, phasePayload)
           })
-          li.addEventListener('dragend', () => {
+          zaoIniDragNameEl.addEventListener('dragend', () => {
             detachGlobalDragListeners()
             rowDragActive = false
             dragWheelNudge = 0
