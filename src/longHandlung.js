@@ -162,7 +162,10 @@ function triggerIniForIndex(heroIni, k, step) {
 
 function crossedForward(prevIni, currIni, T) {
   if (!Number.isFinite(T) || T < 0) return false
-  if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
+  if (!Number.isFinite(currIni)) return false
+  const prevOk =
+    Number.isFinite(prevIni) || prevIni === Number.POSITIVE_INFINITY
+  if (!prevOk) return false
   return prevIni > T && currIni <= T
 }
 
