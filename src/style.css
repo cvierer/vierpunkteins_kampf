@@ -141,8 +141,9 @@ body {
   /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) à 1.22rem + Gaps */
   --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
   --init-col-gutter: 0.72rem;
-  --init-col-ini: calc(4.75rem * 2 / 3);
-  --init-col-swap: 1.2rem;
+  /* INI: ~1/3 schmaler als zuvor (4/9 von 4.75rem); Swap-Spalte halb so breit */
+  --init-col-ini: calc(4.75rem * 4 / 9);
+  --init-col-swap: 0.6rem;
   --init-grid-gap: 0.3rem;
   --init-list-row-gap: 0.4rem;
 }
@@ -442,7 +443,7 @@ body {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: 0.08rem;
   width: 100%;
   min-height: 0;
   height: auto;
