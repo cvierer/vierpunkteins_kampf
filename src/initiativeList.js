@@ -234,7 +234,9 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   lhRenderPrev.set(ownerItemId, { max: st.max, rem: st.rem })
 
   const wrap = document.createElement('div')
-  wrap.className = 'init-lh-cell'
+  wrap.className =
+    'init-lh-cell' + (st.max > 0 ? ' init-lh-cell--active' : ' init-lh-cell--empty')
+
   const pieWrap = document.createElement('div')
   pieWrap.className = 'init-lh-cell__pie-wrap'
   const pie = document.createElement('div')
@@ -242,11 +244,12 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   pie.setAttribute('aria-hidden', 'true')
   pieWrap.appendChild(pie)
 
-  const body = document.createElement('div')
-  body.className = 'init-lh-cell__body'
-
-  const numRow = document.createElement('div')
-  numRow.className = 'init-lh-cell__num-row'
+  const fraction = document.createElement('span')
+  fraction.className = 'init-lh-cell__fraction'
+  fraction.setAttribute('aria-hidden', 'true')
+  if (st.max > 0) {
+    fraction.textContent = `${st.rem}/${st.max}`
+  }
 
   const inp = document.createElement('input')
   inp.type = 'text'
@@ -257,19 +260,8 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   inp.maxLength = 3
   inp.value = st.max > 0 ? String(st.rem) : ''
 
-  const maxSuffix = document.createElement('span')
-  maxSuffix.className = 'init-lh-cell__max-suffix'
-  maxSuffix.setAttribute('aria-hidden', 'true')
-  maxSuffix.textContent = st.max > 0 ? `/${st.max}` : ''
-
-  const unit = document.createElement('span')
-  unit.className = 'init-lh-cell__unit'
-  unit.textContent = 'Akt.'
-  unit.title = 'Aktionen (Regelwerk: Dauer längerfristiger Handlungen)'
-  unit.hidden = st.max <= 0
-
   const lhTitleActive =
-    'Längerfristige Handlung: Rest / Gesamt in Aktionen. Pro KR bis zu zwei Abzüge, wenn die INI-Stufen des Tokens und (Standard: 8 Schritte darunter, ≥ 0) auf dem Lineal zur KR passen. Neue Zahl beim Speichern setzt die Handlung neu (Rest = Ziel). Leer = aus.'
+    'Längerfristige Handlung: Rest / Gesamt in Aktionen (unten). Klick zum Bearbeiten der Rest-Aktion; neue Zahl beim Speichern setzt die Handlung neu (Rest = Ziel). Pro KR bis zu zwei Abzüge an den INI-Stufen des Tokens und (Standard: 8 darunter, ≥ 0). Leer = aus.'
   inp.title = lhTitleActive
   inp.setAttribute(
     'aria-label',
@@ -283,9 +275,7 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
       'Nur Spielleitung oder Besitzer dieses Tokens (Längerfristige Handlung)'
   }
 
-  numRow.append(inp, maxSuffix)
-  body.append(numRow, unit)
-  wrap.append(pieWrap, body)
+  wrap.append(pieWrap, fraction, inp)
 
   applyLhVisual(wrap, st.max, st.rem)
 
@@ -306,11 +296,13 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
     let dirty = false
     inp.addEventListener('focus', () => {
       dirty = false
+      wrap.classList.add('init-lh-cell--input-focus')
     })
     inp.addEventListener('input', () => {
       dirty = true
     })
     inp.addEventListener('blur', () => {
+      wrap.classList.remove('init-lh-cell--input-focus')
       if (!dirty) return
       dirty = false
       void commitLhValue(ownerItemId, inp.value)

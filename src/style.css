@@ -633,30 +633,26 @@ body {
   opacity: 1;
 }
 
-/* Längerfristige Handlung: Kuchen + Rest/Gesamt (Aktionen) + kurzes „fertig“ */
+/* L.H.: fest 1.22rem; leer wie früher; aktiv = Stufen als Hintergrund, Rest/Gesamt unten mittig */
 .init-lh-cell {
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.2rem;
-  box-sizing: border-box;
-  min-height: 1.22rem;
-  padding: 1px 0.2rem 1px 1px;
-  border-radius: 4px;
-  border: 1px solid rgba(201, 162, 39, 0.45);
-  background: #ffffff;
-}
-
-.init-lh-cell__pie-wrap {
   position: relative;
   flex-shrink: 0;
   width: 1.22rem;
   height: 1.22rem;
   box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.init-lh-cell__pie-wrap {
+  position: absolute;
+  inset: 1px;
   border-radius: 3px;
   overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .init-lh-cell__pie {
@@ -664,7 +660,6 @@ body {
   inset: 0;
   border-radius: 3px;
   pointer-events: none;
-  z-index: 0;
   --lh-green: #b8e6bb;
   background: conic-gradient(
     from 0deg,
@@ -674,67 +669,94 @@ body {
   );
 }
 
-.init-lh-cell__body {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0;
-  min-width: 0;
-  line-height: 1.05;
+.init-lh-cell--active .init-lh-cell__pie {
+  background: conic-gradient(
+    from 0deg,
+    var(--lh-green) 0deg,
+    var(--lh-green) var(--lh-consumed, 0deg),
+    #ffffff var(--lh-consumed, 0deg)
+  );
 }
 
-.init-lh-cell__num-row {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 0.02em;
-}
-
-.init-lh-cell__max-suffix {
+.init-lh-cell__fraction {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  transform: translateX(-50%);
+  z-index: 1;
   font-family: var(--font-body);
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.52);
+  font-size: 0.48rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: rgba(0, 0, 0, 0.72);
+  text-shadow: 0 0 2px #fff, 0 0 1px #fff;
+  pointer-events: none;
   white-space: nowrap;
 }
 
-.init-lh-cell__unit {
-  font-family: var(--font-body);
-  font-size: 0.52rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: rgba(0, 0, 0, 0.42);
-  margin-top: 0.02rem;
+.init-lh-cell--active .init-lh-cell__fraction {
+  display: block;
+}
+
+.init-lh-cell--active.init-lh-cell--input-focus .init-lh-cell__fraction {
+  opacity: 0;
 }
 
 .init-lh-cell__input {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   box-sizing: border-box;
-  width: 1.05rem;
-  min-width: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 2px;
-  background: transparent;
+  border-radius: 3px;
+  background: #ffffff;
   color: inherit;
   font-family: var(--font-body);
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 400;
   line-height: 1;
-  text-align: right;
+  text-align: center;
   text-shadow: none;
   cursor: default;
+}
+
+.init-lh-cell--empty .init-lh-cell__input {
+  background: #ffffff;
+}
+
+.init-lh-cell--active .init-lh-cell__input {
+  opacity: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.init-lh-cell--active.init-lh-cell--input-focus .init-lh-cell__input {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.94);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .init-lh-cell__input:focus {
   outline: 2px solid rgba(201, 162, 39, 0.55);
   outline-offset: 0;
-  background: rgba(255, 255, 255, 0.95);
 }
 
 .init-lh-cell__input:not([readonly]) {
+  cursor: text;
+}
+
+.init-lh-cell--active .init-lh-cell__input:not([readonly]) {
+  cursor: pointer;
+}
+
+.init-lh-cell--active.init-lh-cell--input-focus .init-lh-cell__input:not([readonly]) {
   cursor: text;
 }
 
@@ -747,15 +769,16 @@ body {
 .init-lh-cell--completed-flash::after {
   content: 'fertig';
   position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.5rem;
+  left: 50%;
+  top: 1px;
+  transform: translateX(-50%);
+  font-size: 0.45rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #2e7d32;
   pointer-events: none;
   white-space: nowrap;
+  z-index: 3;
   animation: init-lh-cell-done-fade 2.2s ease forwards;
 }
 
