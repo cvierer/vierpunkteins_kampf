@@ -117,6 +117,7 @@ export async function swapAdjacentZaoRootKeys(
 }
 
 export const DEFAULT_PHASE_OFFSET = 8
+export const DEFAULT_SECOND_ACTION_STEP = DEFAULT_PHASE_OFFSET
 
 export function defaultPhases() {
   return { links: [], rowPanelOpen: false }
@@ -236,9 +237,20 @@ function uuid() {
 }
 
 function safeDefaultOffset(ownerIniStr) {
-  const b = iniNumeric(ownerIniStr)
-  if (b === null) return DEFAULT_PHASE_OFFSET
-  return Math.min(DEFAULT_PHASE_OFFSET, Math.max(0, Math.floor(b)))
+  return DEFAULT_PHASE_OFFSET
+}
+
+/** Aktuell globaler Standard (8); später pro Held erweiterbar. */
+export function secondActionStepForOwnerIni(_ownerIniStr) {
+  return DEFAULT_SECOND_ACTION_STEP
+}
+
+/** Darf eine 2.A.-Wurzel erzeugt werden? (Ziel-INI der 2.A. muss >= 0 sein) */
+export function canCreateSecondActionRoot(ownerIniStr) {
+  const base = iniNumeric(ownerIniStr)
+  if (!Number.isFinite(base)) return false
+  const step = secondActionStepForOwnerIni(ownerIniStr)
+  return base - step >= 0
 }
 
 export function patchItemPhases(itemId, updater) {
@@ -260,6 +272,9 @@ export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
   return patchItemPhases(itemId, (p) => {
     if (shiftKey) {
       return { ...p, rowPanelOpen: false }
+    }
+    if (!canCreateSecondActionRoot(ownerIniStr)) {
+      return p
     }
     if (!p.rowPanelOpen) {
       const nextLinks =

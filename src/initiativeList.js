@@ -25,6 +25,7 @@ import {
   addPhaseChildLink,
   buildCombatTurnSteps,
   buildMergedDisplayRows,
+  canCreateSecondActionRoot,
   combatPatchForStep,
   findCombatStepIndex,
   formatIniForSort,
@@ -1093,6 +1094,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         plusAnchor.className = 'init-phase-plus-anchor'
 
         const rootCount = phases.links.filter((l) => l.parentId === null).length
+        const canCreateSecondAction = canCreateSecondActionRoot(row.initiative)
 
         const phasePlus = document.createElement('button')
         phasePlus.type = 'button'
@@ -1119,14 +1121,17 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           if (rootCount <= 0) return
           void removeLastZaoRoot(row.id)
         })
-        phasePlus.disabled = !canEdit
+        phasePlus.disabled = !canEdit || !canCreateSecondAction
         if (!canEdit) {
           phasePlus.title =
             'Nur Spielleitung oder Besitzer dieses Tokens (2. Aktionsphase / Phasen)'
+        } else if (!canCreateSecondAction) {
+          phasePlus.title = '2. Aktionsphase erst ab INI >= 8 (Standard)'
         }
+        phasePlus.hidden = !canCreateSecondAction
 
         plusAnchor.appendChild(phasePlus)
-        if (rootCount > 0) {
+        if (rootCount > 0 && canCreateSecondAction) {
           const countEl = document.createElement('span')
           countEl.className = 'init-phase-root-count'
           countEl.textContent = String(rootCount + 1)
