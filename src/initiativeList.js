@@ -34,6 +34,7 @@ import {
   onZaoRootTieOrderChange,
   removeLastZaoRoot,
   removePhaseLink,
+  LH_DONE_STEP_ID,
   ROUND_END_STEP_ID,
   sortedLinksForLayout,
   swapAdjacentZaoRootKeys,
@@ -1261,6 +1262,66 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ruleR.setAttribute('aria-hidden', 'true')
         bar.append(ruleL, label, ruleR)
         li.appendChild(bar)
+        frag.appendChild(li)
+      } else if (entry.kind === 'lhDone') {
+        const { ownerId, ownerName, hookIni } = entry
+        const ownerSceneItem = items.find((i) => i.id === ownerId)
+        const canEdit = canEditSceneItem(ownerSceneItem)
+        const ownerTrackerMeta =
+          ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
+
+        const li = document.createElement('li')
+        li.className = 'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone'
+        if (!canEdit) li.classList.add('init-row--locked')
+        li.dataset.phaseOwnerId = ownerId
+        li.dataset.phaseLinkId = LH_DONE_STEP_ID
+        li.dataset.dragKnotIni = formatHookDisplay(hookIni)
+
+        const main = document.createElement('div')
+        main.className = 'init-row-main init-row-main--phase init-row-main--phase-zao'
+
+        const btnCol = document.createElement('div')
+        btnCol.className = 'init-col-btn init-col-btn--phase init-col-btn--zao'
+        appendKrCounterPair(btnCol, ownerId, ownerTrackerMeta, canEdit)
+
+        const phaseMeta = document.createElement('div')
+        phaseMeta.className = 'init-phase-zao-meta'
+        const label = document.createElement('span')
+        label.className = 'init-phase-zao-ini-label'
+        label.textContent = 'LH'
+        label.title = 'Längerfristige Handlung abgeschlossen: Zusatz-Aktion'
+        const nameEl = document.createElement('span')
+        nameEl.className = 'init-row-name'
+        nameEl.textContent = ownerName
+        nameEl.title = 'Längerfristige Handlung abgeschlossen (Zusatz-Aktion)'
+        phaseMeta.append(label, nameEl)
+
+        const iniInput = document.createElement('input')
+        iniInput.className = 'init-row-init'
+        iniInput.type = 'text'
+        iniInput.inputMode = 'decimal'
+        iniInput.autocomplete = 'off'
+        iniInput.spellcheck = false
+        iniInput.value = formatHookDisplay(hookIni)
+        iniInput.setAttribute('aria-label', 'Ziel-INI')
+        iniInput.readOnly = true
+        iniInput.title = 'Automatisch aus L.H.-Abschluss erzeugt'
+
+        const swapSpacer = document.createElement('div')
+        swapSpacer.className = 'init-col-swap init-col-swap--phase'
+        swapSpacer.setAttribute('aria-hidden', 'true')
+
+        if (
+          activeId &&
+          activePhaseLinkId &&
+          ownerId === activeId &&
+          activePhaseLinkId === LH_DONE_STEP_ID
+        ) {
+          li.classList.add('init-row--active')
+        }
+
+        main.append(btnCol, phaseMeta, iniInput, swapSpacer)
+        li.appendChild(main)
         frag.appendChild(li)
       } else {
         const { ownerId, ownerName, ownerIniStr, link, hookIni } = entry

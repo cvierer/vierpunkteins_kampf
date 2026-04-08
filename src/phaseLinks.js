@@ -14,6 +14,9 @@ const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
 
 /** Synthetischer Zug „Ende der Kampfrunde“ (INI intern 0); kein Szenen-Token. */
 export const ROUND_END_STEP_ID = `${TRACKER_ID}/roundEndStep`
+export const LH_DONE_STEP_ID = `${TRACKER_ID}/lhDoneStep`
+const LH_DONE_ROUND = 'lhDoneRound'
+const LH_DONE_INI = 'lhDoneIni'
 
 /** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der 2.A.-Wurzeln ownerId:linkId */
 let zaoRootTieOrderByIniCache = {}
@@ -524,6 +527,25 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
         hookIni: hook,
       })
     }
+
+    const doneRound = Math.floor(Number(meta?.[LH_DONE_ROUND]))
+    const doneIni = Number(meta?.[LH_DONE_INI])
+    const ownerIni = iniNumeric(row.initiative)
+    if (
+      Number.isFinite(doneRound) &&
+      doneRound >= 1 &&
+      Number.isFinite(doneIni) &&
+      doneIni >= 0 &&
+      (!Number.isFinite(ownerIni) || doneIni !== ownerIni)
+    ) {
+      entries.push({
+        kind: 'lhDone',
+        ownerId: row.id,
+        ownerName: row.name,
+        ownerIniStr: row.initiative,
+        hookIni: doneIni,
+      })
+    }
   }
 
   entries.sort((a, b) => {
@@ -573,17 +595,27 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
     const sa =
       a.kind === 'token'
         ? { initiative: a.row.initiative, name: a.row.name }
-        : {
-            initiative: formatIniForSort(a.hookIni),
-            name: `${a.ownerName}\u0000${a.link.id}`,
-          }
+        : a.kind === 'lhDone'
+          ? {
+              initiative: formatIniForSort(a.hookIni),
+              name: `${a.ownerName}\u0000~lhdone`,
+            }
+          : {
+              initiative: formatIniForSort(a.hookIni),
+              name: `${a.ownerName}\u0000${a.link.id}`,
+            }
     const sb =
       b.kind === 'token'
         ? { initiative: b.row.initiative, name: b.row.name }
-        : {
-            initiative: formatIniForSort(b.hookIni),
-            name: `${b.ownerName}\u0000${b.link.id}`,
-          }
+        : b.kind === 'lhDone'
+          ? {
+              initiative: formatIniForSort(b.hookIni),
+              name: `${b.ownerName}\u0000~lhdone`,
+            }
+          : {
+              initiative: formatIniForSort(b.hookIni),
+              name: `${b.ownerName}\u0000${b.link.id}`,
+            }
     return compareInitiativeRows(sa, sb)
   })
 
@@ -604,6 +636,8 @@ export function buildCombatTurnSteps(tokenRows, items, tieOrderIds = []) {
       ? { kind: 'token', id: e.row.id }
       : e.kind === 'roundEnd'
         ? { kind: 'roundEnd', id: ROUND_END_STEP_ID }
+        : e.kind === 'lhDone'
+          ? { kind: 'lhDone', ownerId: e.ownerId, linkId: LH_DONE_STEP_ID }
         : { kind: 'phase', ownerId: e.ownerId, linkId: e.link.id }
   )
 }

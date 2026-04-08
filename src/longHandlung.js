@@ -29,6 +29,9 @@ export const LH_KR_FIRED_ROUND = 'lhKrFiredRound'
 
 /** Bitmaske: Auslöser k wurde in dieser KR bereits verbraucht */
 export const LH_KR_FIRED_MASK = 'lhKrFiredMask'
+/** Einmaliger Zusatz-Zug nach LH-Abschluss in der aktuellen KR (synthetische Zeile). */
+export const LH_DONE_ROUND = 'lhDoneRound'
+export const LH_DONE_INI = 'lhDoneIni'
 
 const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
 const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
@@ -110,6 +113,16 @@ function normalizeFiredMask(raw) {
   const n = Math.floor(Number(raw))
   if (!Number.isFinite(n) || n < 0) return 0
   return n & 0xff
+}
+
+function normalizeDoneRound(raw) {
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n >= 1 ? n : null
+}
+
+function normalizeDoneIni(raw) {
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? n : null
 }
 
 /**
@@ -194,11 +207,15 @@ export async function commitLhValue(itemId, text) {
         m[LH_REM] = 0
         delete m[LH_KR_FIRED_ROUND]
         delete m[LH_KR_FIRED_MASK]
+        delete m[LH_DONE_ROUND]
+        delete m[LH_DONE_INI]
       } else {
         m[LH_MAX] = n
         m[LH_REM] = n
         m[LH_KR_FIRED_ROUND] = round
         m[LH_KR_FIRED_MASK] = 0
+        delete m[LH_DONE_ROUND]
+        delete m[LH_DONE_INI]
       }
     }
   })
@@ -252,7 +269,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
       ? Number.POSITIVE_INFINITY
       : prevIniRaw
 
-  /** @type {Map<string, { max: number, rem: number, mechanics: ReturnType<typeof readLhMechanics> }>} */
+  /** @type {Map<string, { max: number, rem: number, doneRound: number|null, doneIni: number|null, mechanics: ReturnType<typeof readLhMechanics> }>} */
   const byId = new Map()
 
   const getPack = (item) => {
@@ -261,15 +278,23 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     const meta = item.metadata[TRACKER_ITEM_META_KEY]
     const st = readLhState(meta)
     const mech = readLhMechanics(meta)
+    let doneRound = normalizeDoneRound(meta[LH_DONE_ROUND])
+    let doneIni = normalizeDoneIni(meta[LH_DONE_INI])
     let firedRound = mech.firedRound
     let firedMask = mech.firedMask
     if (firedRound !== curr.round) {
       firedRound = curr.round
       firedMask = 0
     }
+    if (doneRound !== curr.round) {
+      doneRound = null
+      doneIni = null
+    }
     const pack = {
       max: st.max,
       rem: st.rem,
+      doneRound,
+      doneIni,
       mechanics: {
         ...mech,
         firedRound,
@@ -282,20 +307,32 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
 
   for (const item of trackerItems) {
     const meta = item.metadata[TRACKER_ITEM_META_KEY]
-    if (!readLhState(meta).max) continue
+    const st = readLhState(meta)
+    const hadDoneAny =
+      normalizeDoneRound(meta[LH_DONE_ROUND]) !== null &&
+      normalizeDoneIni(meta[LH_DONE_INI]) !== null
+    if (!st.max && !hadDoneAny) continue
 
     const H = currCtx.ownerIniById.get(item.id)
-    if (!Number.isFinite(H)) continue
+    if (!Number.isFinite(H)) {
+      const pack = getPack(item)
+      pack.doneRound = null
+      pack.doneIni = null
+      continue
+    }
 
     const pack = getPack(item)
 
     const { actionsPerKr, triggerIniStep } = pack.mechanics
     let mask = pack.mechanics.firedMask
     let rem = pack.rem
+    let completionIni = null
 
     if (roundDecreased) {
       rem = pack.max
       mask = 0
+      pack.doneRound = null
+      pack.doneIni = null
     } else if (movedBack) {
       for (let k = actionsPerKr - 1; k >= 0; k--) {
         const T = triggerIniForIndex(H, k, triggerIniStep)
@@ -305,6 +342,10 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         if (!(mask & bit)) continue
         mask &= ~bit
         rem = Math.min(pack.max, rem + 1)
+      }
+      if (rem > 0) {
+        pack.doneRound = null
+        pack.doneIni = null
       }
     } else {
       for (let k = 0; k < actionsPerKr; k++) {
@@ -316,17 +357,34 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         if (rem <= 0) break
         mask |= bit
         rem -= 1
+        if (rem <= 0) {
+          completionIni = T
+          break
+        }
       }
     }
 
     pack.mechanics.firedRound = curr.round
     pack.mechanics.firedMask = mask
     if (rem <= 0) {
+      if (
+        Number.isFinite(completionIni) &&
+        Number.isFinite(H) &&
+        completionIni !== H
+      ) {
+        pack.doneRound = curr.round
+        pack.doneIni = completionIni
+      } else if (movedBack || roundDecreased || roundAdvanced) {
+        pack.doneRound = null
+        pack.doneIni = null
+      }
       pack.max = 0
       pack.rem = 0
       pack.mechanics.firedMask = 0
     } else {
       pack.rem = rem
+      pack.doneRound = null
+      pack.doneIni = null
     }
   }
 
@@ -337,6 +395,8 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     const meta = item.metadata[TRACKER_ITEM_META_KEY]
     const prevSt = readLhState(meta)
     const prevMech = readLhMechanics(meta)
+    const prevDoneRound = normalizeDoneRound(meta[LH_DONE_ROUND])
+    const prevDoneIni = normalizeDoneIni(meta[LH_DONE_INI])
 
     const sameRem = p.rem === prevSt.rem && p.max === prevSt.max
     const sameRound = p.mechanics.firedRound === prevMech.firedRound
@@ -346,8 +406,20 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     const sameStep =
       normalizeTriggerStep(meta[LH_TRIGGER_INI_STEP]) ===
       p.mechanics.triggerIniStep
+    const sameDoneRound = p.doneRound === prevDoneRound
+    const sameDoneIni = p.doneIni === prevDoneIni
 
-    if (sameRem && sameRound && sameMask && sameActions && sameStep) continue
+    if (
+      sameRem &&
+      sameRound &&
+      sameMask &&
+      sameActions &&
+      sameStep &&
+      sameDoneRound &&
+      sameDoneIni
+    ) {
+      continue
+    }
 
     changed.push({
       id: item.id,
@@ -357,6 +429,8 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
       triggerIniStep: p.mechanics.triggerIniStep,
       firedRound: p.mechanics.firedRound,
       firedMask: p.mechanics.firedMask,
+      doneRound: p.doneRound,
+      doneIni: p.doneIni,
     })
   }
 
@@ -375,6 +449,13 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         m[LH_TRIGGER_INI_STEP] = p.triggerIniStep
         m[LH_KR_FIRED_ROUND] = p.firedRound
         m[LH_KR_FIRED_MASK] = p.firedMask
+        if (p.doneRound && Number.isFinite(p.doneIni)) {
+          m[LH_DONE_ROUND] = p.doneRound
+          m[LH_DONE_INI] = p.doneIni
+        } else {
+          delete m[LH_DONE_ROUND]
+          delete m[LH_DONE_INI]
+        }
       }
     })
   }
