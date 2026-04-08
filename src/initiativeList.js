@@ -1257,7 +1257,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ruleL.setAttribute('aria-hidden', 'true')
         const label = document.createElement('span')
         label.className = 'init-row-round-end-label'
-        label.textContent = `Ende der Kampfrunde ${combat.round}`
+        label.textContent = `Ende positiver INI Bereich ${combat.round}`
         const ruleR = document.createElement('span')
         ruleR.className = 'init-row-round-end-rule'
         ruleR.setAttribute('aria-hidden', 'true')
@@ -1503,7 +1503,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         const runRemoveAfterIniError = async () => {
-          iniInput.value = 'Offset < 0'
+          iniInput.value = 'INI < 0'
           iniInput.classList.add('init-row-init--error')
           await new Promise((r) => setTimeout(r, 420))
           void removePhaseLink(ownerId, link.id)

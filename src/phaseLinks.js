@@ -445,6 +445,7 @@ export function tryCommitPhaseOffset(itemId, linkId, offsetStr, ownerIniStr, lin
   off = Math.max(0, off)
 
   const hook = base - off
+  if (hook < 0) return Promise.resolve({ ok: false, reason: 'NEG_INI' })
   const stored = Math.min(99, off)
   return patchItemPhases(itemId, (p) => ({
     ...p,
@@ -464,6 +465,7 @@ export function tryCommitPhaseTargetIni(itemId, linkId, iniStr, ownerIniStr, lin
 
   const target = iniNumeric(iniStr)
   if (target === null) return Promise.resolve({ ok: false })
+  if (target < 0) return Promise.resolve({ ok: false, reason: 'NEG_INI' })
 
   const off = Math.round(base - target)
   if (off < 0) return Promise.resolve({ ok: false, reason: 'NEG_INI' })
@@ -512,7 +514,7 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
 
     for (const link of sortedLinksForLayout(phases.links)) {
       const hook = hookIniForLink(link.id, row.initiative, phases.links)
-      if (hook === null) continue
+      if (hook === null || hook < 0) continue
       entries.push({
         kind: 'phase',
         ownerId: row.id,
@@ -530,6 +532,7 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
       Number.isFinite(doneRound) &&
       doneRound >= 1 &&
       Number.isFinite(doneIni) &&
+      doneIni >= 0 &&
       (!Number.isFinite(ownerIni) || doneIni !== ownerIni)
     ) {
       entries.push({
