@@ -32,6 +32,7 @@ import {
   normalizePhases,
   onNamePhasePlusClick,
   onZaoRootTieOrderChange,
+  removeLastZaoRoot,
   removePhaseLink,
   ROUND_END_STEP_ID,
   sortedLinksForLayout,
@@ -1098,7 +1099,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         phasePlus.className = 'init-row-phase-plus init-row-phase-plus--in-slot'
         phasePlus.textContent = '+'
         phasePlus.title =
-          '2. Aktionsphase (4.1): öffnen / weitere 2. Aktionsphase · Shift+Klick schließen'
+          '2. Aktionsphase (4.1): Klick öffnen / weitere · Rechtsklick entfernt zuletzt angelegte · Shift+Klick schließen'
         phasePlus.setAttribute(
           'aria-label',
           rootCount > 0
@@ -1110,6 +1111,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           e.stopPropagation()
           if (!canEdit) return
           void onNamePhasePlusClick(row.id, { shiftKey: e.shiftKey }, row.initiative)
+        })
+        phasePlus.addEventListener('contextmenu', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!canEdit) return
+          if (rootCount <= 0) return
+          void removeLastZaoRoot(row.id)
         })
         phasePlus.disabled = !canEdit
         if (!canEdit) {

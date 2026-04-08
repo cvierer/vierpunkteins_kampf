@@ -316,6 +316,32 @@ export function removePhaseLink(itemId, linkId) {
   })
 }
 
+/**
+ * Entfernt die zuletzt angelegte 2.-A.-Wurzel (letzte Wurzel in der Link-Liste)
+ * inkl. angehängter Phasen – entspricht Umkehrung von wiederholtem „+“.
+ */
+export function removeLastZaoRoot(itemId) {
+  return patchItemPhases(itemId, (p) => {
+    let lastRootId = null
+    let bestIdx = -1
+    for (let i = 0; i < p.links.length; i++) {
+      const l = p.links[i]
+      if (l.parentId === null && i > bestIdx) {
+        bestIdx = i
+        lastRootId = l.id
+      }
+    }
+    if (!lastRootId) return p
+    const cut = collectSubtreeIds(p.links, lastRootId)
+    const nextLinks = p.links.filter((l) => !cut.has(l.id))
+    return {
+      ...p,
+      links: nextLinks,
+      rowPanelOpen: nextLinks.length === 0 ? false : p.rowPanelOpen,
+    }
+  })
+}
+
 export function togglePhaseLinkExpiresNextRound(itemId, linkId) {
   return patchItemPhases(itemId, (p) => {
     const link = p.links.find((l) => l.id === linkId)
