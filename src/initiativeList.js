@@ -1257,7 +1257,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ruleL.setAttribute('aria-hidden', 'true')
         const label = document.createElement('span')
         label.className = 'init-row-round-end-label'
-        label.textContent = `Ende positiver INI Bereich ${combat.round}`
+        label.textContent = `Ende der Kampfrunde ${combat.round}`
         const ruleR = document.createElement('span')
         ruleR.className = 'init-row-round-end-rule'
         ruleR.setAttribute('aria-hidden', 'true')
