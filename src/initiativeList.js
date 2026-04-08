@@ -261,7 +261,7 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   inp.value = st.max > 0 ? String(st.rem) : ''
 
   const lhTitleActive =
-    'Längerfristige Handlung: Rest / Gesamt in Aktionen (unten). Klick zum Bearbeiten der Rest-Aktion; neue Zahl beim Speichern setzt die Handlung neu (Rest = Ziel). Pro KR bis zu zwei Abzüge an den INI-Stufen des Tokens und (Standard: 8 darunter, ≥ 0). Leer = aus.'
+    'Längerfristige Handlung: Rest / Gesamt in Aktionen (unten). Klick zum Bearbeiten; Rechtsklick löscht. Neue Zahl beim Speichern setzt die Handlung neu (Rest = Ziel). Pro KR bis zu zwei Abzüge an den INI-Stufen des Tokens und (Standard: 8 darunter, ≥ 0). Leer = aus.'
   inp.title = lhTitleActive
   inp.setAttribute(
     'aria-label',
@@ -312,6 +312,11 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
         e.preventDefault()
         inp.blur()
       }
+    })
+    wrap.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      void commitLhValue(ownerItemId, '')
     })
   }
   container.appendChild(wrap)
