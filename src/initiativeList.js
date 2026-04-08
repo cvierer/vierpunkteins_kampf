@@ -396,7 +396,8 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
   return knots
 }
 
-/** Ganzzahliger Kampfwert-Anteil beim Drag: 0 … 99. */
+/** Ganzzahliger Kampfwert-Anteil beim Drag: -99 … 99. */
+const DRAG_INI_INT_MIN = -99
 const DRAG_INI_INT_MAX = 99
 
 /** Vertikaler Lerp: Oberkante der Liste → INI, Unterkante → (keine extremen Werte aus max(INI) der Tabelle). */
@@ -481,22 +482,22 @@ function lerpIniFromClientY(clientY, knots, listUl) {
 
 function clampIniContinuous(continuous) {
   if (continuous == null || !Number.isFinite(continuous)) return null
-  return Math.max(0, continuous)
+  return continuous
 }
 
-/** Konsistentes Runden für INI ≥ 0 (ohne JS „half-to-even“ bei .5). */
-function roundHalfUpNonNegative(n) {
+/** Konsistentes Runden (ohne JS „half-to-even“ bei .5). */
+function roundHalfUp(n) {
   if (!Number.isFinite(n)) return null
-  return Math.max(0, Math.floor(n + 0.5))
+  return Math.floor(n + 0.5)
 }
 
 function iniBaseIntFromLerp(continuous) {
-  return roundHalfUpNonNegative(continuous)
+  return roundHalfUp(continuous)
 }
 
 function formatIniStorage(n) {
   if (!Number.isFinite(n)) return '0'
-  const x = Math.max(0, n)
+  const x = n
   let s = x.toFixed(4).replace(/\.?0+$/, '')
   if (s === '' || s === '-') s = '0'
   return s
@@ -510,9 +511,9 @@ function composeProposedIniFromDragIntPart(replacementIntPart, currentIniStr) {
   const cur = parseIniNumber(currentIniStr)
   const r = initiativeRank(currentIniStr)
   if (cur === null || r === null) {
-    return formatIniStorage(Math.max(0, replacementIntPart))
+    return formatIniStorage(replacementIntPart)
   }
-  const newNum = Math.max(0, replacementIntPart + (cur - r.intPart))
+  const newNum = replacementIntPart + (cur - r.intPart)
   return formatIniStorage(newNum)
 }
 
@@ -573,10 +574,10 @@ function computeDropProposal(
   let baseInt = iniBaseIntFromLerp(previewCont)
   if (baseInt == null) {
     const r = initiativeRank(curStr)
-    baseInt = r ? Math.max(0, r.intPart) : 0
+    baseInt = r ? r.intPart : 0
   }
-  let intPart = Math.max(0, baseInt + wheelNudge)
-  intPart = Math.max(0, Math.min(DRAG_INI_INT_MAX, intPart))
+  let intPart = baseInt + wheelNudge
+  intPart = Math.max(DRAG_INI_INT_MIN, Math.min(DRAG_INI_INT_MAX, intPart))
   const proposedStr = composeProposedIniFromDragIntPart(intPart, curStr)
   const willIni = dragProposesIniChange(
     proposedStr,
@@ -1502,7 +1503,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         const runRemoveAfterIniError = async () => {
-          iniInput.value = 'INI < 0'
+          iniInput.value = 'Offset < 0'
           iniInput.classList.add('init-row-init--error')
           await new Promise((r) => setTimeout(r, 420))
           void removePhaseLink(ownerId, link.id)
@@ -1544,7 +1545,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         })
 
         const runRemoveAfterOffsetError = async () => {
-          offsetInput.value = 'INI < 0'
+          offsetInput.value = 'Offset < 0'
           offsetInput.classList.add('phase-offset-input--error')
           await new Promise((r) => setTimeout(r, 420))
           void removePhaseLink(ownerId, link.id)
