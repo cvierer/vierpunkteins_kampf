@@ -398,6 +398,12 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
 /** Ganzzahliger Kampfwert-Anteil beim Drag: 0 … 99. */
 const DRAG_INI_INT_MAX = 99
 
+/** Vertikaler Lerp: Oberkante der Liste → INI, Unterkante → (keine extremen Werte aus max(INI) der Tabelle). */
+const DRAG_INI_LERP_AT_LIST_TOP = 20
+const DRAG_INI_LERP_AT_LIST_BOTTOM = 8
+/** Beim Ziehen über die Liste hinaus: Vorschlag nicht höher als dieser Wert. */
+const DRAG_INI_LERP_EXTRAPOLATE_CEIL = 26
+
 const INI_DRAG_FLOAT_HINT = 'LOSLASSEN: NEUEN WERT ÜBERNEHMEN'
 
 /** Dwell-Zeit in ms pro ±1 INI, wenn die Maus in der INI-Spalte über/unter der Liste bleibt. */
@@ -456,25 +462,20 @@ function positionAndClampIniFloat(el, leftPx, topPx) {
 }
 
 /**
- * INI aus Y: gesamte Listenhöhe (+ Rand) linear auf [max+spread, min−spread].
- * t ist unbegrenzt, damit Ziehen über/unter der Liste weiter extrapoliert.
- * Bei mehreren gleichen INIs in der Liste liefert spread trotzdem nutzbare Steigung.
+ * INI aus Y: Oberkante der sichtbaren Liste → DRAG_INI_LERP_AT_LIST_TOP, Unterkante →
+ * DRAG_INI_LERP_AT_LIST_BOTTOM (linear), weiter extrapolieren mit gleicher Steigung,
+ * nach oben begrenzt durch DRAG_INI_LERP_EXTRAPOLATE_CEIL.
  */
 function lerpIniFromClientY(clientY, knots, listUl) {
   if (knots.length === 0) return null
-  const ur = listUl.getBoundingClientRect()
-  const vs = knots.map((k) => k.v)
-  const minV = Math.min(...vs)
-  const maxV = Math.max(...vs)
-  const marginY = Math.max(56, ur.height * 0.45)
-  const yTop = ur.top - marginY
-  const yBot = ur.bottom + marginY
-  const range = maxV - minV
-  const spread = Math.max(12, range * 0.55 + 8)
-  const vHigh = maxV + spread
-  const vLow = Math.max(0, minV - spread)
-  const t = (clientY - yTop) / Math.max(yBot - yTop, 1e-6)
-  return vHigh + t * (vLow - vHigh)
+  const scrollEl = listUl.closest('.initiative-list-scroll')
+  const ur =
+    scrollEl?.getBoundingClientRect() ?? listUl.getBoundingClientRect()
+  const h = Math.max(ur.height, 1e-6)
+  const slope =
+    (DRAG_INI_LERP_AT_LIST_BOTTOM - DRAG_INI_LERP_AT_LIST_TOP) / h
+  const raw = DRAG_INI_LERP_AT_LIST_TOP + (clientY - ur.top) * slope
+  return Math.min(DRAG_INI_LERP_EXTRAPOLATE_CEIL, raw)
 }
 
 function clampIniContinuous(continuous) {
