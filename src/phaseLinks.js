@@ -525,19 +525,20 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
       row.id,
       new Map(roots.map((l, i) => [l.id, i]))
     )
-    if (!phases.rowPanelOpen || phases.links.length === 0) continue
 
-    for (const link of sortedLinksForLayout(phases.links)) {
-      const hook = hookIniForLink(link.id, row.initiative, phases.links)
-      if (hook === null || hook < 0) continue
-      entries.push({
-        kind: 'phase',
-        ownerId: row.id,
-        ownerName: row.name,
-        ownerIniStr: row.initiative,
-        link,
-        hookIni: hook,
-      })
+    if (phases.rowPanelOpen && phases.links.length > 0) {
+      for (const link of sortedLinksForLayout(phases.links)) {
+        const hook = hookIniForLink(link.id, row.initiative, phases.links)
+        if (hook === null || hook < 0) continue
+        entries.push({
+          kind: 'phase',
+          ownerId: row.id,
+          ownerName: row.name,
+          ownerIniStr: row.initiative,
+          link,
+          hookIni: hook,
+        })
+      }
     }
 
     const doneRound = Math.floor(Number(meta?.[LH_DONE_ROUND]))
