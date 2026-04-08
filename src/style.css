@@ -633,22 +633,35 @@ body {
   opacity: 1;
 }
 
-/* Längerfristige Handlung: Kuchen (verbrauchter Anteil) + Zahl */
+/* Längerfristige Handlung: Kuchen + Rest/Gesamt (Aktionen) + kurzes „fertig“ */
 .init-lh-cell {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.2rem;
+  box-sizing: border-box;
+  min-height: 1.22rem;
+  padding: 1px 0.2rem 1px 1px;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: #ffffff;
+}
+
+.init-lh-cell__pie-wrap {
   position: relative;
   flex-shrink: 0;
   width: 1.22rem;
   height: 1.22rem;
   box-sizing: border-box;
-  border-radius: 4px;
-  border: 1px solid rgba(201, 162, 39, 0.45);
+  border-radius: 3px;
   overflow: hidden;
-  background: #ffffff;
 }
 
 .init-lh-cell__pie {
   position: absolute;
-  inset: 1px;
+  inset: 0;
   border-radius: 3px;
   pointer-events: none;
   z-index: 0;
@@ -661,26 +674,56 @@ body {
   );
 }
 
+.init-lh-cell__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+  line-height: 1.05;
+}
+
+.init-lh-cell__num-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.02em;
+}
+
+.init-lh-cell__max-suffix {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.52);
+  white-space: nowrap;
+}
+
+.init-lh-cell__unit {
+  font-family: var(--font-body);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.42);
+  margin-top: 0.02rem;
+}
+
 .init-lh-cell__input {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
   box-sizing: border-box;
+  width: 1.05rem;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 3px;
-  background: #ffffff;
+  border-radius: 2px;
+  background: transparent;
   color: inherit;
   font-family: var(--font-body);
-  font-size: 0.95rem;
-  font-weight: 400;
+  font-size: 0.72rem;
+  font-weight: 700;
   line-height: 1;
-  text-align: center;
+  text-align: right;
   text-shadow: none;
   cursor: default;
 }
@@ -688,10 +731,56 @@ body {
 .init-lh-cell__input:focus {
   outline: 2px solid rgba(201, 162, 39, 0.55);
   outline-offset: 0;
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .init-lh-cell__input:not([readonly]) {
   cursor: text;
+}
+
+.init-lh-cell--completed-flash {
+  border-color: rgba(46, 125, 50, 0.75);
+  box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.45);
+  animation: init-lh-cell-done 2.2s ease forwards;
+}
+
+.init-lh-cell--completed-flash::after {
+  content: 'fertig';
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #2e7d32;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: init-lh-cell-done-fade 2.2s ease forwards;
+}
+
+@keyframes init-lh-cell-done {
+  0% {
+    background: rgba(200, 230, 201, 0.55);
+  }
+  35% {
+    background: rgba(200, 230, 201, 0.35);
+  }
+  100% {
+    background: #ffffff;
+  }
+}
+
+@keyframes init-lh-cell-done-fade {
+  0% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .init-row-kr-counter__digit {

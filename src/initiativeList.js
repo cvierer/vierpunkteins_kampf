@@ -55,6 +55,9 @@ import {
 } from './krCounters.js'
 import { commitLhValue, readLhState, runLongHandlungAfterCombatUpdate } from './longHandlung.js'
 
+/** Letzter L.H.-Stand pro Token (für kurzes „fertig“ nach rem→0). */
+const lhRenderPrev = new Map()
+
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
 const PHASE_DRAG_MARK = 'vierpphase|'
@@ -226,11 +229,24 @@ function applyLhVisual(wrap, max, rem) {
 
 function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   const st = readLhState(trackerMeta)
+  const prev = lhRenderPrev.get(ownerItemId)
+  lhRenderPrev.set(ownerItemId, { max: st.max, rem: st.rem })
+
   const wrap = document.createElement('div')
   wrap.className = 'init-lh-cell'
+  const pieWrap = document.createElement('div')
+  pieWrap.className = 'init-lh-cell__pie-wrap'
   const pie = document.createElement('div')
   pie.className = 'init-lh-cell__pie'
   pie.setAttribute('aria-hidden', 'true')
+  pieWrap.appendChild(pie)
+
+  const body = document.createElement('div')
+  body.className = 'init-lh-cell__body'
+
+  const numRow = document.createElement('div')
+  numRow.className = 'init-lh-cell__num-row'
+
   const inp = document.createElement('input')
   inp.type = 'text'
   inp.className = 'init-lh-cell__input'
@@ -239,12 +255,25 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   inp.spellcheck = false
   inp.maxLength = 3
   inp.value = st.max > 0 ? String(st.rem) : ''
-  inp.title =
-    'Längerfristige Handlung: Ziel (z. B. 7). Pro KR bis zu zwei Abzüge, wenn die INI-Stufen des Tokens und (Standard: 8 Schritte darunter, ≥ 0) auf dem Lineal zur KR passen. Zurück = rückgängig. Leer = aus.'
+
+  const maxSuffix = document.createElement('span')
+  maxSuffix.className = 'init-lh-cell__max-suffix'
+  maxSuffix.setAttribute('aria-hidden', 'true')
+  maxSuffix.textContent = st.max > 0 ? `/${st.max}` : ''
+
+  const unit = document.createElement('span')
+  unit.className = 'init-lh-cell__unit'
+  unit.textContent = 'Akt.'
+  unit.title = 'Aktionen (Regelwerk: Dauer längerfristiger Handlungen)'
+  unit.hidden = st.max <= 0
+
+  const lhTitleActive =
+    'Längerfristige Handlung: Rest / Gesamt in Aktionen. Pro KR bis zu zwei Abzüge, wenn die INI-Stufen des Tokens und (Standard: 8 Schritte darunter, ≥ 0) auf dem Lineal zur KR passen. Neue Zahl beim Speichern setzt die Handlung neu (Rest = Ziel). Leer = aus.'
+  inp.title = lhTitleActive
   inp.setAttribute(
     'aria-label',
     st.max > 0
-      ? `Längerfristige Handlung, noch ${st.rem} von ${st.max}`
+      ? `Längerfristige Handlung, ${st.rem} von ${st.max} Aktionen`
       : 'Längerfristige Handlung, inaktiv'
   )
   inp.readOnly = !canEdit
@@ -252,8 +281,26 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
     inp.title =
       'Nur Spielleitung oder Besitzer dieses Tokens (Längerfristige Handlung)'
   }
+
+  numRow.append(inp, maxSuffix)
+  body.append(numRow, unit)
+  wrap.append(pieWrap, body)
+
   applyLhVisual(wrap, st.max, st.rem)
-  wrap.append(pie, inp)
+
+  if (
+    prev &&
+    prev.max > 0 &&
+    prev.rem > 0 &&
+    st.max === 0 &&
+    st.rem === 0
+  ) {
+    wrap.classList.add('init-lh-cell--completed-flash')
+    window.setTimeout(() => {
+      wrap.classList.remove('init-lh-cell--completed-flash')
+    }, 2200)
+  }
+
   if (canEdit) {
     let dirty = false
     inp.addEventListener('focus', () => {
