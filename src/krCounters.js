@@ -17,6 +17,8 @@ export const KR_ABW = 'krAbw'
 /** Sonstige reguläre Aktionen (z. B. Atem holen, Bewegen, Position, Taktik) */
 export const KR_SRA = 'krSra'
 export const KR_FREE_ACTION = 'krFreeAction'
+/** L.H. mit genau einer Aktion: klickbarer Stempel wie Ang./Abw./S.R.A./F.A. */
+export const KR_LH_ACTION = 'krLhAction'
 
 /** @deprecated Altes Feld; wird nur noch beim Lesen für Migration genutzt. */
 const LEGACY_KR_ACTION = 'krAction'
@@ -52,6 +54,10 @@ export function readKrAbw(meta) {
 
 export function readKrSra(meta) {
   return normalizeKrDigit(meta?.[KR_SRA])
+}
+
+export function readKrLhAction(meta) {
+  return normalizeKrDigit(meta?.[KR_LH_ACTION])
 }
 
 /**
@@ -205,6 +211,7 @@ export async function resetAllKrCountersInScene() {
           m[KR_ABW] = 0
           m[KR_SRA] = 0
           m[KR_FREE_ACTION] = 0
+          m[KR_LH_ACTION] = 0
           delete m[LEGACY_KR_ACTION]
         }
       }

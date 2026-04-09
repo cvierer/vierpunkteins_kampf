@@ -51,6 +51,7 @@ import {
   KR_ABW,
   KR_ANG,
   KR_FREE_ACTION,
+  KR_LH_ACTION,
   KR_SRA,
   normalizeKrDigit,
   patchKrCounterByDelta,
@@ -58,6 +59,7 @@ import {
   readKrAbw,
   readKrAng,
   readKrFreeAction,
+  readKrLhAction,
   readKrSra,
 } from './krCounters.js'
 import { getShowActionStamps, onShowActionStampsChange } from './localUiPrefs.js'
@@ -150,6 +152,7 @@ const ACTION_STAMP_LABEL = Object.freeze({
   [KR_ABW]: 'Abwehr',
   [KR_SRA]: 'S.R.A.',
   [KR_FREE_ACTION]: 'F.A.',
+  [KR_LH_ACTION]: 'Aktion',
 })
 
 function applyAngAbwCounterVisual(btn, v) {
@@ -283,7 +286,9 @@ function appendKrCounterPair(
   ownerItemId,
   trackerMeta,
   canEdit,
-  ownerIniStr
+  ownerIniStr,
+  ownerDisplayName = '',
+  lhStampColumnHost = null
 ) {
   appendSplitKrCounter(
     container,
@@ -320,7 +325,14 @@ function appendKrCounterPair(
     canEdit,
     ownerIniStr
   )
-  appendLhCell(container, ownerItemId, trackerMeta, canEdit)
+  appendLhCell(
+    container,
+    ownerItemId,
+    trackerMeta,
+    canEdit,
+    ownerDisplayName,
+    lhStampColumnHost
+  )
 }
 
 function applyLhVisual(wrap, max, rem) {
@@ -334,10 +346,20 @@ function applyLhVisual(wrap, max, rem) {
   pie.style.setProperty('--lh-consumed', `${frac * 360}deg`)
 }
 
-function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
+function appendLhCell(
+  container,
+  ownerItemId,
+  trackerMeta,
+  canEdit,
+  ownerDisplayName = '',
+  lhStampColumnHost = null
+) {
   const st = readLhState(trackerMeta)
   const prev = lhRenderPrev.get(ownerItemId)
   lhRenderPrev.set(ownerItemId, { max: st.max, rem: st.rem })
+
+  const lhStack = document.createElement('div')
+  lhStack.className = 'init-lh-stack'
 
   const wrap = document.createElement('div')
   wrap.className =
@@ -441,7 +463,68 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
       void commitLhValue(ownerItemId, '')
     })
   }
-  container.appendChild(wrap)
+
+  lhStack.appendChild(wrap)
+  container.appendChild(lhStack)
+
+  const showLhOneStamp =
+    st.max === 1 &&
+    st.rem > 0 &&
+    lhStampColumnHost instanceof HTMLElement
+  if (showLhOneStamp) {
+    const lhActVal = readKrLhAction(trackerMeta)
+    const stampBtn = document.createElement('button')
+    stampBtn.type = 'button'
+    stampBtn.className =
+      'init-lh-action-stamp' +
+      (lhActVal >= 1 ? ' init-lh-action-stamp--on' : '')
+    stampBtn.disabled = !canEdit
+    const bar = document.createElement('div')
+    bar.className = 'init-row-round-end-bar init-lh-action-stamp__bar'
+    const ruleL = document.createElement('span')
+    ruleL.className = 'init-row-round-end-rule init-lh-action-stamp__rule'
+    ruleL.setAttribute('aria-hidden', 'true')
+    const label = document.createElement('span')
+    label.className =
+      'init-row-round-end-label init-lh-action-stamp__label init-row-action-stamp-label-wrap'
+    const nameEl = document.createElement('span')
+    nameEl.className = 'init-row-action-stamp-name'
+    const disp = String(ownerDisplayName || '').trim() || '—'
+    nameEl.textContent = disp
+    nameEl.title = disp
+    const sep = document.createElement('span')
+    sep.className = 'init-row-action-stamp-sep'
+    sep.textContent = ' · '
+    sep.setAttribute('aria-hidden', 'true')
+    const actEl = document.createElement('span')
+    actEl.className = 'init-row-action-stamp-action'
+    actEl.textContent = ACTION_STAMP_LABEL[KR_LH_ACTION]
+    label.append(nameEl, sep, actEl)
+    label.title = `${disp} · ${ACTION_STAMP_LABEL[KR_LH_ACTION]}`
+    const ruleR = document.createElement('span')
+    ruleR.className = 'init-row-round-end-rule init-lh-action-stamp__rule'
+    ruleR.setAttribute('aria-hidden', 'true')
+    bar.append(ruleL, label, ruleR)
+    stampBtn.appendChild(bar)
+    stampBtn.setAttribute(
+      'aria-label',
+      `${ACTION_STAMP_LABEL[KR_LH_ACTION]}, ${splitCounterAria(lhActVal, 'L.H.-Aktion')}`
+    )
+    stampBtn.title = `L.H.-Aktion: Linksklick +1, Rechtsklick −1 (0–10, wie Ang./Abw.)`
+    if (canEdit) {
+      stampBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void patchKrCounterByDelta(ownerItemId, KR_LH_ACTION, 1)
+      })
+      stampBtn.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void patchKrCounterByDelta(ownerItemId, KR_LH_ACTION, -1)
+      })
+    }
+    lhStampColumnHost.appendChild(stampBtn)
+  }
 }
 
 function encodePhaseDrag(ownerId, linkId) {
@@ -1301,7 +1384,18 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const slotRow = document.createElement('div')
         slotRow.className = 'init-phase-slot-row'
-        appendKrCounterPair(slotRow, row.id, meta, canEdit, row.initiative)
+        btnCol.appendChild(slotRow)
+        const tokenListName =
+          getTokenListDisplayName(tokenSceneItem) || row.name || ''
+        appendKrCounterPair(
+          slotRow,
+          row.id,
+          meta,
+          canEdit,
+          row.initiative,
+          tokenListName,
+          btnCol
+        )
 
         const plusAnchor = document.createElement('div')
         plusAnchor.className = 'init-phase-plus-anchor'
@@ -1354,7 +1448,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         slotRow.appendChild(plusAnchor)
-        btnCol.appendChild(slotRow)
 
         const gutter = document.createElement('div')
         gutter.className = 'init-phase-gutter init-phase-gutter--empty'
@@ -1471,7 +1564,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
               ? 'init-row--action-stamp-abw'
               : field === KR_SRA
                 ? 'init-row--action-stamp-sra'
-                : 'init-row--action-stamp-fa'
+                : field === KR_LH_ACTION
+                  ? 'init-row--action-stamp-lh'
+                  : field === KR_FREE_ACTION
+                    ? 'init-row--action-stamp-fa'
+                    : 'init-row--action-stamp-fa'
         li.className = `init-row init-row--action-stamp ${mod}`
 
         const stampItem = items.find((i) => i.id === entry.stamp?.itemId)
@@ -1577,7 +1674,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerTrackerMeta,
           canEdit,
-          ownerIniStr
+          ownerIniStr,
+          getTokenListDisplayName(ownerSceneItem) || ownerName
         )
 
         const lhRemove = document.createElement('button')
@@ -1781,7 +1879,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerTrackerMeta,
           canEdit,
-          ownerIniStr
+          ownerIniStr,
+          getTokenListDisplayName(ownerSceneItem) || ownerName
         )
 
         if (isZaoRoot) {

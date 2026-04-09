@@ -514,15 +514,15 @@ body {
   gap: 0.22rem;
 }
 
-/* Ang., Abw., S.R.A., F.A., L.H., 2.A.+ in einer Zeile (1.22rem hoch). */
+/* Ang., Abw., S.R.A., F.A., L.H., 2.A.+ in einer Zeile; optional L.H.-Stempel darunter. */
 .init-col-btn--phase-slot {
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: flex-start;
-  gap: 0;
+  gap: 0.1rem;
   min-height: 1.22rem;
-  max-height: 1.22rem;
-  height: 1.22rem;
+  height: auto;
+  max-height: none;
 }
 
 .init-phase-slot-row {
@@ -533,6 +533,66 @@ body {
   justify-content: flex-start;
   gap: 0.22rem;
   flex-shrink: 0;
+  min-height: 1.22rem;
+  height: 1.22rem;
+}
+
+.init-lh-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.init-lh-action-stamp {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.04rem 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+  --stamp-color: #00695c;
+}
+
+.init-lh-action-stamp:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.init-lh-action-stamp--on .init-lh-action-stamp__rule {
+  background: color-mix(in oklab, var(--stamp-color) 58%, transparent);
+}
+
+.init-lh-action-stamp__bar {
+  min-height: 0.62rem;
+  gap: 0.35rem;
+}
+
+.init-lh-action-stamp__label {
+  font-size: 0.52rem;
+  letter-spacing: 0.012em;
+  opacity: 0.95;
+}
+
+.init-lh-action-stamp__rule {
+  flex: 1 1 0;
+  min-width: 0.28rem;
+  height: 2px;
+  min-height: 2px;
+  max-height: 2px;
+  border: none;
+  border-radius: 999px;
+  align-self: center;
+  background: color-mix(in oklab, var(--stamp-color) 48%, transparent);
+}
+
+.init-lh-action-stamp__label.init-row-action-stamp-label-wrap {
+  color: color-mix(in oklab, var(--stamp-color) 72%, var(--color-ink-muted));
+  flex-shrink: 1;
 }
 
 .init-phase-plus-anchor {
@@ -1297,6 +1357,10 @@ body {
 
 .init-row--action-stamp-fa {
   --stamp-color: #6a1b9a;
+}
+
+.init-row--action-stamp-lh {
+  --stamp-color: #00695c;
 }
 
 .init-row-round-end-bar {
