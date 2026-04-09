@@ -4,6 +4,7 @@ import {
   clearEphemeralExtraIniRows,
   pullZaoRootTieOrderFromRoom,
 } from './phaseLinks.js'
+import { pullRoomSettingsFromRoom } from './roomSettings.js'
 import { collectSortedParticipants } from './participants.js'
 import {
   compareInitiativeRowsWithTieOrder,
@@ -304,11 +305,13 @@ export async function initCombatRoom() {
   await pullIniTieOrderFromRoom()
   await pullZaoRootTieOrderFromRoom()
   await pullActionStampsFromRoom()
+  await pullRoomSettingsFromRoom()
   return OBR.room.onMetadataChange(() => {
     void pullFromRoom()
     void pullIniTieOrderFromRoom()
     void pullZaoRootTieOrderFromRoom()
     void pullActionStampsFromRoom()
+    void pullRoomSettingsFromRoom()
   })
 }
 

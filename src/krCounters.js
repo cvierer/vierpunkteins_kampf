@@ -1,6 +1,7 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { TRACKER_ITEM_META_KEY } from './participants.js'
 import { getCombat, patchActionStamps } from './combatRoom.js'
+import { faMaxForInitiative, getRoomSettings } from './roomSettings.js'
 
 export const KR_ANG = 'krAng'
 export const KR_ABW = 'krAbw'
@@ -14,13 +15,19 @@ const LEGACY_KR_ACTION = 'krAction'
 /** Obergrenze Ang./Abw./S.R.A./F.A. (zyklisch 10→0 bzw. 0→10). */
 export const KR_COUNTER_MAX = 10
 
-/** Ziffer 0–10 aus gespeichertem Wert. */
-export function normalizeKrDigit(raw) {
+/** Ziffer 0…max aus gespeichertem Wert (Standard max 10). */
+export function normalizeKrDigit(raw, max = KR_COUNTER_MAX) {
+  const cap = Math.max(0, Math.floor(Number(max)) || KR_COUNTER_MAX)
   let n = Math.floor(Number(raw))
   if (!Number.isFinite(n)) return 0
   if (n < 0) n = 0
-  if (n > KR_COUNTER_MAX) n = KR_COUNTER_MAX
+  if (n > cap) n = cap
   return n
+}
+
+export function readKrFreeAction(meta, faMax) {
+  const cap = Math.max(1, Math.min(5, Math.floor(Number(faMax)) || 2))
+  return normalizeKrDigit(meta?.[KR_FREE_ACTION], cap)
 }
 
 export function readKrAng(meta) {
@@ -43,11 +50,17 @@ export function readKrSra(meta) {
  */
 export async function patchKrCounterByDelta(itemId, field, delta) {
   const inc = delta > 0
-  const mod = KR_COUNTER_MAX + 1
   const items = await OBR.scene.items.getItems()
   const item = items.find((i) => i.id === itemId)
   const meta = item?.metadata?.[TRACKER_ITEM_META_KEY]
-  const cur = normalizeKrDigit(meta?.[field])
+  let maxDigit = KR_COUNTER_MAX
+  if (field === KR_FREE_ACTION) {
+    const iniStr = meta?.initiative
+    const settings = getRoomSettings()
+    maxDigit = faMaxForInitiative(iniStr, settings.highIniFreeActions)
+  }
+  const mod = maxDigit + 1
+  const cur = normalizeKrDigit(meta?.[field], maxDigit)
   const next = inc ? (cur + 1) % mod : (cur + mod - 1) % mod
   const ownerName = String(item?.name ?? '')
   await OBR.scene.items.updateItems([itemId], (drafts) => {

@@ -55,8 +55,14 @@ import {
   patchKrCounterByDelta,
   readKrAbw,
   readKrAng,
+  readKrFreeAction,
   readKrSra,
 } from './krCounters.js'
+import {
+  faMaxForInitiative,
+  getRoomSettings,
+  onRoomSettingsChange,
+} from './roomSettings.js'
 import {
   effectiveLhFiredMaskForRound,
   hookIniForLhProgressRow,
@@ -94,27 +100,13 @@ function applyAngAbwCounterVisual(btn, v) {
   digit.textContent = v >= 2 ? String(v) : ''
 }
 
-function applyFaCounterVisual(btn, v) {
-  const fill = btn.querySelector('.init-row-kr-counter__fill')
-  const digit = btn.querySelector('.init-row-kr-counter__digit')
-  if (!fill || !digit) return
-  fill.classList.remove(
-    'init-row-kr-counter__fill--half',
-    'init-row-kr-counter__fill--full',
-    'init-row-kr-counter__fill--on'
-  )
-  btn.classList.remove('init-row-kr-counter--has-digit')
-  digit.textContent = ''
-  if (v === 0) return
-  if (v === 1) {
-    fill.classList.add('init-row-kr-counter__fill--half')
-    return
-  }
-  fill.classList.add('init-row-kr-counter__fill--full')
-  if (v >= 3) {
-    digit.textContent = String(v)
-    btn.classList.add('init-row-kr-counter--has-digit')
-  }
+function applyFaCellVisual(wrap, used, faMax) {
+  const pie = wrap.querySelector('.init-fa-cell__pie')
+  if (!pie) return
+  const x = Math.max(1, faMax)
+  const y = Math.max(0, Math.min(used, x))
+  const frac = x <= 0 ? 0 : y / x
+  pie.style.setProperty('--fa-consumed', `${frac * 360}deg`)
 }
 
 function splitCounterAria(v, labelDe) {
@@ -123,11 +115,8 @@ function splitCounterAria(v, labelDe) {
   return `${labelDe}, ${v}`
 }
 
-function faCounterAria(v) {
-  if (v === 0) return 'Freie Aktion, leer'
-  if (v === 1) return 'Freie Aktion, zur Hälfte gefüllt'
-  if (v === 2) return 'Freie Aktion, voll gefüllt'
-  return `Freie Aktion, ${v}`
+function faCounterAria(used, faMax) {
+  return `Freie Aktion, ${used} von ${faMax} vergeben · Linksklick +1, Rechtsklick −1`
 }
 
 function actionPhaseRangeLabel(rootCount) {
@@ -175,24 +164,45 @@ function appendSplitKrCounter(
   container.appendChild(b)
 }
 
-function appendFaCounter(container, ownerItemId, trackerMeta, canEdit) {
-  const val = normalizeKrDigit(trackerMeta?.[KR_FREE_ACTION])
+function appendFaCounter(
+  container,
+  ownerItemId,
+  trackerMeta,
+  canEdit,
+  ownerIniStr
+) {
+  const settings = getRoomSettings()
+  const faMax = faMaxForInitiative(
+    ownerIniStr,
+    settings.highIniFreeActions
+  )
+  const used = readKrFreeAction(trackerMeta, faMax)
+
+  const wrap = document.createElement('div')
+  wrap.className = 'init-fa-cell init-fa-cell--active'
+
+  const pieWrap = document.createElement('div')
+  pieWrap.className = 'init-fa-cell__pie-wrap'
+  const pie = document.createElement('div')
+  pie.className = 'init-fa-cell__pie'
+  pie.setAttribute('aria-hidden', 'true')
+  pieWrap.appendChild(pie)
+
+  const fraction = document.createElement('span')
+  fraction.className = 'init-fa-cell__fraction'
+  fraction.setAttribute('aria-hidden', 'true')
+  fraction.textContent = `${used}/${faMax}`
+
   const b = document.createElement('button')
   b.type = 'button'
-  b.className =
-    'init-row-kr-counter init-row-kr-counter--split init-row-kr-counter--fa'
-  const fill = document.createElement('span')
-  fill.className = 'init-row-kr-counter__fill'
-  fill.setAttribute('aria-hidden', 'true')
-  const digit = document.createElement('span')
-  digit.className = 'init-row-kr-counter__digit'
-  digit.setAttribute('aria-hidden', 'true')
-  b.append(fill, digit)
-  applyFaCounterVisual(b, val)
-  b.title =
-    'Freie Aktion: 1 = halb (links), 2 = voll, ab 3 Zahl · Linksklick +1, Rechtsklick −1 (0–10)'
-  b.setAttribute('aria-label', faCounterAria(val))
+  b.className = 'init-fa-cell__tap'
+  b.title = `Freie Aktion: ${used}/${faMax} · Linksklick +1, Rechtsklick −1 (Zyklus 0…${faMax})`
+  b.setAttribute('aria-label', faCounterAria(used, faMax))
   b.disabled = !canEdit
+
+  wrap.append(pieWrap, fraction, b)
+  applyFaCellVisual(wrap, used, faMax)
+
   if (canEdit) {
     b.addEventListener('click', (e) => {
       e.preventDefault()
@@ -203,10 +213,17 @@ function appendFaCounter(container, ownerItemId, trackerMeta, canEdit) {
       void patchKrCounterByDelta(ownerItemId, KR_FREE_ACTION, -1)
     })
   }
-  container.appendChild(b)
+
+  container.appendChild(wrap)
 }
 
-function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
+function appendKrCounterPair(
+  container,
+  ownerItemId,
+  trackerMeta,
+  canEdit,
+  ownerIniStr
+) {
   appendSplitKrCounter(
     container,
     ownerItemId,
@@ -235,7 +252,13 @@ function appendKrCounterPair(container, ownerItemId, trackerMeta, canEdit) {
     'Sonstige reguläre Aktionen',
     '— Dazu zählen: Atem Holen, Bewegen, Position, Taktik.'
   )
-  appendFaCounter(container, ownerItemId, trackerMeta, canEdit)
+  appendFaCounter(
+    container,
+    ownerItemId,
+    trackerMeta,
+    canEdit,
+    ownerIniStr
+  )
   appendLhCell(container, ownerItemId, trackerMeta, canEdit)
 }
 
@@ -1228,7 +1251,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const slotRow = document.createElement('div')
         slotRow.className = 'init-phase-slot-row'
-        appendKrCounterPair(slotRow, row.id, meta, canEdit)
+        appendKrCounterPair(slotRow, row.id, meta, canEdit, row.initiative)
 
         const plusAnchor = document.createElement('div')
         plusAnchor.className = 'init-phase-plus-anchor'
@@ -1465,7 +1488,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const btnCol = document.createElement('div')
         btnCol.className = 'init-col-btn init-col-btn--phase init-col-btn--zao'
-        appendKrCounterPair(btnCol, ownerId, ownerTrackerMeta, canEdit)
+        appendKrCounterPair(
+          btnCol,
+          ownerId,
+          ownerTrackerMeta,
+          canEdit,
+          ownerIniStr
+        )
 
         const lhRemove = document.createElement('button')
         lhRemove.type = 'button'
@@ -1663,7 +1692,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const ownerTrackerMeta =
           ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
-        appendKrCounterPair(btnCol, ownerId, ownerTrackerMeta, canEdit)
+        appendKrCounterPair(
+          btnCol,
+          ownerId,
+          ownerTrackerMeta,
+          canEdit,
+          ownerIniStr
+        )
 
         if (isZaoRoot) {
           const ephemeral = Boolean(link.expiresNextRound)
@@ -2108,11 +2143,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   })
   onIniTieOrderChange(() => renderList(lastItems))
   const offZaoTie = onZaoRootTieOrderChange(() => renderList(lastItems))
+  const offRoomSettings = onRoomSettingsChange(() => {
+    void OBR.scene.items.getItems().then(renderList)
+  })
   const offPlayer = OBR.player.onChange(() => {
     void OBR.scene.items.getItems().then(renderList)
   })
 
   return () => {
+    offRoomSettings()
     offPlayer()
     offZaoTie()
     if (listScrollEl) {

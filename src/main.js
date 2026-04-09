@@ -8,6 +8,7 @@ import { initCombatRoom } from './combatRoom.js'
 import { setupCombatControls } from './combatControls.js'
 import { syncActionChrome } from './actionChrome.js'
 import { setupTurnMarkerSync } from './turnMarker.js'
+import { setupSettingsPanel } from './settingsPanel.js'
 
 const appRoot = document.querySelector('#app')
 appRoot.innerHTML = `
@@ -71,7 +72,7 @@ appRoot.innerHTML = `
 `
 const buildVerEl = document.getElementById('kampf-build-version')
 if (buildVerEl) {
-  buildVerEl.textContent = `V. ${BUILD_VERSION}`
+  buildVerEl.textContent = `V.${BUILD_VERSION}`
 }
 
 if (OBR.isAvailable) {
@@ -88,6 +89,7 @@ if (OBR.isAvailable) {
         if (items) void syncActionChrome(items)
       },
     })
+    setupSettingsPanel(document.querySelector('.initiative-list-scroll'))
   })
 } else {
   const hint = document.querySelector('#standalone-hint')

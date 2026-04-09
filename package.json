@@ -1,7 +1,7 @@
 {
   "name": "vierpunkteins_kampf",
-  "version": "1.0.1",
-  "description": "[v1.0.1] Owlbear-Rodeo-Erweiterung: Kampfliste und Initiative für Charakter-Tokens.",
+  "version": "1.0.2",
+  "description": "[v1.0.2] Owlbear-Rodeo-Erweiterung: Kampfliste und Initiative für Charakter-Tokens.",
   "private": true,
   "type": "module",
   "scripts": {

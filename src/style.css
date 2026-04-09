@@ -242,6 +242,7 @@ body {
   position: relative;
   width: 100%;
   box-sizing: border-box;
+  padding-bottom: 2.1rem;
 }
 
 .kampf-round-intro-board {
@@ -1325,6 +1326,201 @@ body {
 .standalone-hint code {
   font-size: 0.85em;
   word-break: break-all;
+}
+
+/* F.A.: wie L.H. Zellgröße, Kuchen + Y/X unten */
+.init-fa-cell {
+  position: relative;
+  flex-shrink: 0;
+  width: 1.22rem;
+  height: 1.22rem;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid rgba(123, 31, 162, 0.45);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.init-fa-cell__pie-wrap {
+  position: absolute;
+  inset: 1px;
+  border-radius: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.init-fa-cell__pie {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  pointer-events: none;
+  --fa-violet: #ce93d8;
+  background: conic-gradient(
+    from 0deg,
+    var(--fa-violet) 0deg,
+    var(--fa-violet) var(--fa-consumed, 0deg),
+    rgba(0, 0, 0, 0.14) var(--fa-consumed, 0deg)
+  );
+}
+
+.init-fa-cell__fraction {
+  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  transform: translateX(-50%);
+  z-index: 1;
+  font-family: var(--font-body);
+  font-size: 0.48rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: rgba(0, 0, 0, 0.72);
+  text-shadow: 0 0 2px #fff, 0 0 1px #fff;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.init-fa-cell__tap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  color: transparent;
+}
+
+.init-fa-cell__tap:disabled {
+  cursor: default;
+}
+
+.kampf-settings-gear {
+  position: absolute;
+  left: 0.28rem;
+  bottom: 0.28rem;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(139, 105, 20, 0.35);
+  border-radius: 6px;
+  background: rgba(28, 24, 18, 0.55);
+  color: rgba(235, 220, 185, 0.88);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.kampf-settings-gear:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(40, 34, 26, 0.75);
+}
+
+.kampf-settings-gear:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.65);
+  outline-offset: 1px;
+}
+
+.kampf-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+
+.kampf-settings-panel {
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: min(90vh, 28rem);
+  overflow: auto;
+  padding: 1rem 1.1rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+
+.kampf-settings-panel__title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.kampf-settings-panel__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+}
+
+.kampf-settings-panel__section {
+  margin-bottom: 0.85rem;
+}
+
+.kampf-settings-checkbox-label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.kampf-settings-checkbox-label input {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.kampf-settings-checkbox-label input:disabled {
+  cursor: default;
+}
+
+.kampf-settings-panel__future {
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+.kampf-settings-panel__sub {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+}
+
+.kampf-settings-panel__ideas {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-ink-muted);
+}
+
+.kampf-settings-panel__close {
+  margin-top: 0.35rem;
+  width: 100%;
 }
 
 @media (prefers-color-scheme: light) {
