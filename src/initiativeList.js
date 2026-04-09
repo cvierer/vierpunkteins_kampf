@@ -309,27 +309,17 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
 
   inp.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-      const ul = inp.closest('ul.initiative-list')
-      if (!ul) return
-      const inputs = Array.from(ul.querySelectorAll('.init-lh-cell__input'))
-      const idx = inputs.indexOf(inp)
-      if (idx < 0) return
-      const nextIdx = idx + 1
-      if (nextIdx >= inputs.length) return
       e.preventDefault()
-      inputs[nextIdx].focus()
+      inp.blur()
+      const btn = document.querySelector('[data-combat-next]')
+      if (btn instanceof HTMLButtonElement) btn.click()
       return
     }
     if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-      const ul = inp.closest('ul.initiative-list')
-      if (!ul) return
-      const inputs = Array.from(ul.querySelectorAll('.init-lh-cell__input'))
-      const idx = inputs.indexOf(inp)
-      if (idx < 0) return
-      const nextIdx = idx - 1
-      if (nextIdx < 0) return
       e.preventDefault()
-      inputs[nextIdx].focus()
+      inp.blur()
+      const btn = document.querySelector('[data-combat-prev]')
+      if (btn instanceof HTMLButtonElement) btn.click()
       return
     }
     if (canEdit && e.key === 'Enter') {
@@ -1402,6 +1392,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const canEdit = canEditSceneItem(ownerSceneItem)
         const ownerTrackerMeta =
           ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
+        const stProgress = readLhState(ownerTrackerMeta)
+        const lhProgressLabelComputed =
+          stProgress.max > 0
+            ? `${Math.max(0, stProgress.max - stProgress.rem)}/${stProgress.max}`
+            : lhProgressLabel
 
         const li = document.createElement('li')
         li.className =
@@ -1470,7 +1465,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniInput.autocomplete = 'off'
         iniInput.spellcheck = false
         iniInput.value = lhPending
-          ? lhProgressLabel
+          ? lhProgressLabelComputed
           : formatHookDisplay(hookIni)
         iniInput.setAttribute(
           'aria-label',
