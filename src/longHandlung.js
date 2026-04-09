@@ -220,7 +220,14 @@ export async function commitLhValue(itemId, text, opts) {
       }
     }
   } else {
-    void clearKrLhStampsForItem(itemId)
+    if (
+      Object.prototype.hasOwnProperty.call(o, 'stampPhaseLinkId') &&
+      o.stampPhaseLinkId !== null
+    ) {
+      void clearKrLhStampsForItem(itemId, o.stampPhaseLinkId)
+    } else {
+      void clearKrLhStampsForItem(itemId)
+    }
   }
 }
 

@@ -11,7 +11,6 @@ import {
   patchActionStamps,
 } from './combatRoom.js'
 import { faMaxForInitiative, getRoomSettings } from './roomSettings.js'
-import { clearLhTrackerActivity } from './lhMeta.js'
 
 export const KR_ANG = 'krAng'
 export const KR_ABW = 'krAbw'
@@ -167,35 +166,6 @@ export async function undoKrActionStamp(stampId) {
   const item = items.find((i) => i.id === entry.itemId)
   if (!canEditSceneItem(item)) return
 
-  if (entry.field === KR_LH_ACTION) {
-    const skipGmLh = canEditSceneItem(item) && !isGmSync()
-    await OBR.scene.items.updateItems([entry.itemId], (drafts) => {
-      for (const draft of drafts) {
-        const m = draft.metadata[TRACKER_ITEM_META_KEY]
-        if (!m) continue
-        clearLhTrackerActivity(m)
-        m[KR_LH_ACTION] = 0
-      }
-    })
-    await patchActionStamps(
-      (stamps) => {
-        const entries = stamps.entries.filter(
-          (e) => !(e.itemId === entry.itemId && e.field === KR_LH_ACTION)
-        )
-        const anchorId =
-          entries.length > 0
-            ? stamps.anchorId ||
-              (typeof getCombat().currentItemId === 'string'
-                ? getCombat().currentItemId
-                : entry.itemId)
-            : null
-        return { anchorId, entries }
-      },
-      { skipGmCheck: skipGmLh }
-    )
-    return
-  }
-
   const meta = item?.metadata?.[TRACKER_ITEM_META_KEY]
   let maxDigit = KR_COUNTER_MAX
   if (entry.field === KR_FREE_ACTION) {
@@ -259,23 +229,34 @@ export async function undoLastKrFieldStamp(itemId, field) {
   await patchKrCounterByDelta(itemId, field, -1)
 }
 
-/** Zähler krLhAction leeren und alle Aktions-Stempel dieses Feldes für das Token entfernen. */
-export async function clearKrLhStampsForItem(itemId) {
+function lhStampMatchesAnchorRemoval(e, itemId, onlyAnchorPhaseLinkId) {
+  if (e.itemId !== itemId || e.field !== KR_LH_ACTION) return false
+  if (onlyAnchorPhaseLinkId === undefined) return true
+  const apl = e.anchorPhaseLinkId
+  if (onlyAnchorPhaseLinkId === null)
+    return apl == null || apl === ''
+  return apl === onlyAnchorPhaseLinkId
+}
+
+/**
+ * L.H.-Stempel für das Token entfernen und krLhAction an verbleibende Stempel anpassen.
+ * @param {string | null | undefined} [onlyAnchorPhaseLinkId] — `undefined`: alle L.H.-Stempel; `null`: nur unter Token-Zeile; `string`: nur dieser Phasen-Link (2.A. / lhDone).
+ */
+export async function clearKrLhStampsForItem(itemId, onlyAnchorPhaseLinkId) {
   const items = await OBR.scene.items.getItems()
   const item = items.find((i) => i.id === itemId)
   if (!canEditSceneItem(item)) return
-  await OBR.scene.items.updateItems([itemId], (drafts) => {
-    for (const draft of drafts) {
-      const m = draft.metadata[TRACKER_ITEM_META_KEY]
-      if (m) m[KR_LH_ACTION] = 0
-    }
-  })
   const skipGmStamp = canEditSceneItem(item) && !isGmSync()
+  let newLhCount = 0
   await patchActionStamps(
     (stamps) => {
       const entries = stamps.entries.filter(
-        (e) => !(e.itemId === itemId && e.field === KR_LH_ACTION)
+        (e) =>
+          !lhStampMatchesAnchorRemoval(e, itemId, onlyAnchorPhaseLinkId)
       )
+      newLhCount = entries.filter(
+        (e) => e.itemId === itemId && e.field === KR_LH_ACTION
+      ).length
       const anchorId =
         entries.length > 0
           ? stamps.anchorId ||
@@ -287,6 +268,12 @@ export async function clearKrLhStampsForItem(itemId) {
     },
     { skipGmCheck: skipGmStamp }
   )
+  await OBR.scene.items.updateItems([itemId], (drafts) => {
+    for (const draft of drafts) {
+      const m = draft.metadata[TRACKER_ITEM_META_KEY]
+      if (m) m[KR_LH_ACTION] = newLhCount
+    }
+  })
 }
 
 /**
@@ -294,7 +281,11 @@ export async function clearKrLhStampsForItem(itemId) {
  * @param {string | null | undefined} [stampPhaseLinkId] — `null` = Token-Zeile; String = Phasen-Link (2.A. …); `undefined` = Anker wie aktueller Kampfschritt.
  */
 export async function applyLhOneClickStamp(itemId, stampPhaseLinkId) {
-  await clearKrLhStampsForItem(itemId)
+  if (stampPhaseLinkId === undefined) {
+    await clearKrLhStampsForItem(itemId)
+  } else {
+    await clearKrLhStampsForItem(itemId, stampPhaseLinkId)
+  }
   const stampOpts =
     stampPhaseLinkId !== undefined
       ? {
