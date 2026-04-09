@@ -67,9 +67,7 @@ import {
   onRoomSettingsChange,
 } from './roomSettings.js'
 import {
-  effectiveLhFiredMaskForRound,
-  hookIniForLhProgressRow,
-  readLhMechanics,
+  computeLhProgressDisplayHookIni,
   readLhState,
   trackerShowsLhSyntheticRow,
 } from './lhMeta.js'
@@ -687,11 +685,12 @@ function computeDropProposal(
         const H = parseIniNumber(dragRow?.initiative ?? '')
         const cr = getCombat().started ? getCombat().round : null
         if (lhm > 0 && lhr > 0 && H != null) {
-          const mech = readLhMechanics(meta)
-          const hk = hookIniForLhProgressRow(
+          const hk = computeLhProgressDisplayHookIni(
+            lhm,
+            lhr,
             H,
-            mech,
-            effectiveLhFiredMaskForRound(meta, cr)
+            meta,
+            cr
           )
           curStr = formatHookDisplay(hk)
         } else {

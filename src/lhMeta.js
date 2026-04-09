@@ -106,6 +106,37 @@ export function hookIniForLhProgressRow(heroIni, mechanics, firedMask) {
 }
 
 /**
+ * L.H. mit genau einer Gesamt-Aktion (max=1): 2.A. eine Stufe am Phasen-Offset unter dem Heldenwert
+ * (Standard-Offset −8 → INI = Helden-INI − 8).
+ */
+export function lhSingleActionHookIni(heroIni, triggerIniStep) {
+  if (!Number.isFinite(heroIni)) return null
+  const step = Number(triggerIniStep)
+  if (!Number.isFinite(step) || step === 0) return null
+  const t = heroIni + step
+  return Number.isFinite(t) && t >= 0 ? t : null
+}
+
+/** INI der laufenden L.H.-Zeile für Liste / Kampfschritte (inkl. Sonderfall max=1). */
+export function computeLhProgressDisplayHookIni(
+  lhMax,
+  lhRem,
+  heroIni,
+  meta,
+  combatRound
+) {
+  if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(heroIni)) || !meta) {
+    return null
+  }
+  const mech = readLhMechanics(meta)
+  if (lhMax === 1 && lhRem === lhMax) {
+    return lhSingleActionHookIni(heroIni, mech.triggerIniStep)
+  }
+  const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
+  return hookIniForLhProgressRow(heroIni, mech, firedMask)
+}
+
+/**
  * Extra-INI-Zeile „L.H. läuft“ (2.A.) anzeigen?
  * Bei genau einer Gesamt-Aktion (max=1): erst ab Anzeige 0/1 in der Zelle (rem===max===1),
  * auch wenn Auslöser-INI = Helden-INI (Zeile steht dann direkt unter dem Heldenzug).
@@ -134,9 +165,13 @@ export function trackerShowsLhSyntheticRow(meta, ownerIniNum, combatRound) {
   if (hasCompletedLhDone) return true
   const { max: lhMax, rem: lhRem } = readLhState(meta)
   if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIniNum))) return false
-  const mech = readLhMechanics(meta)
-  const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
-  const hook = hookIniForLhProgressRow(ownerIniNum, mech, firedMask)
+  const hook = computeLhProgressDisplayHookIni(
+    lhMax,
+    lhRem,
+    ownerIniNum,
+    meta,
+    combatRound
+  )
   return shouldShowLhProgressRow(lhMax, lhRem, hook, ownerIniNum)
 }
 

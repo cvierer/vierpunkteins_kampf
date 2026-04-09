@@ -19,6 +19,7 @@ import {
   LH_MAX,
   LH_REM,
   LH_TRIGGER_INI_STEP,
+  lhSingleActionHookIni,
   normalizeActionsPerKrForPatch,
   normalizeTriggerStepForPatch,
   readLhMechanics,
@@ -318,32 +319,58 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
       pack.doneRound = null
       pack.doneIni = null
     } else if (movedBack) {
-      for (let k = actionsPerKr - 1; k >= 0; k--) {
-        const T = triggerIniForIndex(H, k, triggerIniStep)
-        if (!Number.isFinite(T) || T < 0) continue
-        if (!crossedBackward(prevIniRaw, currIni, T)) continue
-        const bit = 1 << k
-        if (!(mask & bit)) continue
-        mask &= ~bit
-        rem = Math.min(pack.max, rem + 1)
+      const Tsingle =
+        pack.max === 1 ? lhSingleActionHookIni(H, triggerIniStep) : null
+      if (pack.max === 1 && Tsingle != null) {
+        if (
+          crossedBackward(prevIniRaw, currIni, Tsingle) &&
+          (mask & 1)
+        ) {
+          mask &= ~1
+          rem = Math.min(pack.max, rem + 1)
+        }
+      } else {
+        for (let k = actionsPerKr - 1; k >= 0; k--) {
+          const T = triggerIniForIndex(H, k, triggerIniStep)
+          if (!Number.isFinite(T) || T < 0) continue
+          if (!crossedBackward(prevIniRaw, currIni, T)) continue
+          const bit = 1 << k
+          if (!(mask & bit)) continue
+          mask &= ~bit
+          rem = Math.min(pack.max, rem + 1)
+        }
       }
       if (rem > 0) {
         pack.doneRound = null
         pack.doneIni = null
       }
     } else {
-      for (let k = 0; k < actionsPerKr; k++) {
-        const T = triggerIniForIndex(H, k, triggerIniStep)
-        if (!Number.isFinite(T) || T < 0) continue
-        if (!crossedForward(prevIni, currIni, T)) continue
-        const bit = 1 << k
-        if (mask & bit) continue
-        if (rem <= 0) break
-        mask |= bit
-        rem -= 1
-        if (rem <= 0) {
-          completionIni = T
-          break
+      const Tsingle =
+        pack.max === 1 ? lhSingleActionHookIni(H, triggerIniStep) : null
+      if (pack.max === 1 && Tsingle != null) {
+        if (
+          crossedForward(prevIni, currIni, Tsingle) &&
+          !(mask & 1) &&
+          rem > 0
+        ) {
+          mask |= 1
+          rem -= 1
+          if (rem <= 0) completionIni = Tsingle
+        }
+      } else {
+        for (let k = 0; k < actionsPerKr; k++) {
+          const T = triggerIniForIndex(H, k, triggerIniStep)
+          if (!Number.isFinite(T) || T < 0) continue
+          if (!crossedForward(prevIni, currIni, T)) continue
+          const bit = 1 << k
+          if (mask & bit) continue
+          if (rem <= 0) break
+          mask |= bit
+          rem -= 1
+          if (rem <= 0) {
+            completionIni = T
+            break
+          }
         }
       }
     }

@@ -12,9 +12,7 @@ import {
 import {
   LH_DONE_INI,
   LH_DONE_ROUND,
-  effectiveLhFiredMaskForRound,
-  hookIniForLhProgressRow,
-  readLhMechanics,
+  computeLhProgressDisplayHookIni,
   readLhState,
   shouldShowLhProgressRow,
 } from './lhMeta.js'
@@ -576,9 +574,13 @@ export function buildMergedDisplayRows(
     } else {
       const { max: lhMax, rem: lhRem } = readLhState(meta)
       if (lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIni)) {
-        const mech = readLhMechanics(meta)
-        const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
-        const hookIni = hookIniForLhProgressRow(ownerIni, mech, firedMask)
+        const hookIni = computeLhProgressDisplayHookIni(
+          lhMax,
+          lhRem,
+          ownerIni,
+          meta,
+          combatRound
+        )
         if (shouldShowLhProgressRow(lhMax, lhRem, hookIni, ownerIni)) {
           entries.push({
             kind: 'lhDone',
