@@ -6,7 +6,7 @@ import {
   patchRoomSettings,
 } from './roomSettings.js'
 
-const GEAR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`
+const GEAR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`
 
 /**
  * Zahnrad unten links an der scrollenden Liste; GM bearbeitet, Spieler nur lesen.
@@ -27,6 +27,7 @@ export function setupSettingsPanel(listScrollEl) {
   backdrop.className = 'kampf-settings-backdrop'
   backdrop.hidden = true
   backdrop.setAttribute('aria-hidden', 'true')
+  backdrop.style.display = 'none'
 
   const panel = document.createElement('div')
   panel.className = 'kampf-settings-panel'
@@ -61,7 +62,7 @@ export function setupSettingsPanel(listScrollEl) {
 
   const highIniCb = panel.querySelector('[data-kampf-setting-high-ini-fa]')
   const roleHint = panel.querySelector('[data-kampf-settings-role-hint]')
-  const closeBtn = panel.querySelector('[data-kampf-settings-close]')
+  const closeBtn = panel.querySelector('button.kampf-settings-panel__close')
 
   const syncUi = () => {
     const s = getRoomSettings()
@@ -79,12 +80,14 @@ export function setupSettingsPanel(listScrollEl) {
   const closePanel = () => {
     backdrop.hidden = true
     backdrop.setAttribute('aria-hidden', 'true')
+    backdrop.style.display = 'none'
     gear.focus()
   }
 
   const openPanel = () => {
     syncUi()
     backdrop.hidden = false
+    backdrop.style.display = 'flex'
     backdrop.setAttribute('aria-hidden', 'false')
     closeBtn?.focus()
   }
@@ -94,10 +97,13 @@ export function setupSettingsPanel(listScrollEl) {
     openPanel()
   })
 
-  closeBtn?.addEventListener('click', (e) => {
-    e.preventDefault()
-    closePanel()
-  })
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      closePanel()
+    })
+  }
 
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) closePanel()

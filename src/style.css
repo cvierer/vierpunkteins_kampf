@@ -1348,6 +1348,7 @@ body {
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  background: #ffffff;
 }
 
 .init-fa-cell__pie {
@@ -1360,7 +1361,7 @@ body {
     from 0deg,
     var(--fa-violet) 0deg,
     var(--fa-violet) var(--fa-consumed, 0deg),
-    rgba(0, 0, 0, 0.14) var(--fa-consumed, 0deg)
+    #ffffff var(--fa-consumed, 0deg)
   );
 }
 
@@ -1407,12 +1408,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.1rem;
+  height: 1.1rem;
   padding: 0;
   margin: 0;
   border: 1px solid rgba(139, 105, 20, 0.35);
-  border-radius: 6px;
+  border-radius: 4px;
   background: rgba(28, 24, 18, 0.55);
   color: rgba(235, 220, 185, 0.88);
   cursor: pointer;
@@ -1434,6 +1435,12 @@ body {
   outline-offset: 1px;
 }
 
+.kampf-settings-gear svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
 .kampf-settings-backdrop {
   position: fixed;
   inset: 0;
@@ -1444,6 +1451,12 @@ body {
   padding: 1rem;
   background: rgba(0, 0, 0, 0.45);
   box-sizing: border-box;
+}
+
+/* `display: flex` oben überschreibt sonst das UA-`[hidden]` → Dialog blieb sichtbar / Schließen wirkungslos */
+.kampf-settings-backdrop[hidden] {
+  display: none !important;
+  pointer-events: none;
 }
 
 .kampf-settings-panel {
@@ -1519,6 +1532,8 @@ body {
 }
 
 .kampf-settings-panel__close {
+  position: relative;
+  z-index: 2;
   margin-top: 0.35rem;
   width: 100%;
 }
