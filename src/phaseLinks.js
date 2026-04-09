@@ -16,6 +16,7 @@ import {
   hookIniForLhProgressRow,
   readLhMechanics,
   readLhState,
+  shouldShowLhProgressRow,
 } from './lhMeta.js'
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
@@ -578,7 +579,7 @@ export function buildMergedDisplayRows(
         const mech = readLhMechanics(meta)
         const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
         const hookIni = hookIniForLhProgressRow(ownerIni, mech, firedMask)
-        if (hookIni != null && hookIni !== ownerIni) {
+        if (shouldShowLhProgressRow(lhMax, lhRem, hookIni, ownerIni)) {
           entries.push({
             kind: 'lhDone',
             ownerId: row.id,

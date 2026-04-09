@@ -105,6 +105,18 @@ export function hookIniForLhProgressRow(heroIni, mechanics, firedMask) {
   return lowestFired
 }
 
+/**
+ * Extra-INI-Zeile „L.H. läuft“ (2.A.) anzeigen?
+ * Bei genau einer Gesamt-Aktion (max=1) entfällt die Zeile — Abbau nur über den Heldenzug / Lineal,
+ * ohne vorher eine eigene Listenposition zu besuchen.
+ */
+export function shouldShowLhProgressRow(lhMax, lhRem, hookIni, heroIni) {
+  if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(heroIni))) return false
+  if (lhMax === 1) return false
+  if (hookIni == null || hookIni === heroIni) return false
+  return true
+}
+
 /** Wie buildMergedDisplayRows: synthetische L.H.-Zeile (läuft oder abgeschlossen). */
 export function trackerShowsLhSyntheticRow(meta, ownerIniNum, combatRound) {
   if (!meta || typeof meta !== 'object') return false
@@ -122,8 +134,7 @@ export function trackerShowsLhSyntheticRow(meta, ownerIniNum, combatRound) {
   const mech = readLhMechanics(meta)
   const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
   const hook = hookIniForLhProgressRow(ownerIniNum, mech, firedMask)
-  if (hook == null) return false
-  return hook !== ownerIniNum
+  return shouldShowLhProgressRow(lhMax, lhRem, hook, ownerIniNum)
 }
 
 export function normalizeActionsPerKrForPatch(raw) {
