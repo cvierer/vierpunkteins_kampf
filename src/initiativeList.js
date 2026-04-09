@@ -294,6 +294,37 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
     }, 2200)
   }
 
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      const ul = inp.closest('ul.initiative-list')
+      if (!ul) return
+      const inputs = Array.from(ul.querySelectorAll('.init-lh-cell__input'))
+      const idx = inputs.indexOf(inp)
+      if (idx < 0) return
+      const nextIdx = idx + 1
+      if (nextIdx >= inputs.length) return
+      e.preventDefault()
+      inputs[nextIdx].focus()
+      return
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      const ul = inp.closest('ul.initiative-list')
+      if (!ul) return
+      const inputs = Array.from(ul.querySelectorAll('.init-lh-cell__input'))
+      const idx = inputs.indexOf(inp)
+      if (idx < 0) return
+      const nextIdx = idx - 1
+      if (nextIdx < 0) return
+      e.preventDefault()
+      inputs[nextIdx].focus()
+      return
+    }
+    if (canEdit && e.key === 'Enter') {
+      e.preventDefault()
+      inp.blur()
+    }
+  })
+
   if (canEdit) {
     let dirty = false
     inp.addEventListener('focus', () => {
@@ -308,12 +339,6 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
       if (!dirty) return
       dirty = false
       void commitLhValue(ownerItemId, inp.value)
-    })
-    inp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        inp.blur()
-      }
     })
     wrap.addEventListener('contextmenu', (e) => {
       e.preventDefault()
@@ -1020,16 +1045,40 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         roundIntroLabel.textContent = ''
       }
     }
-    const activeId =
+    const baseActiveId =
       combat.started &&
       combat.currentItemId &&
       !combat.roundIntroPending
         ? combat.currentItemId
         : null
-    const activePhaseLinkId =
+    const baseActivePhaseLinkId =
       combat.started && !combat.roundIntroPending
         ? combat.currentPhaseLinkId
         : null
+
+    /** Während KR-Einblendung: erster Zug der neuen Runde hervorheben (z. B. L.H.-Zusatzzeile). */
+    const stepsForIntro = buildCombatTurnSteps(tokenRows, items, getIniTieOrder())
+    const firstStep = stepsForIntro[0] ?? null
+    let introHighlightId = null
+    let introHighlightPhaseLinkId = null
+    if (combat.started && combat.roundIntroPending && firstStep) {
+      if (firstStep.kind === 'token') {
+        introHighlightId = firstStep.id
+        introHighlightPhaseLinkId = null
+      } else if (firstStep.kind === 'roundEnd') {
+        introHighlightId = ROUND_END_STEP_ID
+        introHighlightPhaseLinkId = null
+      } else if (firstStep.kind === 'phase' || firstStep.kind === 'lhDone') {
+        introHighlightId = firstStep.ownerId
+        introHighlightPhaseLinkId = firstStep.linkId
+      }
+    }
+    const rowActiveId =
+      introHighlightId != null ? introHighlightId : baseActiveId
+    const rowActivePhaseLinkId =
+      introHighlightId != null
+        ? introHighlightPhaseLinkId
+        : baseActivePhaseLinkId
 
     const merged = buildMergedDisplayRows(tokenRows, items, getIniTieOrder())
     const swapLowerByUpper = new Map()
@@ -1074,7 +1123,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const li = document.createElement('li')
         li.className = 'init-row init-row--token-draggable'
         if (!canEdit) li.classList.add('init-row--locked')
-        if (row.id === activeId && !activePhaseLinkId) {
+        if (row.id === rowActiveId && !rowActivePhaseLinkId) {
           li.classList.add('init-row--active')
         }
         li.dataset.itemId = row.id
@@ -1252,7 +1301,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const li = document.createElement('li')
         li.className = 'init-row init-row--round-end'
         li.dataset.dragKnotIni = '0'
-        if (activeId === ROUND_END_STEP_ID && !activePhaseLinkId) {
+        if (rowActiveId === ROUND_END_STEP_ID && !rowActivePhaseLinkId) {
           li.classList.add('init-row--active')
         }
         const bar = document.createElement('div')
@@ -1318,10 +1367,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapSpacer.setAttribute('aria-hidden', 'true')
 
         if (
-          activeId &&
-          activePhaseLinkId &&
-          ownerId === activeId &&
-          activePhaseLinkId === LH_DONE_STEP_ID
+          rowActiveId &&
+          rowActivePhaseLinkId &&
+          ownerId === rowActiveId &&
+          rowActivePhaseLinkId === LH_DONE_STEP_ID
         ) {
           li.classList.add('init-row--active')
         }
@@ -1486,10 +1535,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         if (
-          activeId &&
-          activePhaseLinkId &&
-          ownerId === activeId &&
-          link.id === activePhaseLinkId
+          rowActiveId &&
+          rowActivePhaseLinkId &&
+          ownerId === rowActiveId &&
+          link.id === rowActivePhaseLinkId
         ) {
           li.classList.add('init-row--active')
         }
@@ -1736,10 +1785,23 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         lastTurnScrollKey = ''
         return
       }
-      const turnKey = `${cNow.roundIntroPending ? 'i' : 'z'}\0${cNow.currentItemId ?? ''}\0${cNow.currentPhaseLinkId ?? ''}\0${cNow.round}`
+      const active = element.querySelector('li.init-row--active')
+      let activeSig = ''
+      if (active) {
+        if (active.classList.contains('init-row--round-end')) {
+          activeSig = 'roundEnd'
+        } else if (active.dataset.itemId) {
+          activeSig = `t:${active.dataset.itemId}`
+        } else if (
+          active.dataset.phaseOwnerId &&
+          active.dataset.phaseLinkId
+        ) {
+          activeSig = `p:${active.dataset.phaseOwnerId}:${active.dataset.phaseLinkId}`
+        }
+      }
+      const turnKey = `${cNow.roundIntroPending ? 'i' : 'z'}\0${cNow.currentItemId ?? ''}\0${cNow.currentPhaseLinkId ?? ''}\0${cNow.round}\0${activeSig}`
       if (turnKey === lastTurnScrollKey) return
       lastTurnScrollKey = turnKey
-      const active = element.querySelector('li.init-row--active')
       if (!active) return
       active.scrollIntoView({
         block: 'nearest',
