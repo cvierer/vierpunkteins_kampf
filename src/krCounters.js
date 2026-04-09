@@ -63,8 +63,9 @@ export function readKrLhAction(meta) {
 
 /**
  * Links +1 (10→0), Rechts −1 (0→10).
+ * @param {{ stampAnchor?: { rowId: string, phaseLinkId: string | null } }} [options]
  */
-export async function patchKrCounterByDelta(itemId, field, delta) {
+export async function patchKrCounterByDelta(itemId, field, delta, options = {}) {
   const inc = delta > 0
   const items = await OBR.scene.items.getItems()
   const item = items.find((i) => i.id === itemId)
@@ -114,7 +115,12 @@ export async function patchKrCounterByDelta(itemId, field, delta) {
       const c = getCombat()
       let anchorRowId = itemId
       let anchorPhaseLinkId = null
-      if (
+      const forced = options?.stampAnchor
+      if (forced && typeof forced.rowId === 'string') {
+        anchorRowId = forced.rowId
+        anchorPhaseLinkId =
+          typeof forced.phaseLinkId === 'string' ? forced.phaseLinkId : null
+      } else if (
         c.started &&
         !c.roundIntroPending &&
         typeof c.currentItemId === 'string'
@@ -284,11 +290,22 @@ export async function clearKrLhStampsForItem(itemId) {
 }
 
 /**
- * Wie einmal S.R.A. o. ä. klicken: Stempel unter aktuellem Zug + Zähler 1 (vorher L.H.-Stempel dieses Tokens leeren).
+ * Wie einmal S.R.A. o. ä. klicken: Stempel + Zähler 1 (vorher L.H.-Stempel dieses Tokens leeren).
+ * @param {string | null | undefined} [stampPhaseLinkId] — `null` = Token-Zeile; String = Phasen-Link (2.A. …); `undefined` = Anker wie aktueller Kampfschritt.
  */
-export async function applyLhOneClickStamp(itemId) {
+export async function applyLhOneClickStamp(itemId, stampPhaseLinkId) {
   await clearKrLhStampsForItem(itemId)
-  await patchKrCounterByDelta(itemId, KR_LH_ACTION, 1)
+  const stampOpts =
+    stampPhaseLinkId !== undefined
+      ? {
+          stampAnchor: {
+            rowId: itemId,
+            phaseLinkId:
+              typeof stampPhaseLinkId === 'string' ? stampPhaseLinkId : null,
+          },
+        }
+      : {}
+  await patchKrCounterByDelta(itemId, KR_LH_ACTION, 1, stampOpts)
 }
 
 /** Alle Kampfteilnehmer: Ang./Abw./S.R.A./F.A. auf 0 (neue Kampfrunde / Kampfstart). */

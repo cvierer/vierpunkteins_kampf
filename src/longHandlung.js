@@ -164,7 +164,11 @@ function crossedBackwardPastSingularLh(prevIni, currIni, T) {
 /**
  * L.H.-Wert setzen (leer / 0 = aus). Setzt max = rem = n; KR-Maske zurück.
  */
-export async function commitLhValue(itemId, text) {
+/**
+ * @param {{ stampPhaseLinkId?: string | null }} [opts] — Liste: `null` = Token-Zeile; Phasen-Link-ID = 2.A.-Zeile; weglassen = Stempel-Anker wie Kampfschritt.
+ */
+export async function commitLhValue(itemId, text, opts) {
+  const o = opts ?? {}
   const trimmed = String(text ?? '').trim()
   const n =
     trimmed === '' ? 0 : Math.floor(Number(trimmed.replace(',', '.')))
@@ -200,10 +204,20 @@ export async function commitLhValue(itemId, text) {
   if (n === 1) {
     const alreadyOne = prevSt.max === 1 && prevSt.rem === 1
     if (!alreadyOne) {
-      await applyLhOneClickStamp(itemId)
-      const iniStr =
-        itemAfter.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
-      await openSecondActionPhaseForLhSingle(itemId, iniStr)
+      const stampId =
+        Object.prototype.hasOwnProperty.call(o, 'stampPhaseLinkId') &&
+        o.stampPhaseLinkId !== undefined
+          ? o.stampPhaseLinkId
+          : undefined
+      await applyLhOneClickStamp(itemId, stampId)
+      const openedFromTokenRow =
+        !Object.prototype.hasOwnProperty.call(o, 'stampPhaseLinkId') ||
+        o.stampPhaseLinkId === null
+      if (openedFromTokenRow) {
+        const iniStr =
+          itemAfter.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
+        await openSecondActionPhaseForLhSingle(itemId, iniStr)
+      }
     }
   } else {
     void clearKrLhStampsForItem(itemId)

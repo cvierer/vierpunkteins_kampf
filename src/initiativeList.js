@@ -285,7 +285,8 @@ function appendKrCounterPair(
   ownerItemId,
   trackerMeta,
   canEdit,
-  ownerIniStr
+  ownerIniStr,
+  lhStampPhaseLinkId
 ) {
   appendSplitKrCounter(
     container,
@@ -322,7 +323,7 @@ function appendKrCounterPair(
     canEdit,
     ownerIniStr
   )
-  appendLhCell(container, ownerItemId, trackerMeta, canEdit)
+  appendLhCell(container, ownerItemId, trackerMeta, canEdit, lhStampPhaseLinkId)
 }
 
 function applyLhVisual(wrap, max, rem) {
@@ -336,7 +337,17 @@ function applyLhVisual(wrap, max, rem) {
   pie.style.setProperty('--lh-consumed', `${frac * 360}deg`)
 }
 
-function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
+function appendLhCell(
+  container,
+  ownerItemId,
+  trackerMeta,
+  canEdit,
+  lhStampPhaseLinkId
+) {
+  const lhCommitOpts =
+    lhStampPhaseLinkId !== undefined
+      ? { stampPhaseLinkId: lhStampPhaseLinkId }
+      : undefined
   const st = readLhState(trackerMeta)
   const prev = lhRenderPrev.get(ownerItemId)
   lhRenderPrev.set(ownerItemId, { max: st.max, rem: st.rem })
@@ -435,12 +446,12 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
       wrap.classList.remove('init-lh-cell--input-focus')
       if (!dirty) return
       dirty = false
-      void commitLhValue(ownerItemId, inp.value)
+      void commitLhValue(ownerItemId, inp.value, lhCommitOpts)
     })
     wrap.addEventListener('contextmenu', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      void commitLhValue(ownerItemId, '')
+      void commitLhValue(ownerItemId, '', lhCommitOpts)
     })
   }
 
@@ -1304,7 +1315,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const slotRow = document.createElement('div')
         slotRow.className = 'init-phase-slot-row'
-        appendKrCounterPair(slotRow, row.id, meta, canEdit, row.initiative)
+        appendKrCounterPair(slotRow, row.id, meta, canEdit, row.initiative, null)
 
         const plusAnchor = document.createElement('div')
         plusAnchor.className = 'init-phase-plus-anchor'
@@ -1584,7 +1595,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerTrackerMeta,
           canEdit,
-          ownerIniStr
+          ownerIniStr,
+          LH_DONE_STEP_ID
         )
 
         const lhRemove = document.createElement('button')
@@ -1788,7 +1800,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerTrackerMeta,
           canEdit,
-          ownerIniStr
+          ownerIniStr,
+          link.id
         )
 
         if (isZaoRoot) {
