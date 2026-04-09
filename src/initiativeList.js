@@ -263,7 +263,8 @@ function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   fraction.className = 'init-lh-cell__fraction'
   fraction.setAttribute('aria-hidden', 'true')
   if (st.max > 0) {
-    fraction.textContent = `${st.rem}/${st.max}`
+    const consumed = Math.max(0, st.max - st.rem)
+    fraction.textContent = `${consumed}/${st.max}`
   }
 
   const inp = document.createElement('input')
@@ -1386,18 +1387,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerName,
           hookIni,
           lhPending = false,
-          lhProgressLabel = '',
         } = entry
         const ownerSceneItem = items.find((i) => i.id === ownerId)
         const canEdit = canEditSceneItem(ownerSceneItem)
         const ownerTrackerMeta =
           ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
-        const stProgress = readLhState(ownerTrackerMeta)
-        const lhProgressLabelComputed =
-          stProgress.max > 0
-            ? `${Math.max(0, stProgress.max - stProgress.rem)}/${stProgress.max}`
-            : lhProgressLabel
-
         const li = document.createElement('li')
         li.className =
           'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone' +
@@ -1464,9 +1458,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniInput.inputMode = lhPending ? 'text' : 'decimal'
         iniInput.autocomplete = 'off'
         iniInput.spellcheck = false
-        iniInput.value = lhPending
-          ? lhProgressLabelComputed
-          : formatHookDisplay(hookIni)
+        iniInput.value = formatHookDisplay(hookIni)
         iniInput.setAttribute(
           'aria-label',
           lhPending ? 'L.H.-Fortschritt' : 'Ziel-INI'
