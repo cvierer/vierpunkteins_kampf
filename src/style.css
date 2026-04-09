@@ -242,29 +242,19 @@ body {
   position: relative;
   width: 100%;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  min-height: min-content;
 }
 
-/* Kompakter Streifen oben: Liste (z. B. L.H.-Abschluss) bleibt unterhalb sichtbar. */
 .kampf-round-intro-board {
-  position: sticky;
-  top: 0;
+  position: absolute;
+  inset: 0;
   z-index: 24;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 0.65rem 0.55rem;
+  padding: 0.75rem;
   box-sizing: border-box;
-  background: linear-gradient(
-    180deg,
-    rgba(26, 22, 18, 0.98) 0%,
-    rgba(18, 15, 12, 0.96) 100%
-  );
-  border-bottom: 1px solid rgba(139, 105, 48, 0.42);
-  backdrop-filter: blur(4px);
+  background: rgba(12, 10, 8, 0.82);
+  backdrop-filter: blur(5px);
 }
 
 .kampf-round-intro-board[hidden] {
@@ -272,29 +262,30 @@ body {
 }
 
 .kampf-round-intro-board__panel {
-  max-width: 20rem;
+  max-width: 17.5rem;
   width: 100%;
-  padding: 0.55rem 0.85rem 0.5rem;
+  padding: 1.1rem 1.25rem 1rem;
   box-sizing: border-box;
-  border-radius: 5px;
-  border: 1px solid rgba(139, 105, 48, 0.65);
+  border-radius: 6px;
+  border: 2px solid rgba(139, 105, 48, 0.85);
   background: linear-gradient(
     165deg,
-    rgba(52, 44, 34, 0.96) 0%,
-    rgba(36, 30, 24, 0.98) 100%
+    rgba(58, 48, 36, 0.98) 0%,
+    rgba(42, 34, 28, 0.99) 45%,
+    rgba(32, 26, 22, 1) 100%
   );
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.28) inset,
-    0 4px 14px rgba(0, 0, 0, 0.28);
+    0 0 0 1px rgba(0, 0, 0, 0.35) inset,
+    0 12px 28px rgba(0, 0, 0, 0.45);
   text-align: center;
 }
 
 .kampf-round-intro-board__title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.55rem;
   font-family: var(--font-heading);
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(238, 214, 150, 0.98);
   line-height: 1.25;
@@ -302,7 +293,7 @@ body {
 
 .kampf-round-intro-board__hint {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   line-height: 1.35;
   color: rgba(200, 185, 160, 0.88);
   letter-spacing: 0.02em;

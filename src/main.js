@@ -42,27 +42,27 @@ appRoot.innerHTML = `
     <div class="initiative-list-host" id="initiative-list-host">
       <div class="initiative-list-scroll">
         <div class="initiative-list-scroll-inner">
-          <div
-            class="kampf-round-intro-board"
-            data-kampf-round-intro
-            hidden
-            aria-modal="true"
-            role="dialog"
-            aria-labelledby="kampf-round-intro-title"
-            aria-describedby="kampf-round-intro-hint"
-          >
-            <div class="kampf-round-intro-board__panel">
-              <p
-                class="kampf-round-intro-board__title"
-                id="kampf-round-intro-title"
-                data-kampf-round-intro-label
-              ></p>
-              <p class="kampf-round-intro-board__hint" id="kampf-round-intro-hint">
-                Zum Fortfahren oben „Weiter“ drücken.
-              </p>
-            </div>
-          </div>
           <ul id="initiative-list" class="initiative-list" aria-label="vierpunkteins_kampf"></ul>
+        </div>
+        <div
+          class="kampf-round-intro-board"
+          data-kampf-round-intro
+          hidden
+          aria-modal="true"
+          role="dialog"
+          aria-labelledby="kampf-round-intro-title"
+          aria-describedby="kampf-round-intro-hint"
+        >
+          <div class="kampf-round-intro-board__panel">
+            <p
+              class="kampf-round-intro-board__title"
+              id="kampf-round-intro-title"
+              data-kampf-round-intro-label
+            ></p>
+            <p class="kampf-round-intro-board__hint" id="kampf-round-intro-hint">
+              Zum Fortfahren oben „Weiter“ drücken.
+            </p>
+          </div>
         </div>
       </div>
     </div>
