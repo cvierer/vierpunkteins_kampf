@@ -221,6 +221,45 @@ export async function commitLhValue(itemId, text) {
   })
 }
 
+/** Entfernt die synthetische L.H.-Abschluss-Zeile (2.A.) aus den Tracker-Metadaten. */
+export async function removeLhDoneRow(itemId) {
+  await OBR.scene.items.updateItems([itemId], (drafts) => {
+    for (const d of drafts) {
+      const m = d.metadata[TRACKER_ITEM_META_KEY]
+      if (!m) continue
+      delete m[LH_DONE_ROUND]
+      delete m[LH_DONE_INI]
+    }
+  })
+}
+
+/**
+ * Ziel-INI der L.H.-Abschluss-Zeile setzen (wie 2.A.-Ziel-INI per Drag/Feld).
+ * @returns {Promise<{ ok: boolean, reason?: string }>}
+ */
+export async function tryCommitLhDoneTargetIni(itemId, iniStr) {
+  const items = await OBR.scene.items.getItems()
+  const it = items.find((i) => i.id === itemId)
+  const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
+  if (
+    normalizeDoneRound(m?.[LH_DONE_ROUND]) == null ||
+    normalizeDoneIni(m?.[LH_DONE_INI]) == null
+  ) {
+    return { ok: false }
+  }
+  const target = parseIni(String(iniStr ?? '').trim())
+  if (target === null) return { ok: false }
+  if (target < 0) return { ok: false, reason: 'NEG_INI' }
+  await OBR.scene.items.updateItems([itemId], (drafts) => {
+    for (const d of drafts) {
+      const mm = d.metadata[TRACKER_ITEM_META_KEY]
+      if (!mm) continue
+      mm[LH_DONE_INI] = target
+    }
+  })
+  return { ok: true }
+}
+
 /**
  * Nach Kampf-Navigation: INI-Lineal von heroIni bis 0. Pro gültigem Auslöser höchstens
  * ein Abzug pro KR; vorwärts über Stufe = −1 Rest, zurück = +1 (Maske).
@@ -285,10 +324,6 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     if (firedRound !== curr.round) {
       firedRound = curr.round
       firedMask = 0
-    }
-    if (doneRound !== curr.round) {
-      doneRound = null
-      doneIni = null
     }
     const pack = {
       max: st.max,
@@ -374,7 +409,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
       ) {
         pack.doneRound = curr.round
         pack.doneIni = completionIni
-      } else if (movedBack || roundDecreased || roundAdvanced) {
+      } else if (movedBack || roundDecreased) {
         pack.doneRound = null
         pack.doneIni = null
       }

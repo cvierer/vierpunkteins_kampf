@@ -44,6 +44,11 @@ import {
   tryCommitPhaseTargetIni,
   zaoRootKey,
 } from './phaseLinks.js'
+import {
+  LH_DONE_INI,
+  removeLhDoneRow,
+  tryCommitLhDoneTargetIni,
+} from './longHandlung.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 import {
   KR_ABW,
@@ -580,15 +585,19 @@ function computeDropProposal(
   if (phaseRef) {
     dragRow = rowMap.get(phaseRef.ownerId)
     const it = items.find((i) => i.id === phaseRef.ownerId)
-    const links = normalizePhases(
-      it?.metadata?.[TRACKER_ITEM_META_KEY]?.phases
-    ).links
-    const h = hookIniForLink(
-      phaseRef.linkId,
-      dragRow?.initiative ?? '',
-      links
-    )
-    curStr = formatHookDisplay(h)
+    const meta = it?.metadata?.[TRACKER_ITEM_META_KEY]
+    if (phaseRef.linkId === LH_DONE_STEP_ID) {
+      const doneIni = Number(meta?.[LH_DONE_INI])
+      curStr = formatHookDisplay(Number.isFinite(doneIni) ? doneIni : null)
+    } else {
+      const links = normalizePhases(meta?.phases).links
+      const h = hookIniForLink(
+        phaseRef.linkId,
+        dragRow?.initiative ?? '',
+        links
+      )
+      curStr = formatHookDisplay(h)
+    }
   } else {
     dragRow = rowMap.get(dragId)
     curStr = dragRow?.initiative ?? ''
@@ -865,26 +874,37 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       )
       if (phaseRef) {
         if (willIni) {
-          const ownerRow = collectSortedParticipants(
-            fresh,
-            getIniTieOrder()
-          ).find((r) => r.id === phaseRef.ownerId)
-          const ownerIni = ownerRow?.initiative ?? ''
-          const it = fresh.find((i) => i.id === phaseRef.ownerId)
-          const links = normalizePhases(
-            it?.metadata?.[TRACKER_ITEM_META_KEY]?.phases
-          ).links
-          void tryCommitPhaseTargetIni(
-            phaseRef.ownerId,
-            phaseRef.linkId,
-            proposedStr,
-            ownerIni,
-            links
-          ).then(async (res) => {
-            if (!res.ok && res.reason === 'NEG_INI') {
-              void removePhaseLink(phaseRef.ownerId, phaseRef.linkId)
-            }
-          })
+          if (phaseRef.linkId === LH_DONE_STEP_ID) {
+            void tryCommitLhDoneTargetIni(
+              phaseRef.ownerId,
+              proposedStr
+            ).then(async (res) => {
+              if (!res.ok && res.reason === 'NEG_INI') {
+                void removeLhDoneRow(phaseRef.ownerId)
+              }
+            })
+          } else {
+            const ownerRow = collectSortedParticipants(
+              fresh,
+              getIniTieOrder()
+            ).find((r) => r.id === phaseRef.ownerId)
+            const ownerIni = ownerRow?.initiative ?? ''
+            const it = fresh.find((i) => i.id === phaseRef.ownerId)
+            const links = normalizePhases(
+              it?.metadata?.[TRACKER_ITEM_META_KEY]?.phases
+            ).links
+            void tryCommitPhaseTargetIni(
+              phaseRef.ownerId,
+              phaseRef.linkId,
+              proposedStr,
+              ownerIni,
+              links
+            ).then(async (res) => {
+              if (!res.ok && res.reason === 'NEG_INI') {
+                void removePhaseLink(phaseRef.ownerId, phaseRef.linkId)
+              }
+            })
+          }
         }
         return
       }
@@ -1326,10 +1346,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
 
         const li = document.createElement('li')
-        li.className = 'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone'
+        li.className =
+          'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone init-row--phase-draggable'
         if (!canEdit) li.classList.add('init-row--locked')
         li.dataset.phaseOwnerId = ownerId
         li.dataset.phaseLinkId = LH_DONE_STEP_ID
+        li.dataset.zaoSwapKey = zaoRootKey(ownerId, LH_DONE_STEP_ID)
         li.dataset.dragKnotIni = formatHookDisplay(hookIni)
 
         const main = document.createElement('div')
@@ -1339,17 +1361,37 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         btnCol.className = 'init-col-btn init-col-btn--phase init-col-btn--zao'
         appendKrCounterPair(btnCol, ownerId, ownerTrackerMeta, canEdit)
 
-        const phaseMeta = document.createElement('div')
-        phaseMeta.className = 'init-phase-zao-meta'
-        const label = document.createElement('span')
-        label.className = 'init-phase-zao-ini-label'
-        label.textContent = '2.A.'
-        label.title = 'Längerfristige Handlung abgeschlossen: Zusatz-Aktion'
+        const lhRemove = document.createElement('button')
+        lhRemove.type = 'button'
+        lhRemove.className = 'init-row-zao-remove'
+        lhRemove.textContent = '×'
+        lhRemove.title = 'L.H.-Zusatz-Aktion entfernen'
+        lhRemove.setAttribute('aria-label', 'L.H.-Zusatz-Aktion entfernen')
+        lhRemove.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!canEdit) return
+          void removeLhDoneRow(ownerId)
+        })
+        lhRemove.disabled = !canEdit
+        btnCol.appendChild(lhRemove)
+
+        const phaseZaoMeta = document.createElement('div')
+        phaseZaoMeta.className = 'init-phase-zao-meta'
+        const iniActLabel = document.createElement('span')
+        iniActLabel.className = 'init-phase-zao-ini-label'
+        iniActLabel.textContent = '2.A.'
+        iniActLabel.title =
+          'Längerfristige Handlung abgeschlossen: Zusatz-Aktion'
         const nameEl = document.createElement('span')
         nameEl.className = 'init-row-name'
+        if (canEdit) {
+          nameEl.classList.add('init-row-name--drag-ini')
+          nameEl.draggable = true
+        }
         nameEl.textContent = ownerName
-        nameEl.title = 'Längerfristige Handlung abgeschlossen (Zusatz-Aktion)'
-        phaseMeta.append(label, nameEl)
+        nameEl.title = '2. Aktionsphase · Ziel-INI am Lineal ziehen'
+        phaseZaoMeta.append(iniActLabel, nameEl)
 
         const iniInput = document.createElement('input')
         iniInput.className = 'init-row-init'
@@ -1359,12 +1401,46 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniInput.spellcheck = false
         iniInput.value = formatHookDisplay(hookIni)
         iniInput.setAttribute('aria-label', 'Ziel-INI')
-        iniInput.readOnly = true
-        iniInput.title = 'Automatisch aus L.H.-Abschluss erzeugt'
+        iniInput.readOnly = !canEdit
+        iniInput.title = canEdit
+          ? 'Ziel-INI (ziehen oder eingeben)'
+          : 'Nur Besitzer dieses Tokens oder Spielleitung'
 
-        const swapSpacer = document.createElement('div')
-        swapSpacer.className = 'init-col-swap init-col-swap--phase'
-        swapSpacer.setAttribute('aria-hidden', 'true')
+        const runRemoveAfterIniError = async () => {
+          iniInput.value = 'INI < 0'
+          iniInput.classList.add('init-row-init--error')
+          await new Promise((r) => setTimeout(r, 420))
+          void removeLhDoneRow(ownerId)
+        }
+
+        iniInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            iniInput.blur()
+          }
+        })
+        iniInput.addEventListener('blur', () => {
+          if (!canEdit) return
+          void OBR.scene.items.getItems().then((freshItems) => {
+            const it = freshItems.find((i) => i.id === ownerId)
+            const metaFresh = it?.metadata?.[TRACKER_ITEM_META_KEY]
+            const curDone = Number(metaFresh?.[LH_DONE_INI])
+            const prev = formatHookDisplay(
+              Number.isFinite(curDone) ? curDone : null
+            )
+            const trimmed = iniInput.value.trim()
+            if (trimmed === prev) return
+            return tryCommitLhDoneTargetIni(ownerId, trimmed).then(
+              async (res) => {
+                if (!res.ok && res.reason === 'NEG_INI')
+                  await runRemoveAfterIniError()
+              }
+            )
+          })
+        })
+
+        const zaoSwapCol = document.createElement('div')
+        zaoSwapCol.className = 'init-col-swap'
 
         if (
           rowActiveId &&
@@ -1375,7 +1451,57 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           li.classList.add('init-row--active')
         }
 
-        main.append(btnCol, phaseMeta, iniInput, swapSpacer)
+        const phasePayload = encodePhaseDrag(ownerId, LH_DONE_STEP_ID)
+        li.draggable = false
+        if (canEdit) {
+          nameEl.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData(TOKEN_DRAG_MIME, phasePayload)
+            e.dataTransfer.setData('text/plain', phasePayload)
+            e.dataTransfer.effectAllowed = 'move'
+            rowDragActive = true
+            dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
+            activeDragRowId = phasePayload
+            lastDragClientX = e.clientX
+            lastDragClientY = e.clientY
+            const hr =
+              listScrollEl?.getBoundingClientRect() ??
+              listContentRoot?.getBoundingClientRect()
+            dragFloatAnchorX = hr
+              ? Math.round(hr.left + 8)
+              : Math.round(li.getBoundingClientRect().left)
+            const dragImg = document.createElement('canvas')
+            dragImg.width = 1
+            dragImg.height = 1
+            e.dataTransfer.setDragImage(dragImg, 0, 0)
+            li.classList.add('init-row--dragging')
+            attachGlobalDragListeners()
+            requestAnimationFrame(() => {
+              updateDragSession(e.clientX, e.clientY, phasePayload)
+            })
+          })
+          nameEl.addEventListener('drag', (e) => {
+            if (!li.classList.contains('init-row--dragging')) return
+            updateDragSession(e.clientX, e.clientY, phasePayload)
+          })
+          nameEl.addEventListener('dragend', () => {
+            detachGlobalDragListeners()
+            rowDragActive = false
+            dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
+            activeDragRowId = null
+            li.classList.remove('init-row--dragging')
+            hideIniFloat()
+          })
+        }
+
+        main.append(btnCol, phaseZaoMeta, iniInput, zaoSwapCol)
         li.appendChild(main)
         frag.appendChild(li)
       } else {
