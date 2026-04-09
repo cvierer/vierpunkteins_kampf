@@ -56,6 +56,7 @@ import {
   normalizeKrDigit,
   patchKrCounterByDelta,
   undoKrActionStamp,
+  undoLastKrFieldStamp,
   readKrAbw,
   readKrAng,
   readKrFreeAction,
@@ -473,20 +474,41 @@ function appendLhCell(
     lhStampColumnHost instanceof HTMLElement
   if (showLhOneStamp) {
     const lhActVal = readKrLhAction(trackerMeta)
-    const stampBtn = document.createElement('button')
-    stampBtn.type = 'button'
-    stampBtn.className =
-      'init-lh-action-stamp' +
-      (lhActVal >= 1 ? ' init-lh-action-stamp--on' : '')
-    stampBtn.disabled = !canEdit
+    const row = document.createElement('div')
+    row.className =
+      'init-lh-action-stamp-row init-row--action-stamp init-row--action-stamp-lh' +
+      (lhActVal >= 1 ? ' init-lh-action-stamp-row--on' : '')
+
+    if (canEdit) {
+      const dismiss = document.createElement('button')
+      dismiss.type = 'button'
+      dismiss.className = 'init-action-stamp-dismiss'
+      dismiss.textContent = '×'
+      dismiss.setAttribute(
+        'aria-label',
+        'Stempel entfernen, Aktion rückgängig'
+      )
+      dismiss.title = 'Entfernen (wie Rechtsklick am Aktionsfeld)'
+      dismiss.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void undoLastKrFieldStamp(ownerItemId, KR_LH_ACTION)
+      })
+      row.appendChild(dismiss)
+    }
+
+    const tap = document.createElement('button')
+    tap.type = 'button'
+    tap.className = 'init-lh-action-stamp__tap'
+    tap.disabled = !canEdit
     const bar = document.createElement('div')
-    bar.className = 'init-row-round-end-bar init-lh-action-stamp__bar'
+    bar.className = 'init-row-round-end-bar init-row-action-stamp-bar'
     const ruleL = document.createElement('span')
-    ruleL.className = 'init-row-round-end-rule init-lh-action-stamp__rule'
+    ruleL.className = 'init-row-round-end-rule'
     ruleL.setAttribute('aria-hidden', 'true')
     const label = document.createElement('span')
     label.className =
-      'init-row-round-end-label init-lh-action-stamp__label init-row-action-stamp-label-wrap'
+      'init-row-round-end-label init-row-action-stamp-label init-row-action-stamp-label-wrap'
     const nameEl = document.createElement('span')
     nameEl.className = 'init-row-action-stamp-name'
     const disp = String(ownerDisplayName || '').trim() || '—'
@@ -502,28 +524,29 @@ function appendLhCell(
     label.append(nameEl, sep, actEl)
     label.title = `${disp} · ${ACTION_STAMP_LABEL[KR_LH_ACTION]}`
     const ruleR = document.createElement('span')
-    ruleR.className = 'init-row-round-end-rule init-lh-action-stamp__rule'
+    ruleR.className = 'init-row-round-end-rule'
     ruleR.setAttribute('aria-hidden', 'true')
     bar.append(ruleL, label, ruleR)
-    stampBtn.appendChild(bar)
-    stampBtn.setAttribute(
+    tap.appendChild(bar)
+    tap.setAttribute(
       'aria-label',
       `${ACTION_STAMP_LABEL[KR_LH_ACTION]}, ${splitCounterAria(lhActVal, 'L.H.-Aktion')}`
     )
-    stampBtn.title = `L.H.-Aktion: Linksklick +1, Rechtsklick −1 (0–10, wie Ang./Abw.)`
+    tap.title = `L.H.-Aktion: Linksklick +1, Rechtsklick −1 (0–10, wie Ang./Abw.)`
     if (canEdit) {
-      stampBtn.addEventListener('click', (e) => {
+      tap.addEventListener('click', (e) => {
         e.preventDefault()
         e.stopPropagation()
         void patchKrCounterByDelta(ownerItemId, KR_LH_ACTION, 1)
       })
-      stampBtn.addEventListener('contextmenu', (e) => {
+      tap.addEventListener('contextmenu', (e) => {
         e.preventDefault()
         e.stopPropagation()
         void patchKrCounterByDelta(ownerItemId, KR_LH_ACTION, -1)
       })
     }
-    lhStampColumnHost.appendChild(stampBtn)
+    row.appendChild(tap)
+    lhStampColumnHost.appendChild(row)
   }
 }
 

@@ -544,55 +544,43 @@ body {
   flex-shrink: 0;
 }
 
-.init-lh-action-stamp {
-  display: block;
+/* L.H.-Stempel unter dem Kästchen: wie Listen-Stempel (× + durchgehende Linie) */
+.init-lh-action-stamp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
   width: 100%;
   min-width: 0;
-  margin: 0;
   padding: 0.04rem 0;
+  box-sizing: border-box;
+}
+
+.init-lh-action-stamp__tap {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  margin: 0;
+  padding: 0;
   border: none;
   border-radius: 4px;
   background: transparent;
   cursor: pointer;
-  box-sizing: border-box;
-  --stamp-color: #00695c;
+  font: inherit;
+  color: inherit;
+  text-align: left;
 }
 
-.init-lh-action-stamp:disabled {
+.init-lh-action-stamp__tap:hover:not(:disabled) {
+  background: rgba(26, 23, 20, 0.05);
+}
+
+.init-lh-action-stamp__tap:disabled {
   cursor: default;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-.init-lh-action-stamp--on .init-lh-action-stamp__rule {
+.init-lh-action-stamp-row--on .init-row-round-end-rule {
   background: color-mix(in oklab, var(--stamp-color) 58%, transparent);
-}
-
-.init-lh-action-stamp__bar {
-  min-height: 0.62rem;
-  gap: 0.35rem;
-}
-
-.init-lh-action-stamp__label {
-  font-size: 0.52rem;
-  letter-spacing: 0.012em;
-  opacity: 0.95;
-}
-
-.init-lh-action-stamp__rule {
-  flex: 1 1 0;
-  min-width: 0.28rem;
-  height: 2px;
-  min-height: 2px;
-  max-height: 2px;
-  border: none;
-  border-radius: 999px;
-  align-self: center;
-  background: color-mix(in oklab, var(--stamp-color) 48%, transparent);
-}
-
-.init-lh-action-stamp__label.init-row-action-stamp-label-wrap {
-  color: color-mix(in oklab, var(--stamp-color) 72%, var(--color-ink-muted));
-  flex-shrink: 1;
 }
 
 .init-phase-plus-anchor {

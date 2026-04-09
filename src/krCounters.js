@@ -195,6 +195,34 @@ export async function undoKrActionStamp(stampId) {
   )
 }
 
+/**
+ * Letzten Stempel zu itemId+field entfernen (wie × in der Liste); sonst ein Schritt −1 am Zähler.
+ */
+export async function undoLastKrFieldStamp(itemId, field) {
+  const roomMeta = await OBR.room.getMetadata()
+  const curStamps = normalizeActionStamps(roomMeta[ACTION_STAMPS_KEY])
+  for (let i = curStamps.entries.length - 1; i >= 0; i--) {
+    const e = curStamps.entries[i]
+    if (e.itemId === itemId && e.field === field) {
+      await undoKrActionStamp(e.id)
+      return
+    }
+  }
+  const items = await OBR.scene.items.getItems()
+  const item = items.find((i) => i.id === itemId)
+  if (!canEditSceneItem(item)) return
+  const meta = item?.metadata?.[TRACKER_ITEM_META_KEY]
+  let maxDigit = KR_COUNTER_MAX
+  if (field === KR_FREE_ACTION) {
+    const iniStr = meta?.initiative
+    const settings = getRoomSettings()
+    maxDigit = faMaxForInitiative(iniStr, settings.highIniFreeActions)
+  }
+  const cur = normalizeKrDigit(meta?.[field], maxDigit)
+  if (cur <= 0) return
+  await patchKrCounterByDelta(itemId, field, -1)
+}
+
 /** Alle Kampfteilnehmer: Ang./Abw./S.R.A./F.A. auf 0 (neue Kampfrunde / Kampfstart). */
 export async function resetAllKrCountersInScene() {
   const items = await OBR.scene.items.getItems((item) =>
