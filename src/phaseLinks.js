@@ -559,8 +559,7 @@ export function buildMergedDisplayRows(
       Number.isFinite(doneRound) &&
       doneRound >= 1 &&
       Number.isFinite(doneIni) &&
-      doneIni >= 0 &&
-      (!Number.isFinite(ownerIni) || doneIni !== ownerIni)
+      doneIni >= 0
 
     if (hasCompletedLhDone) {
       entries.push({
@@ -662,6 +661,23 @@ export function buildMergedDisplayRows(
             }
     return compareInitiativeRows(sa, sb)
   })
+
+  // Bei gleicher INI wie das Mutterobjekt: L.H.-Zeile direkt unter den Token klemmen.
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]
+    if (e.kind !== 'lhDone') continue
+    const ownerIni = iniNumeric(e.ownerIniStr)
+    if (!Number.isFinite(ownerIni) || e.hookIni !== ownerIni) continue
+    const ownerIdx = entries.findIndex(
+      (x) => x.kind === 'token' && x.row.id === e.ownerId
+    )
+    if (ownerIdx < 0) continue
+    const targetIdx = ownerIdx + 1
+    if (i === targetIdx) continue
+    entries.splice(i, 1)
+    const insertAt = i < targetIdx ? targetIdx - 1 : targetIdx
+    entries.splice(insertAt, 0, e)
+  }
 
   if (tokenRows.length > 0) {
     entries.push({ kind: 'roundEnd' })

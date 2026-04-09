@@ -39,6 +39,7 @@ import {
   LH_DONE_STEP_ID,
   ROUND_END_STEP_ID,
   sortedLinksForLayout,
+  secondActionStepForOwnerIni,
   swapAdjacentZaoRootKeys,
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
@@ -1443,6 +1444,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerName,
           hookIni,
+          ownerIniStr,
           lhPending = false,
         } = entry
         const ownerSceneItem = items.find((i) => i.id === ownerId)
@@ -1515,7 +1517,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniInput.inputMode = lhPending ? 'text' : 'decimal'
         iniInput.autocomplete = 'off'
         iniInput.spellcheck = false
-        iniInput.value = formatHookDisplay(hookIni)
+        const ownerIniNum = parseIniNumber(ownerIniStr)
+        const sameIniAsOwner =
+          ownerIniNum != null && Number.isFinite(hookIni) && hookIni === ownerIniNum
+        const sameIniOffset = secondActionStepForOwnerIni(ownerIniStr)
+        iniInput.value = sameIniAsOwner
+          ? `-${sameIniOffset}`
+          : formatHookDisplay(hookIni)
         iniInput.setAttribute(
           'aria-label',
           lhPending ? 'L.H.-Fortschritt' : 'Ziel-INI'
@@ -1527,7 +1535,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             ? 'Ziel-INI (ziehen oder eingeben)'
             : 'Nur Besitzer dieses Tokens oder Spielleitung'
 
-        if (!lhPending && canEdit) {
+        if (!lhPending && canEdit && !sameIniAsOwner) {
           iniInput.readOnly = false
         }
         if (!canEdit && !lhPending) {
@@ -1581,7 +1589,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const phasePayload = encodePhaseDrag(ownerId, LH_DONE_STEP_ID)
         li.draggable = false
-        if (!lhPending && canEdit) {
+        if (!lhPending && canEdit && !sameIniAsOwner) {
           nameEl.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData(TOKEN_DRAG_MIME, phasePayload)
             e.dataTransfer.setData('text/plain', phasePayload)
