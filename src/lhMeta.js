@@ -107,14 +107,17 @@ export function hookIniForLhProgressRow(heroIni, mechanics, firedMask) {
 
 /**
  * Extra-INI-Zeile „L.H. läuft“ (2.A.) anzeigen?
- * Bei genau einer Gesamt-Aktion (max=1) entfällt die Zeile — Abbau nur über den Heldenzug / Lineal,
- * ohne vorher eine eigene Listenposition zu besuchen.
+ * Bei genau einer Gesamt-Aktion (max=1): erst ab Anzeige 0/1 in der Zelle (rem===max===1),
+ * auch wenn Auslöser-INI = Helden-INI (Zeile steht dann direkt unter dem Heldenzug).
+ * Bei max>1 wie bisher: solange rem>0 und Auslöser-INI ≠ Helden-INI.
  */
 export function shouldShowLhProgressRow(lhMax, lhRem, hookIni, heroIni) {
   if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(heroIni))) return false
-  if (lhMax === 1) return false
-  if (hookIni == null || hookIni === heroIni) return false
-  return true
+  if (hookIni == null) return false
+  if (lhMax === 1) {
+    return lhRem === lhMax
+  }
+  return hookIni !== heroIni
 }
 
 /** Wie buildMergedDisplayRows: synthetische L.H.-Zeile (läuft oder abgeschlossen). */
