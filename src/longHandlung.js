@@ -141,6 +141,26 @@ function crossedBackward(prevIni, currIni, T) {
 }
 
 /**
+ * Nur für L.H. mit genau einer Aktion: Auslöser zählt erst, wenn die INI **unter** T fällt —
+ * nicht schon beim Fokus auf der 2.A.-Zeile (INI = T), sonst verschwindet die Zeile beim Navigieren.
+ */
+function crossedForwardPastSingularLh(prevIni, currIni, T) {
+  if (!Number.isFinite(T) || T < 0) return false
+  if (!Number.isFinite(currIni)) return false
+  const prevOk =
+    Number.isFinite(prevIni) || prevIni === Number.POSITIVE_INFINITY
+  if (!prevOk) return false
+  if (prevIni === Number.POSITIVE_INFINITY) return currIni < T
+  return prevIni >= T && currIni < T
+}
+
+function crossedBackwardPastSingularLh(prevIni, currIni, T) {
+  if (!Number.isFinite(T) || T < 0) return false
+  if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
+  return prevIni < T && currIni >= T
+}
+
+/**
  * L.H.-Wert setzen (leer / 0 = aus). Setzt max = rem = n; KR-Maske zurück.
  */
 export async function commitLhValue(itemId, text) {
@@ -338,7 +358,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         pack.max === 1 ? lhSingleActionHookIni(H, triggerIniStep) : null
       if (pack.max === 1 && Tsingle != null) {
         if (
-          crossedBackward(prevIniRaw, currIni, Tsingle) &&
+          crossedBackwardPastSingularLh(prevIniRaw, currIni, Tsingle) &&
           (mask & 1)
         ) {
           mask &= ~1
@@ -364,7 +384,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         pack.max === 1 ? lhSingleActionHookIni(H, triggerIniStep) : null
       if (pack.max === 1 && Tsingle != null) {
         if (
-          crossedForward(prevIni, currIni, Tsingle) &&
+          crossedForwardPastSingularLh(prevIni, currIni, Tsingle) &&
           !(mask & 1) &&
           rem > 0
         ) {
