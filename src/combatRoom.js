@@ -15,8 +15,6 @@ const ID = 'vierpunkteins_kampf.tracker'
 export const COMBAT_KEY = `${ID}/combat`
 export const INI_TIE_ORDER_KEY = `${ID}/iniTieOrder`
 export const ACTION_STAMPS_KEY = `${ID}/actionStamps`
-/** INI-Stempel unter dem aktuellen Zug (Raum, nur GM schreibt). */
-export const TURN_NAV_LINE_KEY = `${ID}/turnNavLine`
 
 const listeners = new Set()
 const tieListeners = new Set()
@@ -75,7 +73,6 @@ function normalize(raw) {
 let cache = defaultCombat()
 let tieOrderCache = []
 let actionStampsCache = { anchorId: null, entries: [] }
-let turnNavLineCache = { hookIniStr: '0' }
 
 /** Bei Runden+1 während ephemerer 2.A.-Entfernung vor Raum-Metadaten: reconcile nicht gegen alte KR patchen. */
 let combatNavMutationDepth = 0
@@ -127,39 +124,6 @@ export function getIniTieOrder() {
 
 export function getActionStamps() {
   return actionStampsCache
-}
-
-function normalizeTurnNavLine(raw) {
-  const d = { hookIniStr: '0' }
-  if (!raw || typeof raw !== 'object') return d
-  const s =
-    typeof raw.hookIniStr === 'string' && raw.hookIniStr.trim() !== ''
-      ? raw.hookIniStr.trim()
-      : d.hookIniStr
-  return { hookIniStr: s }
-}
-
-export function getTurnNavLine() {
-  return turnNavLineCache
-}
-
-async function pullTurnNavLineFromRoom() {
-  const meta = await OBR.room.getMetadata()
-  const next = normalizeTurnNavLine(meta[TURN_NAV_LINE_KEY])
-  const same = next.hookIniStr === turnNavLineCache.hookIniStr
-  if (same) return
-  turnNavLineCache = next
-  notify()
-}
-
-export async function patchTurnNavLine(mutator) {
-  if (!isGmSync()) return
-  const meta = await OBR.room.getMetadata()
-  const cur = normalizeTurnNavLine(meta[TURN_NAV_LINE_KEY])
-  const proposed = mutator({ ...cur })
-  const next = normalizeTurnNavLine(proposed)
-  await OBR.room.setMetadata({ [TURN_NAV_LINE_KEY]: next })
-  await pullTurnNavLineFromRoom()
 }
 
 export function onIniTieOrderChange(fn) {
@@ -342,14 +306,12 @@ export async function initCombatRoom() {
   await pullZaoRootTieOrderFromRoom()
   await pullActionStampsFromRoom()
   await pullRoomSettingsFromRoom()
-  await pullTurnNavLineFromRoom()
   return OBR.room.onMetadataChange(() => {
     void pullFromRoom()
     void pullIniTieOrderFromRoom()
     void pullZaoRootTieOrderFromRoom()
     void pullActionStampsFromRoom()
     void pullRoomSettingsFromRoom()
-    void pullTurnNavLineFromRoom()
   })
 }
 

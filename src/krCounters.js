@@ -1,5 +1,8 @@
 import OBR from '@owlbear-rodeo/sdk'
-import { TRACKER_ITEM_META_KEY } from './participants.js'
+import {
+  getTokenListDisplayName,
+  TRACKER_ITEM_META_KEY,
+} from './participants.js'
 import { getCombat, patchActionStamps } from './combatRoom.js'
 import { faMaxForInitiative, getRoomSettings } from './roomSettings.js'
 
@@ -62,7 +65,8 @@ export async function patchKrCounterByDelta(itemId, field, delta) {
   const mod = maxDigit + 1
   const cur = normalizeKrDigit(meta?.[field], maxDigit)
   const next = inc ? (cur + 1) % mod : (cur + mod - 1) % mod
-  const ownerName = String(item?.name ?? '')
+  const ownerName =
+    getTokenListDisplayName(item) || String(item?.name ?? '')
   await OBR.scene.items.updateItems([itemId], (drafts) => {
     for (const draft of drafts) {
       const m = draft.metadata[TRACKER_ITEM_META_KEY]
