@@ -7,6 +7,7 @@ import {
 import {
   computeValidIniTieInsertSlots,
   getCombat,
+  getActionStamps,
   getIniTieOrder,
   isCombatNavMutationActive,
   onCombatChange,
@@ -77,6 +78,12 @@ const lhRenderPrev = new Map()
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
 const PHASE_DRAG_MARK = 'vierpphase|'
+const ACTION_STAMP_LABEL = Object.freeze({
+  [KR_ANG]: 'Angriff',
+  [KR_ABW]: 'Abwehr',
+  [KR_SRA]: 'S.R.A.',
+  [KR_FREE_ACTION]: 'F.A.',
+})
 
 function applyAngAbwCounterVisual(btn, v) {
   const fill = btn.querySelector('.init-row-kr-counter__fill')
@@ -1144,6 +1151,27 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       getIniTieOrder(),
       combatRoundForMerged
     )
+    const actionStamps = getActionStamps()
+    const stampEntries = Array.isArray(actionStamps?.entries)
+      ? actionStamps.entries
+      : []
+    let mergedWithStamps = merged
+    if (stampEntries.length > 0) {
+      let anchorIdx = merged.findIndex(
+        (e) => e.kind === 'token' && e.row.id === actionStamps.anchorId
+      )
+      if (anchorIdx < 0) {
+        anchorIdx = merged.findIndex((e) => e.kind === 'token')
+      }
+      if (anchorIdx >= 0) {
+        const stampRows = stampEntries.map((s) => ({ kind: 'actionStamp', stamp: s }))
+        mergedWithStamps = [
+          ...merged.slice(0, anchorIdx + 1),
+          ...stampRows,
+          ...merged.slice(anchorIdx + 1),
+        ]
+      }
+    }
     const swapLowerByUpper = new Map()
     for (let ti = 0; ti < tokenRows.length - 1; ti++) {
       const a = tokenRows[ti]
@@ -1175,7 +1203,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     const frag = document.createDocumentFragment()
 
-    for (const entry of merged) {
+    for (const entry of mergedWithStamps) {
       if (entry.kind === 'token') {
         const row = entry.row
         const tokenSceneItem = items.find((i) => i.id === row.id)
@@ -1359,6 +1387,35 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapCol.className = 'init-col-swap'
         main.append(btnCol, gutter, nameCol, input, swapCol)
         li.appendChild(main)
+        frag.appendChild(li)
+      } else if (entry.kind === 'actionStamp') {
+        const li = document.createElement('li')
+        const field = entry.stamp?.field
+        const mod =
+          field === KR_ANG
+            ? 'init-row--action-stamp-ang'
+            : field === KR_ABW
+              ? 'init-row--action-stamp-abw'
+              : field === KR_SRA
+                ? 'init-row--action-stamp-sra'
+                : 'init-row--action-stamp-fa'
+        li.className = `init-row init-row--action-stamp ${mod}`
+
+        const bar = document.createElement('div')
+        bar.className = 'init-row-round-end-bar init-row-action-stamp-bar'
+        const ruleL = document.createElement('span')
+        ruleL.className = 'init-row-round-end-rule'
+        ruleL.setAttribute('aria-hidden', 'true')
+        const label = document.createElement('span')
+        label.className = 'init-row-round-end-label init-row-action-stamp-label'
+        const action = ACTION_STAMP_LABEL[field] || 'Aktion'
+        const ownerName = String(entry.stamp?.ownerName || 'Unbekannt')
+        label.textContent = `${ownerName} · ${action}`
+        const ruleR = document.createElement('span')
+        ruleR.className = 'init-row-round-end-rule'
+        ruleR.setAttribute('aria-hidden', 'true')
+        bar.append(ruleL, label, ruleR)
+        li.appendChild(bar)
         frag.appendChild(li)
       } else if (entry.kind === 'roundEnd') {
         const li = document.createElement('li')
