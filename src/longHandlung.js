@@ -347,6 +347,8 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     let mask = pack.mechanics.firedMask
     let rem = pack.rem
     let completionIni = null
+    const initialSingularPending = st.max === 1 && st.rem === 1
+    let singularLhStrictConsumed = false
 
     if (roundDecreased) {
       rem = pack.max
@@ -390,6 +392,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         ) {
           mask |= 1
           rem -= 1
+          singularLhStrictConsumed = true
           if (rem <= 0) completionIni = Tsingle
         }
       } else {
@@ -408,6 +411,17 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
           }
         }
       }
+    }
+
+    if (
+      rem <= 0 &&
+      initialSingularPending &&
+      !singularLhStrictConsumed &&
+      !roundDecreased
+    ) {
+      rem = 1
+      completionIni = null
+      mask = 0
     }
 
     pack.mechanics.firedRound = curr.round
