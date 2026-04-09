@@ -1268,6 +1268,60 @@ body {
   font-weight: 600;
 }
 
+/* Zug-Navigation: Linie + Listenname unter dem aktiven Eintrag */
+.init-row--turn-nav-line {
+  padding-top: 0.06rem;
+  padding-bottom: 0.06rem;
+}
+
+.init-row-main--turn-nav {
+  align-items: center;
+}
+
+.init-turn-nav__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+  width: 100%;
+  min-height: 0.68rem;
+}
+
+.init-row-round-end-rule--accent {
+  background: color-mix(in oklab, var(--color-accent) 52%, transparent);
+}
+
+.init-turn-nav__label {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  color: var(--color-ink-muted);
+  text-align: center;
+  user-select: none;
+}
+
+.init-row-init--turn-nav-line {
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  height: auto;
+  min-height: 0.72rem;
+  padding: 0.1rem 0.32rem;
+  text-align: right;
+  color: var(--color-ink-muted);
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(201, 162, 39, 0.35);
+}
+
 .init-row-name-col {
   min-width: 0;
   display: flex;

@@ -2,6 +2,7 @@ import OBR from '@owlbear-rodeo/sdk'
 import { canEditSceneItem, isGmSync } from './editAccess.js'
 import {
   collectSortedParticipants,
+  getTokenListDisplayName,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
 import {
@@ -9,10 +10,12 @@ import {
   getCombat,
   getActionStamps,
   getIniTieOrder,
+  getTurnNavLine,
   isCombatNavMutationActive,
   onCombatChange,
   onIniTieOrderChange,
   patchCombat,
+  patchTurnNavLine,
   reorderIniTieToken,
   RESET_ROUND_INTRO,
   swapAdjacentIniTiePair,
@@ -84,6 +87,64 @@ const lhRenderPrev = new Map()
 const TOKEN_DRAG_MIME = 'application/x-vierpunkteins-token'
 
 const PHASE_DRAG_MARK = 'vierpphase|'
+const TURN_LINE_DRAG_MARK = 'vierpturnline|'
+
+function encodeTurnLineDrag() {
+  return `${TURN_LINE_DRAG_MARK}nav`
+}
+
+function parseTurnLineDrag(dragId) {
+  return typeof dragId === 'string' && dragId.startsWith(TURN_LINE_DRAG_MARK)
+}
+
+function matchesMergedEntryActive(e, rowActiveId, rowActivePhaseLinkId) {
+  if (!rowActiveId) return false
+  if (e.kind === 'token') {
+    return e.row.id === rowActiveId && !rowActivePhaseLinkId
+  }
+  if (e.kind === 'roundEnd') {
+    return rowActiveId === ROUND_END_STEP_ID && !rowActivePhaseLinkId
+  }
+  if (e.kind === 'lhDone') {
+    return (
+      e.ownerId === rowActiveId &&
+      rowActivePhaseLinkId === LH_DONE_STEP_ID
+    )
+  }
+  if (e.kind === 'phase') {
+    return (
+      e.ownerId === rowActiveId &&
+      e.link?.id === rowActivePhaseLinkId
+    )
+  }
+  return false
+}
+
+function resolveActiveStepIniFromMergedEntry(entry) {
+  if (!entry) return '0'
+  if (entry.kind === 'token') {
+    const s = String(entry.row.initiative ?? '').trim()
+    return s || '0'
+  }
+  if (entry.kind === 'roundEnd') return '0'
+  if (entry.kind === 'lhDone' || entry.kind === 'phase') {
+    return formatHookDisplay(entry.hookIni)
+  }
+  return '0'
+}
+
+function resolveActiveDisplayNameFromMergedEntry(entry, items) {
+  if (!entry) return '—'
+  if (entry.kind === 'token') {
+    const it = items.find((i) => i.id === entry.row.id)
+    return getTokenListDisplayName(it) || entry.row.name || '—'
+  }
+  if (entry.kind === 'roundEnd') return 'Ende der Kampfrunde'
+  if (entry.kind === 'lhDone' || entry.kind === 'phase') {
+    return String(entry.ownerName || '—')
+  }
+  return '—'
+}
 const ACTION_STAMP_LABEL = Object.freeze({
   [KR_ANG]: 'Angriff',
   [KR_ABW]: 'Abwehr',
@@ -421,7 +482,7 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
   const phaseRef = parsePhaseDrag(dragId)
   const knots = []
   for (const el of listElement.querySelectorAll(
-    'li.init-row--token-draggable, li.init-row--phase, li.init-row--round-end'
+    'li.init-row--token-draggable, li.init-row--phase, li.init-row--round-end, li.init-row--turn-nav-line'
   )) {
     const itemId = el.dataset.itemId
     const linkId = el.dataset.phaseLinkId
@@ -434,6 +495,12 @@ function buildDragKnots(listElement, items, tieOrderIds, dragId) {
       const r = el.getBoundingClientRect()
       knots.push({ y: r.top + r.height / 2, v })
     } else if (el.classList.contains('init-row--round-end')) {
+      const v = parseIniNumber(el.dataset.dragKnotIni)
+      if (v === null) continue
+      const r = el.getBoundingClientRect()
+      knots.push({ y: r.top + r.height / 2, v })
+    } else if (el.classList.contains('init-row--turn-nav-line')) {
+      if (parseTurnLineDrag(dragId)) continue
       const v = parseIniNumber(el.dataset.dragKnotIni)
       if (v === null) continue
       const r = el.getBoundingClientRect()
@@ -588,6 +655,15 @@ function dragProposesIniChange(proposedStr, curStr, dragRow, dragId, phaseRef) {
       ) !== 0
     )
   }
+  if (parseTurnLineDrag(dragId)) {
+    if (!dragRow) return false
+    return (
+      initiativeCompareOnlyIni(
+        { id: dragId, initiative: proposedStr, name: dragRow.name },
+        { id: dragId, initiative: curStr, name: dragRow.name }
+      ) !== 0
+    )
+  }
   if (!dragRow) return false
   return (
     initiativeCompareOnlyIni(
@@ -611,7 +687,15 @@ function computeDropProposal(
   const phaseRef = parsePhaseDrag(dragId)
   let dragRow
   let curStr
-  if (phaseRef) {
+  if (parseTurnLineDrag(dragId)) {
+    curStr = getTurnNavLine().hookIniStr
+    const labelEl = listElement.querySelector('.init-turn-nav__label')
+    dragRow = {
+      id: dragId,
+      initiative: curStr,
+      name: labelEl?.textContent?.trim() || '—',
+    }
+  } else if (phaseRef) {
     dragRow = rowMap.get(phaseRef.ownerId)
     const it = items.find((i) => i.id === phaseRef.ownerId)
     const meta = it?.metadata?.[TRACKER_ITEM_META_KEY]
@@ -752,6 +836,7 @@ function layoutIniSwapBetween(ul, host, overlay) {
 export function setupInitiativeList(element, { onListChange } = {}) {
   let restoreFocusItemId = null
   let lastItems = []
+  let lastTurnNavSyncKey = ''
 
   const roundIntroBoard = document.querySelector('[data-kampf-round-intro]')
   const roundIntroLabel = document.querySelector('[data-kampf-round-intro-label]')
@@ -850,6 +935,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     let proposedStr = ''
     let dragRow = null
     const draggingPhase = Boolean(parsePhaseDrag(dragId))
+    const draggingTurnLine = Boolean(parseTurnLineDrag(dragId))
 
     for (let iter = 0; iter < 5; iter++) {
       ;({ proposedStr, dragRow } = computeDropProposal(
@@ -874,9 +960,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       nameEl.title = dragRow.name || ''
       const main = document.createElement('div')
       main.className = 'init-drag-ini-float-main'
-      main.textContent = draggingPhase
-        ? `2.A. INI ${proposedStr}`
-        : `INI ${proposedStr}`
+      main.textContent = draggingTurnLine
+        ? `Zug-Linie INI ${proposedStr}`
+        : draggingPhase
+          ? `2.A. INI ${proposedStr}`
+          : `INI ${proposedStr}`
       const mode = document.createElement('div')
       mode.className = 'init-drag-ini-float-mode'
       mode.textContent = INI_DRAG_FLOAT_HINT
@@ -898,6 +986,22 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     hideIniFloat()
     if (!dragId || !listContentRoot) return
     void OBR.scene.items.getItems().then((fresh) => {
+      if (parseTurnLineDrag(dragId)) {
+        if (!isGmSync()) return
+        const { proposedStr, willIni } = computeDropProposal(
+          clientY,
+          dragId,
+          fresh,
+          getIniTieOrder(),
+          element,
+          wheelAtDrop,
+          element
+        )
+        if (willIni) {
+          void patchTurnNavLine(() => ({ hookIniStr: proposedStr }))
+        }
+        return
+      }
       const phaseRef = parsePhaseDrag(dragId)
       if (phaseRef) {
         const ownerIt = fresh.find((i) => i.id === phaseRef.ownerId)
@@ -1195,6 +1299,50 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ]
       }
     }
+
+    const activeEntryForSync = merged.find((e) =>
+      matchesMergedEntryActive(e, rowActiveId, rowActivePhaseLinkId)
+    )
+    if (!combat.started || combat.roundIntroPending) {
+      lastTurnNavSyncKey = ''
+    } else if (
+      isGmSync() &&
+      activeEntryForSync &&
+      rowActiveId
+    ) {
+      const sk = `${rowActiveId}|${rowActivePhaseLinkId ?? ''}|${combat.round}`
+      if (sk !== lastTurnNavSyncKey) {
+        lastTurnNavSyncKey = sk
+        const iniStr = resolveActiveStepIniFromMergedEntry(activeEntryForSync)
+        void patchTurnNavLine(() => ({ hookIniStr: iniStr }))
+      }
+    }
+
+    let mergedForRender = mergedWithStamps
+    if (
+      combat.started &&
+      !combat.roundIntroPending &&
+      rowActiveId &&
+      activeEntryForSync
+    ) {
+      const aidx = mergedForRender.findIndex((e) =>
+        matchesMergedEntryActive(e, rowActiveId, rowActivePhaseLinkId)
+      )
+      if (aidx >= 0) {
+        mergedForRender = [
+          ...mergedForRender.slice(0, aidx + 1),
+          { kind: 'turnNavLine' },
+          ...mergedForRender.slice(aidx + 1),
+        ]
+      }
+    }
+
+    const turnNavDisplayName = resolveActiveDisplayNameFromMergedEntry(
+      activeEntryForSync,
+      items
+    )
+    const turnNavHookStr = getTurnNavLine().hookIniStr
+
     const swapLowerByUpper = new Map()
     for (let ti = 0; ti < tokenRows.length - 1; ti++) {
       const a = tokenRows[ti]
@@ -1226,7 +1374,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     const frag = document.createDocumentFragment()
 
-    for (const entry of mergedWithStamps) {
+    for (const entry of mergedForRender) {
       if (entry.kind === 'token') {
         const row = entry.row
         const tokenSceneItem = items.find((i) => i.id === row.id)
@@ -1410,6 +1558,130 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapCol.className = 'init-col-swap'
         main.append(btnCol, gutter, nameCol, input, swapCol)
         li.appendChild(main)
+        frag.appendChild(li)
+      } else if (entry.kind === 'turnNavLine') {
+        const li = document.createElement('li')
+        li.className =
+          'init-row init-row--turn-nav-line' +
+          (isGmSync() ? ' init-row--turn-nav-line--draggable' : '')
+        li.dataset.dragKnotIni = turnNavHookStr.trim() || '0'
+
+        const main = document.createElement('div')
+        main.className = 'init-row-main init-row-main--turn-nav'
+
+        const btnCol = document.createElement('div')
+        btnCol.className = 'init-col-btn init-col-btn--phase-slot'
+        const slotRow = document.createElement('div')
+        slotRow.className = 'init-phase-slot-row'
+        slotRow.setAttribute('aria-hidden', 'true')
+        btnCol.appendChild(slotRow)
+
+        const gutter = document.createElement('div')
+        gutter.className = 'init-phase-gutter init-phase-gutter--empty'
+        gutter.setAttribute('aria-hidden', 'true')
+
+        const nameCol = document.createElement('div')
+        nameCol.className = 'init-row-name-col'
+
+        const bar = document.createElement('div')
+        bar.className = 'init-turn-nav__bar'
+        const ruleL = document.createElement('span')
+        ruleL.className = 'init-row-round-end-rule init-row-round-end-rule--accent'
+        ruleL.setAttribute('aria-hidden', 'true')
+        const label = document.createElement('span')
+        label.className = 'init-turn-nav__label'
+        label.textContent = turnNavDisplayName
+        const ruleR = document.createElement('span')
+        ruleR.className = 'init-row-round-end-rule init-row-round-end-rule--accent'
+        ruleR.setAttribute('aria-hidden', 'true')
+        bar.append(ruleL, label, ruleR)
+        nameCol.appendChild(bar)
+
+        const iniInput = document.createElement('input')
+        iniInput.type = 'text'
+        iniInput.className = 'init-row-init init-row-init--turn-nav-line'
+        iniInput.autocomplete = 'off'
+        iniInput.spellcheck = false
+        iniInput.inputMode = 'decimal'
+        iniInput.value = turnNavHookStr
+        iniInput.readOnly = !isGmSync()
+        iniInput.setAttribute('aria-label', 'Zug-Linie INI')
+        iniInput.title = isGmSync()
+          ? 'Zug-Linie: INI wie aktueller Zug (ziehen am Namen oder eingeben)'
+          : 'Zug-Linie (nur Spielleitung ändert die INI)'
+
+        iniInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            iniInput.blur()
+          }
+        })
+        iniInput.addEventListener('blur', () => {
+          if (!isGmSync()) return
+          const trimmed = iniInput.value.trim()
+          const prev = getTurnNavLine().hookIniStr
+          if (trimmed === prev) return
+          void patchTurnNavLine(() => ({ hookIniStr: trimmed }))
+        })
+
+        const swapCol = document.createElement('div')
+        swapCol.className = 'init-col-swap'
+
+        main.append(btnCol, gutter, nameCol, iniInput, swapCol)
+        li.appendChild(main)
+
+        const turnLinePayload = encodeTurnLineDrag()
+        li.draggable = false
+        if (isGmSync()) {
+          label.classList.add('init-row-name--drag-ini')
+          label.draggable = true
+          label.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData(TOKEN_DRAG_MIME, turnLinePayload)
+            e.dataTransfer.setData('text/plain', turnLinePayload)
+            e.dataTransfer.effectAllowed = 'move'
+            rowDragActive = true
+            dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
+            activeDragRowId = turnLinePayload
+            lastDragClientX = e.clientX
+            lastDragClientY = e.clientY
+            const hr =
+              listScrollEl?.getBoundingClientRect() ??
+              listContentRoot?.getBoundingClientRect()
+            dragFloatAnchorX = hr
+              ? Math.round(hr.left + 8)
+              : Math.round(li.getBoundingClientRect().left)
+            const dragImg = document.createElement('canvas')
+            dragImg.width = 1
+            dragImg.height = 1
+            e.dataTransfer.setDragImage(dragImg, 0, 0)
+            li.classList.add('init-row--dragging')
+            attachGlobalDragListeners()
+            requestAnimationFrame(() => {
+              updateDragSession(e.clientX, e.clientY, turnLinePayload)
+            })
+          })
+          label.addEventListener('drag', (e) => {
+            if (!li.classList.contains('init-row--dragging')) return
+            updateDragSession(e.clientX, e.clientY, turnLinePayload)
+          })
+          label.addEventListener('dragend', () => {
+            detachGlobalDragListeners()
+            rowDragActive = false
+            dragWheelNudge = 0
+            dragEdgeSlowSteps = 0
+            dragEdgeAccumMs = 0
+            dragEdgeZone = null
+            dragSessionLastTs = 0
+            activeDragRowId = null
+            li.classList.remove('init-row--dragging')
+            hideIniFloat()
+          })
+        }
+
         frag.appendChild(li)
       } else if (entry.kind === 'actionStamp') {
         const li = document.createElement('li')
