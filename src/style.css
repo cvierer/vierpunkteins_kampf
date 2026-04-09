@@ -1234,18 +1234,53 @@ body {
   gap: 0.42rem;
 }
 
-.init-row-action-stamp-label {
+.init-row-action-stamp-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
   font-size: 0.54rem;
   letter-spacing: 0.015em;
   opacity: 0.92;
 }
 
-.init-row--action-stamp .init-row-round-end-rule {
-  background: color-mix(in oklab, var(--stamp-color) 46%, transparent);
+.init-row-action-stamp-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-.init-row--action-stamp .init-row-action-stamp-label {
+.init-row-action-stamp-sep {
+  flex-shrink: 0;
+}
+
+.init-row-action-stamp-action {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Einheitliche Strichstärke (Farbe variiert nur nach Aktionsart) */
+.init-row--action-stamp .init-row-round-end-rule {
+  flex: 1 1 0;
+  min-width: 0.35rem;
+  height: 2px;
+  min-height: 2px;
+  max-height: 2px;
+  border: none;
+  border-radius: 999px;
+  align-self: center;
+  background: color-mix(in oklab, var(--stamp-color) 52%, transparent);
+}
+
+.init-row--action-stamp .init-row-action-stamp-label-wrap {
   color: color-mix(in oklab, var(--stamp-color) 74%, var(--color-ink-muted));
+}
+
+/* Übersteuert .init-row-round-end-label { flex-shrink: 0 } für Ellipse beim Namen */
+.init-row--action-stamp .init-row-round-end-label.init-row-action-stamp-label-wrap {
+  flex-shrink: 1;
 }
 
 .init-row--action-stamp-ang {

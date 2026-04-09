@@ -60,6 +60,7 @@ import {
   readKrFreeAction,
   readKrSra,
 } from './krCounters.js'
+import { getShowActionStamps, onShowActionStampsChange } from './localUiPrefs.js'
 import {
   faMaxForInitiative,
   getRoomSettings,
@@ -1241,7 +1242,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       ? actionStamps.entries
       : []
     const mergedWithStamps =
-      stampEntries.length > 0
+      stampEntries.length > 0 && getShowActionStamps()
         ? mergeActionStampsIntoMerged(merged, stampEntries)
         : merged
 
@@ -1499,12 +1500,25 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ruleL.className = 'init-row-round-end-rule'
         ruleL.setAttribute('aria-hidden', 'true')
         const label = document.createElement('span')
-        label.className = 'init-row-round-end-label init-row-action-stamp-label'
+        label.className =
+          'init-row-round-end-label init-row-action-stamp-label init-row-action-stamp-label-wrap'
         const action = ACTION_STAMP_LABEL[field] || 'Aktion'
         const ownerName =
           getTokenListDisplayName(stampItem) ||
           String(entry.stamp?.ownerName || 'Unbekannt')
-        label.textContent = `${ownerName} · ${action}`
+        const nameEl = document.createElement('span')
+        nameEl.className = 'init-row-action-stamp-name'
+        nameEl.textContent = ownerName
+        nameEl.title = ownerName
+        const sep = document.createElement('span')
+        sep.className = 'init-row-action-stamp-sep'
+        sep.textContent = ' · '
+        sep.setAttribute('aria-hidden', 'true')
+        const actEl = document.createElement('span')
+        actEl.className = 'init-row-action-stamp-action'
+        actEl.textContent = action
+        label.append(nameEl, sep, actEl)
+        label.title = `${ownerName} · ${action}`
         const ruleR = document.createElement('span')
         ruleR.className = 'init-row-round-end-rule'
         ruleR.setAttribute('aria-hidden', 'true')
@@ -2217,12 +2231,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   const offRoomSettings = onRoomSettingsChange(() => {
     void OBR.scene.items.getItems().then(renderList)
   })
+  const offStampPref = onShowActionStampsChange(() => {
+    void OBR.scene.items.getItems().then(renderList)
+  })
   const offPlayer = OBR.player.onChange(() => {
     void OBR.scene.items.getItems().then(renderList)
   })
 
   return () => {
     offRoomSettings()
+    offStampPref()
     offPlayer()
     offZaoTie()
     if (listScrollEl) {

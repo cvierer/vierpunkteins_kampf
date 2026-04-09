@@ -1,6 +1,11 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { isGmSync } from './editAccess.js'
 import {
+  getShowActionStamps,
+  onShowActionStampsChange,
+  setShowActionStamps,
+} from './localUiPrefs.js'
+import {
   getRoomSettings,
   onRoomSettingsChange,
   patchRoomSettings,
@@ -45,6 +50,12 @@ export function setupSettingsPanel(gearHost) {
         <span>Optionalregel <cite>Wege des Schwertes</cite>: <strong>Hohe Initiative</strong> — bei INI über 20, 30 bzw. 40 je eine zusätzliche Freie Aktion (Obergrenze 5 statt 2).</span>
       </label>
     </div>
+    <div class="kampf-settings-panel__section">
+      <label class="kampf-settings-checkbox-label">
+        <input type="checkbox" data-kampf-setting-show-action-stamps />
+        <span><strong>Aktionsstempel</strong> in der Initiative-Liste anzeigen (horizontale Linien zu Angriff, Abwehr, S.R.A. und F.A.). Gilt nur auf deinem Gerät; SL und Spieler können das unabhängig einstellen.</span>
+      </label>
+    </div>
     <div class="kampf-settings-panel__section kampf-settings-panel__future">
       <h3 class="kampf-settings-panel__sub">Weitere Ideen (noch nicht umgesetzt)</h3>
       <ul class="kampf-settings-panel__ideas">
@@ -62,6 +73,7 @@ export function setupSettingsPanel(gearHost) {
   document.body.appendChild(backdrop)
 
   const highIniCb = panel.querySelector('[data-kampf-setting-high-ini-fa]')
+  const stampsCb = panel.querySelector('[data-kampf-setting-show-action-stamps]')
   const roleHint = panel.querySelector('[data-kampf-settings-role-hint]')
   const closeBtn = panel.querySelector('button.kampf-settings-panel__close')
 
@@ -71,10 +83,14 @@ export function setupSettingsPanel(gearHost) {
       highIniCb.checked = s.highIniFreeActions
       highIniCb.disabled = !isGmSync()
     }
+    if (stampsCb instanceof HTMLInputElement) {
+      stampsCb.checked = getShowActionStamps()
+      stampsCb.disabled = false
+    }
     if (roleHint) {
       roleHint.textContent = isGmSync()
-        ? 'Als Spielleitung kannst du die Optionen ändern; alle Spieler sehen dieselben Werte.'
-        : 'Nur die Spielleitung kann Einstellungen ändern. Du siehst hier den aktuellen Stand.'
+        ? 'Als Spielleitung kannst du die kampfbezogenen Raum-Optionen ändern; alle Spieler sehen dieselben Werte. „Aktionsstempel“ ist eine persönliche Anzeige-Option (nur bei dir).'
+        : 'Nur die Spielleitung kann die Raum-Option oben ändern. „Aktionsstempel“ kannst du selbst für deine Ansicht ein- oder ausschalten.'
     }
   }
 
@@ -126,8 +142,19 @@ export function setupSettingsPanel(gearHost) {
     }))
   })
 
+  stampsCb?.addEventListener('change', () => {
+    if (!(stampsCb instanceof HTMLInputElement)) return
+    setShowActionStamps(stampsCb.checked)
+  })
+
   const offSettings = onRoomSettingsChange(() => {
     if (!backdrop.hidden) syncUi()
+  })
+
+  const offStampPref = onShowActionStampsChange(() => {
+    if (!backdrop.hidden && stampsCb instanceof HTMLInputElement) {
+      stampsCb.checked = getShowActionStamps()
+    }
   })
 
   const offPlayer = OBR.player.onChange(() => {
@@ -137,6 +164,7 @@ export function setupSettingsPanel(gearHost) {
   return () => {
     document.removeEventListener('keydown', onDocKey)
     offSettings()
+    offStampPref()
     offPlayer()
     gear.remove()
     backdrop.remove()
