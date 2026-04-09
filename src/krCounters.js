@@ -1,9 +1,15 @@
 import OBR from '@owlbear-rodeo/sdk'
+import { canEditSceneItem, isGmSync } from './editAccess.js'
 import {
   getTokenListDisplayName,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
-import { getCombat, patchActionStamps } from './combatRoom.js'
+import {
+  ACTION_STAMPS_KEY,
+  getCombat,
+  normalizeActionStamps,
+  patchActionStamps,
+} from './combatRoom.js'
 import { faMaxForInitiative, getRoomSettings } from './roomSettings.js'
 
 export const KR_ANG = 'krAng'
@@ -98,12 +104,28 @@ export async function patchKrCounterByDelta(itemId, field, delta) {
       }
     }
     if (addCount > 0) {
+      const c = getCombat()
+      let anchorRowId = itemId
+      let anchorPhaseLinkId = null
+      if (
+        c.started &&
+        !c.roundIntroPending &&
+        typeof c.currentItemId === 'string'
+      ) {
+        anchorRowId = c.currentItemId
+        anchorPhaseLinkId =
+          typeof c.currentPhaseLinkId === 'string'
+            ? c.currentPhaseLinkId
+            : null
+      }
       for (let i = 0; i < addCount; i++) {
         entries.push({
           id: `stamp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           itemId,
           ownerName,
           field,
+          anchorRowId,
+          anchorPhaseLinkId,
         })
       }
     }
@@ -116,6 +138,55 @@ export async function patchKrCounterByDelta(itemId, field, delta) {
         : null
     return { anchorId, entries }
   })
+}
+
+/**
+ * Einen Aktions-Stempel schließen: Zähler um eins wie Rechtsklick (−1), Stempel aus der Liste.
+ */
+export async function undoKrActionStamp(stampId) {
+  if (typeof stampId !== 'string' || !stampId) return
+  const roomMeta = await OBR.room.getMetadata()
+  const curStamps = normalizeActionStamps(roomMeta[ACTION_STAMPS_KEY])
+  const entry = curStamps.entries.find((e) => e.id === stampId)
+  if (!entry) return
+
+  const items = await OBR.scene.items.getItems()
+  const item = items.find((i) => i.id === entry.itemId)
+  if (!canEditSceneItem(item)) return
+
+  const meta = item?.metadata?.[TRACKER_ITEM_META_KEY]
+  let maxDigit = KR_COUNTER_MAX
+  if (entry.field === KR_FREE_ACTION) {
+    const iniStr = meta?.initiative
+    const settings = getRoomSettings()
+    maxDigit = faMaxForInitiative(iniStr, settings.highIniFreeActions)
+  }
+  const mod = maxDigit + 1
+  const cur = normalizeKrDigit(meta?.[entry.field], maxDigit)
+  const next = (cur + mod - 1) % mod
+
+  await OBR.scene.items.updateItems([entry.itemId], (drafts) => {
+    for (const draft of drafts) {
+      const m = draft.metadata[TRACKER_ITEM_META_KEY]
+      if (m) m[entry.field] = next
+    }
+  })
+
+  const skipGmStamp = canEditSceneItem(item) && !isGmSync()
+  await patchActionStamps(
+    (stamps) => {
+      const entries = stamps.entries.filter((e) => e.id !== stampId)
+      const anchorId =
+        entries.length > 0
+          ? stamps.anchorId ||
+            (typeof getCombat().currentItemId === 'string'
+              ? getCombat().currentItemId
+              : entry.itemId)
+          : null
+      return { anchorId, entries }
+    },
+    { skipGmCheck: skipGmStamp }
+  )
 }
 
 /** Alle Kampfteilnehmer: Ang./Abw./S.R.A./F.A. auf 0 (neue Kampfrunde / Kampfstart). */

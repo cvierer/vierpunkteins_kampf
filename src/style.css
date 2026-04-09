@@ -1198,12 +1198,38 @@ body {
 }
 
 .init-row--action-stamp {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
   margin: 0;
   padding: 0.08rem 0.45rem 0.1rem;
   list-style: none;
 }
 
+.init-action-stamp-dismiss {
+  flex-shrink: 0;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.init-action-stamp-dismiss:hover {
+  color: var(--color-ink);
+  background: rgba(26, 23, 20, 0.07);
+}
+
 .init-row-action-stamp-bar {
+  flex: 1;
+  min-width: 0;
   min-height: 0.68rem;
   gap: 0.42rem;
 }

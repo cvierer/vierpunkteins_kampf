@@ -54,6 +54,7 @@ import {
   KR_SRA,
   normalizeKrDigit,
   patchKrCounterByDelta,
+  undoKrActionStamp,
   readKrAbw,
   readKrAng,
   readKrFreeAction,
@@ -107,6 +108,42 @@ function matchesMergedEntryActive(e, rowActiveId, rowActivePhaseLinkId) {
     )
   }
   return false
+}
+
+function mergeActionStampsIntoMerged(merged, stampEntries) {
+  const working = [...merged]
+  for (const stamp of stampEntries) {
+    const ar =
+      typeof stamp.anchorRowId === 'string' ? stamp.anchorRowId : null
+    const apl =
+      typeof stamp.anchorPhaseLinkId === 'string'
+        ? stamp.anchorPhaseLinkId
+        : null
+    let matchIdx = -1
+    if (ar != null) {
+      matchIdx = working.findIndex((e) =>
+        matchesMergedEntryActive(e, ar, apl)
+      )
+    }
+    if (matchIdx < 0) {
+      matchIdx = working.findIndex(
+        (e) => e.kind === 'token' && e.row.id === stamp.itemId
+      )
+    }
+    if (matchIdx < 0) {
+      matchIdx = working.findIndex((e) => e.kind === 'token')
+    }
+    if (matchIdx < 0) continue
+    let pos = matchIdx + 1
+    while (
+      pos < working.length &&
+      working[pos].kind === 'actionStamp'
+    ) {
+      pos++
+    }
+    working.splice(pos, 0, { kind: 'actionStamp', stamp })
+  }
+  return working
 }
 
 const ACTION_STAMP_LABEL = Object.freeze({
@@ -1203,39 +1240,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const stampEntries = Array.isArray(actionStamps?.entries)
       ? actionStamps.entries
       : []
-    let mergedWithStamps = merged
-    if (stampEntries.length > 0) {
-      let insertIdx = -1
-      if (
-        combat.started &&
-        !combat.roundIntroPending &&
-        rowActiveId
-      ) {
-        insertIdx = merged.findIndex((e) =>
-          matchesMergedEntryActive(e, rowActiveId, rowActivePhaseLinkId)
-        )
-      }
-      if (insertIdx < 0) {
-        insertIdx = merged.findIndex(
-          (e) =>
-            e.kind === 'token' && e.row.id === actionStamps.anchorId
-        )
-      }
-      if (insertIdx < 0) {
-        insertIdx = merged.findIndex((e) => e.kind === 'token')
-      }
-      if (insertIdx >= 0) {
-        const stampRows = stampEntries.map((s) => ({
-          kind: 'actionStamp',
-          stamp: s,
-        }))
-        mergedWithStamps = [
-          ...merged.slice(0, insertIdx + 1),
-          ...stampRows,
-          ...merged.slice(insertIdx + 1),
-        ]
-      }
-    }
+    const mergedWithStamps =
+      stampEntries.length > 0
+        ? mergeActionStampsIntoMerged(merged, stampEntries)
+        : merged
 
     const swapLowerByUpper = new Map()
     for (let ti = 0; ti < tokenRows.length - 1; ti++) {
@@ -1466,6 +1474,25 @@ export function setupInitiativeList(element, { onListChange } = {}) {
                 : 'init-row--action-stamp-fa'
         li.className = `init-row init-row--action-stamp ${mod}`
 
+        const stampItem = items.find((i) => i.id === entry.stamp?.itemId)
+        if (canEditSceneItem(stampItem)) {
+          const dismiss = document.createElement('button')
+          dismiss.type = 'button'
+          dismiss.className = 'init-action-stamp-dismiss'
+          dismiss.textContent = '×'
+          dismiss.setAttribute(
+            'aria-label',
+            'Stempel entfernen, Aktion rückgängig'
+          )
+          dismiss.title = 'Entfernen (wie Rechtsklick am Aktionsfeld)'
+          dismiss.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void undoKrActionStamp(entry.stamp.id)
+          })
+          li.appendChild(dismiss)
+        }
+
         const bar = document.createElement('div')
         bar.className = 'init-row-round-end-bar init-row-action-stamp-bar'
         const ruleL = document.createElement('span')
@@ -1474,7 +1501,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const label = document.createElement('span')
         label.className = 'init-row-round-end-label init-row-action-stamp-label'
         const action = ACTION_STAMP_LABEL[field] || 'Aktion'
-        const stampItem = items.find((i) => i.id === entry.stamp?.itemId)
         const ownerName =
           getTokenListDisplayName(stampItem) ||
           String(entry.stamp?.ownerName || 'Unbekannt')

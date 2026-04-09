@@ -169,10 +169,14 @@ function normalizeActionStampEntry(raw) {
   const ownerName = typeof raw.ownerName === 'string' ? raw.ownerName : ''
   const field = typeof raw.field === 'string' ? raw.field : null
   if (!id || !itemId || !field) return null
-  return { id, itemId, ownerName, field }
+  const anchorRowId =
+    typeof raw.anchorRowId === 'string' ? raw.anchorRowId : null
+  const anchorPhaseLinkId =
+    typeof raw.anchorPhaseLinkId === 'string' ? raw.anchorPhaseLinkId : null
+  return { id, itemId, ownerName, field, anchorRowId, anchorPhaseLinkId }
 }
 
-function normalizeActionStamps(raw) {
+export function normalizeActionStamps(raw) {
   const anchorId = typeof raw?.anchorId === 'string' ? raw.anchorId : null
   const entriesRaw = Array.isArray(raw?.entries) ? raw.entries : []
   const entries = []
@@ -194,15 +198,18 @@ async function pullActionStampsFromRoom() {
         e.id === next.entries[i].id &&
         e.itemId === next.entries[i].itemId &&
         e.ownerName === next.entries[i].ownerName &&
-        e.field === next.entries[i].field
+        e.field === next.entries[i].field &&
+        e.anchorRowId === next.entries[i].anchorRowId &&
+        e.anchorPhaseLinkId === next.entries[i].anchorPhaseLinkId
     )
   if (same) return
   actionStampsCache = next
   notify()
 }
 
-export async function patchActionStamps(mutator) {
-  if (!isGmSync()) return
+export async function patchActionStamps(mutator, opts = {}) {
+  const skipGmCheck = Boolean(opts.skipGmCheck)
+  if (!skipGmCheck && !isGmSync()) return
   const meta = await OBR.room.getMetadata()
   const cur = normalizeActionStamps(meta[ACTION_STAMPS_KEY])
   const proposed = mutator(cur)
