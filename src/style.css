@@ -242,7 +242,7 @@ body {
   position: relative;
   width: 100%;
   box-sizing: border-box;
-  padding-bottom: 2.1rem;
+  padding-bottom: 0.35rem;
 }
 
 .kampf-round-intro-board {
@@ -312,13 +312,32 @@ body {
   box-sizing: border-box;
 }
 
-.kampf-build-version {
+.kampf-list-footer {
+  position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 1.45rem;
+  padding: 0.05rem 0.45rem 0.28rem;
+  box-sizing: border-box;
+}
+
+.kampf-settings-gear-host {
+  position: absolute;
+  left: 0.32rem;
+  bottom: 0.2rem;
+  z-index: 2;
+  line-height: 0;
+}
+
+.kampf-build-version {
+  flex: 1;
   text-align: center;
   font-size: 0.62rem;
   line-height: 1.25;
   color: rgba(170, 160, 145, 0.5);
-  padding: 0.15rem 0 0.1rem;
+  padding: 0;
   letter-spacing: 0.08em;
 }
 
@@ -1455,44 +1474,41 @@ body {
 }
 
 .kampf-settings-gear {
-  position: absolute;
-  left: 0.28rem;
-  bottom: 0.28rem;
-  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  padding: 0;
+  width: auto;
+  height: auto;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  padding: 0.1rem;
   margin: 0;
-  border: 1px solid rgba(139, 105, 20, 0.35);
-  border-radius: 4px;
-  background: rgba(28, 24, 18, 0.55);
-  color: rgba(235, 220, 185, 0.88);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(118, 114, 108, 0.82);
   cursor: pointer;
-  box-sizing: border-box;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease,
-    color 0.12s ease;
+  box-sizing: content-box;
+  transition: color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .kampf-settings-gear:hover {
-  border-color: var(--color-accent);
   color: var(--color-accent);
-  background: rgba(40, 34, 26, 0.75);
+  background: transparent;
 }
 
 .kampf-settings-gear:focus-visible {
-  outline: 2px solid rgba(201, 162, 39, 0.65);
-  outline-offset: 1px;
+  outline: 2px solid rgba(201, 162, 39, 0.45);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .kampf-settings-gear svg {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
+  display: block;
 }
 
 .kampf-settings-backdrop {

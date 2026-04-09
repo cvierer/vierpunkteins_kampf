@@ -67,7 +67,10 @@ appRoot.innerHTML = `
         </div>
       </div>
     </div>
-    <div id="kampf-build-version" class="kampf-build-version" aria-hidden="true"></div>
+    <div class="kampf-list-footer">
+      <div class="kampf-settings-gear-host" id="kampf-settings-gear-host"></div>
+      <div id="kampf-build-version" class="kampf-build-version" aria-hidden="true"></div>
+    </div>
   </div>
 `
 const buildVerEl = document.getElementById('kampf-build-version')
@@ -89,7 +92,7 @@ if (OBR.isAvailable) {
         if (items) void syncActionChrome(items)
       },
     })
-    setupSettingsPanel(document.querySelector('.initiative-list-scroll'))
+    setupSettingsPanel(document.querySelector('#kampf-settings-gear-host'))
   })
 } else {
   const hint = document.querySelector('#standalone-hint')

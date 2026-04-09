@@ -9,11 +9,12 @@ import {
 const GEAR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`
 
 /**
- * Zahnrad unten links an der scrollenden Liste; GM bearbeitet, Spieler nur lesen.
+ * Zahnrad im Listen-Footer (links); GM bearbeitet, Spieler nur lesen.
+ * @param {HTMLElement | null} gearHost Eltern-Container (z. B. #kampf-settings-gear-host)
  * @returns {() => void} Aufräumen
  */
-export function setupSettingsPanel(listScrollEl) {
-  if (!listScrollEl) return () => {}
+export function setupSettingsPanel(gearHost) {
+  if (!gearHost) return () => {}
 
   const gear = document.createElement('button')
   gear.type = 'button'
@@ -21,7 +22,7 @@ export function setupSettingsPanel(listScrollEl) {
   gear.innerHTML = GEAR_ICON
   gear.title = 'Kampf-Einstellungen'
   gear.setAttribute('aria-label', 'Kampf-Einstellungen öffnen')
-  listScrollEl.appendChild(gear)
+  gearHost.appendChild(gear)
 
   const backdrop = document.createElement('div')
   backdrop.className = 'kampf-settings-backdrop'
