@@ -56,11 +56,9 @@ import {
   normalizeKrDigit,
   patchKrCounterByDelta,
   undoKrActionStamp,
-  undoLastKrFieldStamp,
   readKrAbw,
   readKrAng,
   readKrFreeAction,
-  readKrLhAction,
   readKrSra,
 } from './krCounters.js'
 import { getShowActionStamps, onShowActionStampsChange } from './localUiPrefs.js'
@@ -153,7 +151,7 @@ const ACTION_STAMP_LABEL = Object.freeze({
   [KR_ABW]: 'Abwehr',
   [KR_SRA]: 'S.R.A.',
   [KR_FREE_ACTION]: 'F.A.',
-  [KR_LH_ACTION]: 'Aktion',
+  [KR_LH_ACTION]: 'L.H.',
 })
 
 function applyAngAbwCounterVisual(btn, v) {
@@ -287,9 +285,7 @@ function appendKrCounterPair(
   ownerItemId,
   trackerMeta,
   canEdit,
-  ownerIniStr,
-  ownerDisplayName = '',
-  lhStampColumnHost = null
+  ownerIniStr
 ) {
   appendSplitKrCounter(
     container,
@@ -326,14 +322,7 @@ function appendKrCounterPair(
     canEdit,
     ownerIniStr
   )
-  appendLhCell(
-    container,
-    ownerItemId,
-    trackerMeta,
-    canEdit,
-    ownerDisplayName,
-    lhStampColumnHost
-  )
+  appendLhCell(container, ownerItemId, trackerMeta, canEdit)
 }
 
 function applyLhVisual(wrap, max, rem) {
@@ -347,20 +336,10 @@ function applyLhVisual(wrap, max, rem) {
   pie.style.setProperty('--lh-consumed', `${frac * 360}deg`)
 }
 
-function appendLhCell(
-  container,
-  ownerItemId,
-  trackerMeta,
-  canEdit,
-  ownerDisplayName = '',
-  lhStampColumnHost = null
-) {
+function appendLhCell(container, ownerItemId, trackerMeta, canEdit) {
   const st = readLhState(trackerMeta)
   const prev = lhRenderPrev.get(ownerItemId)
   lhRenderPrev.set(ownerItemId, { max: st.max, rem: st.rem })
-
-  const lhStack = document.createElement('div')
-  lhStack.className = 'init-lh-stack'
 
   const wrap = document.createElement('div')
   wrap.className =
@@ -465,89 +444,7 @@ function appendLhCell(
     })
   }
 
-  lhStack.appendChild(wrap)
-  container.appendChild(lhStack)
-
-  const showLhOneStamp =
-    st.max === 1 &&
-    st.rem > 0 &&
-    lhStampColumnHost instanceof HTMLElement
-  if (showLhOneStamp) {
-    const lhActVal = readKrLhAction(trackerMeta)
-    const row = document.createElement('div')
-    row.className =
-      'init-lh-action-stamp-row init-row--action-stamp init-row--action-stamp-lh' +
-      (lhActVal >= 1 ? ' init-lh-action-stamp-row--on' : '')
-
-    if (canEdit) {
-      const dismiss = document.createElement('button')
-      dismiss.type = 'button'
-      dismiss.className = 'init-action-stamp-dismiss'
-      dismiss.textContent = '×'
-      dismiss.setAttribute(
-        'aria-label',
-        'Stempel entfernen, Aktion rückgängig'
-      )
-      dismiss.title = 'Entfernen (wie Rechtsklick am Aktionsfeld)'
-      dismiss.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void undoLastKrFieldStamp(ownerItemId, KR_LH_ACTION)
-      })
-      row.appendChild(dismiss)
-    }
-
-    const tap = document.createElement('button')
-    tap.type = 'button'
-    tap.className = 'init-lh-action-stamp__tap'
-    tap.disabled = !canEdit
-    const bar = document.createElement('div')
-    bar.className = 'init-row-round-end-bar init-row-action-stamp-bar'
-    const ruleL = document.createElement('span')
-    ruleL.className = 'init-row-round-end-rule'
-    ruleL.setAttribute('aria-hidden', 'true')
-    const label = document.createElement('span')
-    label.className =
-      'init-row-round-end-label init-row-action-stamp-label init-row-action-stamp-label-wrap'
-    const nameEl = document.createElement('span')
-    nameEl.className = 'init-row-action-stamp-name'
-    const disp = String(ownerDisplayName || '').trim() || '—'
-    nameEl.textContent = disp
-    nameEl.title = disp
-    const sep = document.createElement('span')
-    sep.className = 'init-row-action-stamp-sep'
-    sep.textContent = ' · '
-    sep.setAttribute('aria-hidden', 'true')
-    const actEl = document.createElement('span')
-    actEl.className = 'init-row-action-stamp-action'
-    actEl.textContent = ACTION_STAMP_LABEL[KR_LH_ACTION]
-    label.append(nameEl, sep, actEl)
-    label.title = `${disp} · ${ACTION_STAMP_LABEL[KR_LH_ACTION]}`
-    const ruleR = document.createElement('span')
-    ruleR.className = 'init-row-round-end-rule'
-    ruleR.setAttribute('aria-hidden', 'true')
-    bar.append(ruleL, label, ruleR)
-    tap.appendChild(bar)
-    tap.setAttribute(
-      'aria-label',
-      `${ACTION_STAMP_LABEL[KR_LH_ACTION]}, ${splitCounterAria(lhActVal, 'L.H.-Aktion')}`
-    )
-    tap.title = `L.H.-Aktion: Linksklick +1, Rechtsklick −1 (0–10, wie Ang./Abw.)`
-    if (canEdit) {
-      tap.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void patchKrCounterByDelta(ownerItemId, KR_LH_ACTION, 1)
-      })
-      tap.addEventListener('contextmenu', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void patchKrCounterByDelta(ownerItemId, KR_LH_ACTION, -1)
-      })
-    }
-    row.appendChild(tap)
-    lhStampColumnHost.appendChild(row)
-  }
+  container.appendChild(wrap)
 }
 
 function encodePhaseDrag(ownerId, linkId) {
@@ -1407,18 +1304,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const slotRow = document.createElement('div')
         slotRow.className = 'init-phase-slot-row'
-        btnCol.appendChild(slotRow)
-        const tokenListName =
-          getTokenListDisplayName(tokenSceneItem) || row.name || ''
-        appendKrCounterPair(
-          slotRow,
-          row.id,
-          meta,
-          canEdit,
-          row.initiative,
-          tokenListName,
-          btnCol
-        )
+        appendKrCounterPair(slotRow, row.id, meta, canEdit, row.initiative)
 
         const plusAnchor = document.createElement('div')
         plusAnchor.className = 'init-phase-plus-anchor'
@@ -1471,6 +1357,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         }
 
         slotRow.appendChild(plusAnchor)
+        btnCol.appendChild(slotRow)
 
         const gutter = document.createElement('div')
         gutter.className = 'init-phase-gutter init-phase-gutter--empty'
@@ -1697,8 +1584,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerTrackerMeta,
           canEdit,
-          ownerIniStr,
-          getTokenListDisplayName(ownerSceneItem) || ownerName
+          ownerIniStr
         )
 
         const lhRemove = document.createElement('button')
@@ -1902,8 +1788,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerId,
           ownerTrackerMeta,
           canEdit,
-          ownerIniStr,
-          getTokenListDisplayName(ownerSceneItem) || ownerName
+          ownerIniStr
         )
 
         if (isZaoRoot) {

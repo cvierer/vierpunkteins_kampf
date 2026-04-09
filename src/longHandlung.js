@@ -1,11 +1,15 @@
 import OBR from '@owlbear-rodeo/sdk'
-import { isGmSync } from './editAccess.js'
+import { canEditSceneItem, isGmSync } from './editAccess.js'
 import { getCombat } from './combatRoom.js'
 import {
   buildCombatTurnSteps,
   buildMergedDisplayRows,
   findCombatStepIndex,
 } from './phaseLinks.js'
+import {
+  applyLhOneClickStamp,
+  clearKrLhStampsForItem,
+} from './krCounters.js'
 import {
   collectSortedParticipants,
   TRACKER_ITEM_META_KEY,
@@ -146,6 +150,11 @@ export async function commitLhValue(itemId, text) {
   const n =
     trimmed === '' ? 0 : Math.floor(Number(trimmed.replace(',', '.')))
   if (trimmed !== '' && (!Number.isFinite(n) || n < 0)) return
+  const itemsBefore = await OBR.scene.items.getItems()
+  const itemBefore = itemsBefore.find((i) => i.id === itemId)
+  const prevSt = readLhState(
+    itemBefore?.metadata?.[TRACKER_ITEM_META_KEY]
+  )
   const round = getCombat().started ? getCombat().round : 1
   await OBR.scene.items.updateItems([itemId], (drafts) => {
     for (const d of drafts) {
@@ -169,6 +178,19 @@ export async function commitLhValue(itemId, text) {
       }
     }
   })
+
+  const itemsAfter = await OBR.scene.items.getItems()
+  const itemAfter = itemsAfter.find((i) => i.id === itemId)
+  if (!canEditSceneItem(itemAfter)) return
+
+  if (n === 1) {
+    const alreadyOne = prevSt.max === 1 && prevSt.rem === 1
+    if (!alreadyOne) {
+      void applyLhOneClickStamp(itemId)
+    }
+  } else {
+    void clearKrLhStampsForItem(itemId)
+  }
 }
 
 /** Entfernt die synthetische L.H.-Abschluss-Zeile (2.A.) aus den Tracker-Metadaten. */

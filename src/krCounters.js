@@ -223,6 +223,44 @@ export async function undoLastKrFieldStamp(itemId, field) {
   await patchKrCounterByDelta(itemId, field, -1)
 }
 
+/** Zähler krLhAction leeren und alle Aktions-Stempel dieses Feldes für das Token entfernen. */
+export async function clearKrLhStampsForItem(itemId) {
+  const items = await OBR.scene.items.getItems()
+  const item = items.find((i) => i.id === itemId)
+  if (!canEditSceneItem(item)) return
+  await OBR.scene.items.updateItems([itemId], (drafts) => {
+    for (const draft of drafts) {
+      const m = draft.metadata[TRACKER_ITEM_META_KEY]
+      if (m) m[KR_LH_ACTION] = 0
+    }
+  })
+  const skipGmStamp = canEditSceneItem(item) && !isGmSync()
+  await patchActionStamps(
+    (stamps) => {
+      const entries = stamps.entries.filter(
+        (e) => !(e.itemId === itemId && e.field === KR_LH_ACTION)
+      )
+      const anchorId =
+        entries.length > 0
+          ? stamps.anchorId ||
+            (typeof getCombat().currentItemId === 'string'
+              ? getCombat().currentItemId
+              : itemId)
+          : null
+      return { anchorId, entries }
+    },
+    { skipGmCheck: skipGmStamp }
+  )
+}
+
+/**
+ * Wie einmal S.R.A. o. ä. klicken: Stempel unter aktuellem Zug + Zähler 1 (vorher L.H.-Stempel dieses Tokens leeren).
+ */
+export async function applyLhOneClickStamp(itemId) {
+  await clearKrLhStampsForItem(itemId)
+  await patchKrCounterByDelta(itemId, KR_LH_ACTION, 1)
+}
+
 /** Alle Kampfteilnehmer: Ang./Abw./S.R.A./F.A. auf 0 (neue Kampfrunde / Kampfstart). */
 export async function resetAllKrCountersInScene() {
   const items = await OBR.scene.items.getItems((item) =>
