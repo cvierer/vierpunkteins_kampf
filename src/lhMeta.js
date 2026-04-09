@@ -67,6 +67,22 @@ export function readLhState(meta) {
   return { max, rem }
 }
 
+const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
+const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
+
+/** Wie L.H. leer speichern: Zelle und Fortschritt zurücksetzen (z. B. × am Listen-Stempel). */
+export function clearLhTrackerActivity(m) {
+  if (!m || typeof m !== 'object') return
+  delete m[LEGACY_LH_P2_ROUND]
+  delete m[LEGACY_LH_P2_INI]
+  m[LH_MAX] = 0
+  m[LH_REM] = 0
+  delete m[LH_KR_FIRED_ROUND]
+  delete m[LH_KR_FIRED_MASK]
+  delete m[LH_DONE_ROUND]
+  delete m[LH_DONE_INI]
+}
+
 /**
  * Maske für Listen-Anzeige: in anderer KR als `combatRound` wie leer behandeln.
  */

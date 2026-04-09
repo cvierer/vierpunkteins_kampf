@@ -11,6 +11,7 @@ import {
   patchActionStamps,
 } from './combatRoom.js'
 import { faMaxForInitiative, getRoomSettings } from './roomSettings.js'
+import { clearLhTrackerActivity } from './lhMeta.js'
 
 export const KR_ANG = 'krAng'
 export const KR_ABW = 'krAbw'
@@ -159,6 +160,35 @@ export async function undoKrActionStamp(stampId) {
   const items = await OBR.scene.items.getItems()
   const item = items.find((i) => i.id === entry.itemId)
   if (!canEditSceneItem(item)) return
+
+  if (entry.field === KR_LH_ACTION) {
+    const skipGmLh = canEditSceneItem(item) && !isGmSync()
+    await OBR.scene.items.updateItems([entry.itemId], (drafts) => {
+      for (const draft of drafts) {
+        const m = draft.metadata[TRACKER_ITEM_META_KEY]
+        if (!m) continue
+        clearLhTrackerActivity(m)
+        m[KR_LH_ACTION] = 0
+      }
+    })
+    await patchActionStamps(
+      (stamps) => {
+        const entries = stamps.entries.filter(
+          (e) => !(e.itemId === entry.itemId && e.field === KR_LH_ACTION)
+        )
+        const anchorId =
+          entries.length > 0
+            ? stamps.anchorId ||
+              (typeof getCombat().currentItemId === 'string'
+                ? getCombat().currentItemId
+                : entry.itemId)
+            : null
+        return { anchorId, entries }
+      },
+      { skipGmCheck: skipGmLh }
+    )
+    return
+  }
 
   const meta = item?.metadata?.[TRACKER_ITEM_META_KEY]
   let maxDigit = KR_COUNTER_MAX

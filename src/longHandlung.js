@@ -23,6 +23,7 @@ import {
   LH_MAX,
   LH_REM,
   LH_TRIGGER_INI_STEP,
+  clearLhTrackerActivity,
   lhSingleActionHookIni,
   normalizeActionsPerKrForPatch,
   normalizeTriggerStepForPatch,
@@ -44,9 +45,6 @@ export {
   readLhMechanics,
   readLhState,
 } from './lhMeta.js'
-
-const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
-const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
 
 let lhPrevCombat = null
 
@@ -95,8 +93,8 @@ function isBackward(prev, curr, prevIdx, currIdx) {
 }
 
 function stripLegacyLhKeys(m) {
-  delete m[LEGACY_LH_P2_ROUND]
-  delete m[LEGACY_LH_P2_INI]
+  delete m.lhPendingSecondRound
+  delete m.lhPendingSecondTargetIni
 }
 
 function normalizeDoneRound(raw) {
@@ -160,15 +158,10 @@ export async function commitLhValue(itemId, text) {
     for (const d of drafts) {
       const m = d.metadata[TRACKER_ITEM_META_KEY]
       if (!m) continue
-      stripLegacyLhKeys(m)
       if (n <= 0) {
-        m[LH_MAX] = 0
-        m[LH_REM] = 0
-        delete m[LH_KR_FIRED_ROUND]
-        delete m[LH_KR_FIRED_MASK]
-        delete m[LH_DONE_ROUND]
-        delete m[LH_DONE_INI]
+        clearLhTrackerActivity(m)
       } else {
+        stripLegacyLhKeys(m)
         m[LH_MAX] = n
         m[LH_REM] = n
         m[LH_KR_FIRED_ROUND] = round
