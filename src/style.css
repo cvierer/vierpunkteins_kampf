@@ -1027,10 +1027,6 @@ body {
     var(--init-col-btn) minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
 }
 
-.init-row-main--phase-zao::after {
-  display: none;
-}
-
 .init-phase-zao-meta {
   display: flex;
   align-items: center;
@@ -1088,26 +1084,6 @@ body {
 .init-row-main--phase > * {
   position: relative;
   z-index: 1;
-}
-
-.init-row-main--phase::after {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  left: calc(
-    var(--init-col-btn) + var(--init-grid-gap) +
-      (var(--init-phase-gutter-inner) * 0.5)
-  );
-  right: calc(
-    var(--init-col-ini) + var(--init-grid-gap) + var(--init-col-swap) +
-      var(--init-grid-gap)
-  );
-  top: 50%;
-  height: 2px;
-  margin-top: -1px;
-  background: var(--color-accent);
-  opacity: 0.88;
-  pointer-events: none;
 }
 
 .init-row-init--error {

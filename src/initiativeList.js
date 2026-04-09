@@ -39,7 +39,6 @@ import {
   LH_DONE_STEP_ID,
   ROUND_END_STEP_ID,
   sortedLinksForLayout,
-  secondActionStepForOwnerIni,
   swapAdjacentZaoRootKeys,
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
@@ -1517,13 +1516,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniInput.inputMode = lhPending ? 'text' : 'decimal'
         iniInput.autocomplete = 'off'
         iniInput.spellcheck = false
-        const ownerIniNum = parseIniNumber(ownerIniStr)
-        const sameIniAsOwner =
-          ownerIniNum != null && Number.isFinite(hookIni) && hookIni === ownerIniNum
-        const sameIniOffset = secondActionStepForOwnerIni(ownerIniStr)
-        iniInput.value = sameIniAsOwner
-          ? `-${sameIniOffset}`
-          : formatHookDisplay(hookIni)
+        iniInput.value = formatHookDisplay(hookIni)
         iniInput.setAttribute(
           'aria-label',
           lhPending ? 'L.H.-Fortschritt' : 'Ziel-INI'
@@ -1535,7 +1528,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             ? 'Ziel-INI (ziehen oder eingeben)'
             : 'Nur Besitzer dieses Tokens oder Spielleitung'
 
-        if (!lhPending && canEdit && !sameIniAsOwner) {
+        if (!lhPending && canEdit) {
           iniInput.readOnly = false
         }
         if (!canEdit && !lhPending) {
@@ -1589,7 +1582,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const phasePayload = encodePhaseDrag(ownerId, LH_DONE_STEP_ID)
         li.draggable = false
-        if (!lhPending && canEdit && !sameIniAsOwner) {
+        if (!lhPending && canEdit) {
           nameEl.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData(TOKEN_DRAG_MIME, phasePayload)
             e.dataTransfer.setData('text/plain', phasePayload)

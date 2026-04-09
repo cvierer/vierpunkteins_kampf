@@ -121,7 +121,9 @@ export function trackerShowsLhSyntheticRow(meta, ownerIniNum, combatRound) {
   if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIniNum))) return false
   const mech = readLhMechanics(meta)
   const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
-  return hookIniForLhProgressRow(ownerIniNum, mech, firedMask) != null
+  const hook = hookIniForLhProgressRow(ownerIniNum, mech, firedMask)
+  if (hook == null) return false
+  return hook !== ownerIniNum
 }
 
 export function normalizeActionsPerKrForPatch(raw) {
