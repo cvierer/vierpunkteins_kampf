@@ -21,7 +21,9 @@ import { resetAllKrCountersInScene } from './krCounters.js'
 async function combatTurnSteps() {
   const items = await OBR.scene.items.getItems()
   const rows = collectSortedParticipants(items, getIniTieOrder())
-  return buildCombatTurnSteps(rows, items, getIniTieOrder())
+  const c = getCombat()
+  const combatRound = c.started ? c.round : null
+  return buildCombatTurnSteps(rows, items, getIniTieOrder(), combatRound)
 }
 
 function isTypingTarget(el) {

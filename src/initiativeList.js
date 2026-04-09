@@ -44,11 +44,6 @@ import {
   tryCommitPhaseTargetIni,
   zaoRootKey,
 } from './phaseLinks.js'
-import {
-  LH_DONE_INI,
-  removeLhDoneRow,
-  tryCommitLhDoneTargetIni,
-} from './longHandlung.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 import {
   KR_ABW,
@@ -61,7 +56,20 @@ import {
   readKrAng,
   readKrSra,
 } from './krCounters.js'
-import { commitLhValue, readLhState, runLongHandlungAfterCombatUpdate } from './longHandlung.js'
+import {
+  effectiveLhFiredMaskForRound,
+  hookIniForLhProgressRow,
+  readLhMechanics,
+  readLhState,
+  trackerShowsLhSyntheticRow,
+} from './lhMeta.js'
+import {
+  commitLhValue,
+  LH_DONE_INI,
+  removeLhDoneRow,
+  runLongHandlungAfterCombatUpdate,
+  tryCommitLhDoneTargetIni,
+} from './longHandlung.js'
 
 /** Letzter L.H.-Stand pro Token (für kurzes „fertig“ nach rem→0). */
 const lhRenderPrev = new Map()
@@ -588,7 +596,24 @@ function computeDropProposal(
     const meta = it?.metadata?.[TRACKER_ITEM_META_KEY]
     if (phaseRef.linkId === LH_DONE_STEP_ID) {
       const doneIni = Number(meta?.[LH_DONE_INI])
-      curStr = formatHookDisplay(Number.isFinite(doneIni) ? doneIni : null)
+      if (Number.isFinite(doneIni)) {
+        curStr = formatHookDisplay(doneIni)
+      } else {
+        const { max: lhm, rem: lhr } = readLhState(meta)
+        const H = parseIniNumber(dragRow?.initiative ?? '')
+        const cr = getCombat().started ? getCombat().round : null
+        if (lhm > 0 && lhr > 0 && H != null) {
+          const mech = readLhMechanics(meta)
+          const hk = hookIniForLhProgressRow(
+            H,
+            mech,
+            effectiveLhFiredMaskForRound(meta, cr)
+          )
+          curStr = formatHookDisplay(hk)
+        } else {
+          curStr = ''
+        }
+      }
     } else {
       const links = normalizePhases(meta?.phases).links
       const h = hookIniForLink(
@@ -875,6 +900,11 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       if (phaseRef) {
         if (willIni) {
           if (phaseRef.linkId === LH_DONE_STEP_ID) {
+            const om =
+              fresh.find((i) => i.id === phaseRef.ownerId)?.metadata?.[
+                TRACKER_ITEM_META_KEY
+              ]
+            if (!Number.isFinite(Number(om?.[LH_DONE_INI]))) return
             void tryCommitLhDoneTargetIni(
               phaseRef.ownerId,
               proposedStr
@@ -1002,7 +1032,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const c = getCombat()
     if (!c.started) return
     if (c.roundIntroPending) return
-    const steps = buildCombatTurnSteps(rows, items, getIniTieOrder())
+    const combatRound = c.started ? c.round : null
+    const steps = buildCombatTurnSteps(
+      rows,
+      items,
+      getIniTieOrder(),
+      combatRound
+    )
     if (steps.length === 0) {
       await patchCombat({
         started: false,
@@ -1019,11 +1055,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     const ownerStillThere = rows.some((r) => r.id === c.currentItemId)
 
     if (phaseId && ownerStillThere) {
-      const linkStillInMeta = phaseLinkExistsOnItem(
-        items,
-        c.currentItemId,
-        phaseId
-      )
+      const ownerRow = rows.find((r) => r.id === c.currentItemId)
+      const ownerIt = items.find((i) => i.id === c.currentItemId)
+      const linkStillInMeta =
+        phaseId === LH_DONE_STEP_ID
+          ? trackerShowsLhSyntheticRow(
+              ownerIt?.metadata?.[TRACKER_ITEM_META_KEY],
+              parseIniNumber(ownerRow?.initiative ?? ''),
+              combatRound
+            )
+          : phaseLinkExistsOnItem(items, c.currentItemId, phaseId)
       if (!linkStillInMeta) {
         await patchCombat({
           ...combatPatchForStep(steps[0]),
@@ -1077,7 +1118,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         : null
 
     /** Während KR-Einblendung: erster Zug der neuen Runde hervorheben (z. B. L.H.-Zusatzzeile). */
-    const stepsForIntro = buildCombatTurnSteps(tokenRows, items, getIniTieOrder())
+    const combatRoundForMerged = combat.started ? combat.round : null
+    const stepsForIntro = buildCombatTurnSteps(
+      tokenRows,
+      items,
+      getIniTieOrder(),
+      combatRoundForMerged
+    )
     const firstStep = stepsForIntro[0] ?? null
     let introHighlightId = null
     let introHighlightPhaseLinkId = null
@@ -1100,7 +1147,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ? introHighlightPhaseLinkId
         : baseActivePhaseLinkId
 
-    const merged = buildMergedDisplayRows(tokenRows, items, getIniTieOrder())
+    const merged = buildMergedDisplayRows(
+      tokenRows,
+      items,
+      getIniTieOrder(),
+      combatRoundForMerged
+    )
     const swapLowerByUpper = new Map()
     for (let ti = 0; ti < tokenRows.length - 1; ti++) {
       const a = tokenRows[ti]
@@ -1339,7 +1391,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         li.appendChild(bar)
         frag.appendChild(li)
       } else if (entry.kind === 'lhDone') {
-        const { ownerId, ownerName, hookIni } = entry
+        const {
+          ownerId,
+          ownerName,
+          hookIni,
+          lhPending = false,
+          lhProgressLabel = '',
+        } = entry
         const ownerSceneItem = items.find((i) => i.id === ownerId)
         const canEdit = canEditSceneItem(ownerSceneItem)
         const ownerTrackerMeta =
@@ -1347,7 +1405,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const li = document.createElement('li')
         li.className =
-          'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone init-row--phase-draggable'
+          'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone' +
+          (!lhPending && canEdit ? ' init-row--phase-draggable' : '')
         if (!canEdit) li.classList.add('init-row--locked')
         li.dataset.phaseOwnerId = ownerId
         li.dataset.phaseLinkId = LH_DONE_STEP_ID
@@ -1365,13 +1424,21 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         lhRemove.type = 'button'
         lhRemove.className = 'init-row-zao-remove'
         lhRemove.textContent = '×'
-        lhRemove.title = 'L.H.-Zusatz-Aktion entfernen'
-        lhRemove.setAttribute('aria-label', 'L.H.-Zusatz-Aktion entfernen')
+        lhRemove.title = lhPending
+          ? 'Längerfristige Handlung abbrechen'
+          : 'L.H.-Zusatz-Aktion entfernen'
+        lhRemove.setAttribute(
+          'aria-label',
+          lhPending
+            ? 'Längerfristige Handlung abbrechen'
+            : 'L.H.-Zusatz-Aktion entfernen'
+        )
         lhRemove.addEventListener('click', (e) => {
           e.preventDefault()
           e.stopPropagation()
           if (!canEdit) return
-          void removeLhDoneRow(ownerId)
+          if (lhPending) void commitLhValue(ownerId, '')
+          else void removeLhDoneRow(ownerId)
         })
         lhRemove.disabled = !canEdit
         btnCol.appendChild(lhRemove)
@@ -1381,30 +1448,47 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const iniActLabel = document.createElement('span')
         iniActLabel.className = 'init-phase-zao-ini-label'
         iniActLabel.textContent = '2.A.'
-        iniActLabel.title =
-          'Längerfristige Handlung abgeschlossen: Zusatz-Aktion'
+        iniActLabel.title = lhPending
+          ? 'Längerfristige Handlung (Fortschritt)'
+          : 'Längerfristige Handlung abgeschlossen: Zusatz-Aktion'
         const nameEl = document.createElement('span')
         nameEl.className = 'init-row-name'
-        if (canEdit) {
+        if (!lhPending && canEdit) {
           nameEl.classList.add('init-row-name--drag-ini')
           nameEl.draggable = true
         }
         nameEl.textContent = ownerName
-        nameEl.title = '2. Aktionsphase · Ziel-INI am Lineal ziehen'
+        nameEl.title = lhPending
+          ? 'Längerfristige Handlung — Fortschritt in der INI-Spalte'
+          : '2. Aktionsphase · Ziel-INI am Lineal ziehen'
         phaseZaoMeta.append(iniActLabel, nameEl)
 
         const iniInput = document.createElement('input')
         iniInput.className = 'init-row-init'
         iniInput.type = 'text'
-        iniInput.inputMode = 'decimal'
+        iniInput.inputMode = lhPending ? 'text' : 'decimal'
         iniInput.autocomplete = 'off'
         iniInput.spellcheck = false
-        iniInput.value = formatHookDisplay(hookIni)
-        iniInput.setAttribute('aria-label', 'Ziel-INI')
-        iniInput.readOnly = !canEdit
-        iniInput.title = canEdit
-          ? 'Ziel-INI (ziehen oder eingeben)'
-          : 'Nur Besitzer dieses Tokens oder Spielleitung'
+        iniInput.value = lhPending
+          ? lhProgressLabel
+          : formatHookDisplay(hookIni)
+        iniInput.setAttribute(
+          'aria-label',
+          lhPending ? 'L.H.-Fortschritt' : 'Ziel-INI'
+        )
+        iniInput.readOnly = true
+        iniInput.title = lhPending
+          ? 'Verbrauchte L.H.-Anteile dieser KR (Kuchendiagramm links)'
+          : canEdit
+            ? 'Ziel-INI (ziehen oder eingeben)'
+            : 'Nur Besitzer dieses Tokens oder Spielleitung'
+
+        if (!lhPending && canEdit) {
+          iniInput.readOnly = false
+        }
+        if (!canEdit && !lhPending) {
+          iniInput.title = 'Nur Besitzer dieses Tokens oder Spielleitung'
+        }
 
         const runRemoveAfterIniError = async () => {
           iniInput.value = 'INI < 0'
@@ -1420,7 +1504,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           }
         })
         iniInput.addEventListener('blur', () => {
-          if (!canEdit) return
+          if (lhPending || !canEdit) return
           void OBR.scene.items.getItems().then((freshItems) => {
             const it = freshItems.find((i) => i.id === ownerId)
             const metaFresh = it?.metadata?.[TRACKER_ITEM_META_KEY]
@@ -1453,7 +1537,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const phasePayload = encodePhaseDrag(ownerId, LH_DONE_STEP_ID)
         li.draggable = false
-        if (canEdit) {
+        if (!lhPending && canEdit) {
           nameEl.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData(TOKEN_DRAG_MIME, phasePayload)
             e.dataTransfer.setData('text/plain', phasePayload)

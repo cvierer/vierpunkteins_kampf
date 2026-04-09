@@ -10,36 +10,38 @@ import {
   collectSortedParticipants,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
+import {
+  LH_ACTIONS_PER_KR,
+  LH_DONE_INI,
+  LH_DONE_ROUND,
+  LH_KR_FIRED_MASK,
+  LH_KR_FIRED_ROUND,
+  LH_MAX,
+  LH_REM,
+  LH_TRIGGER_INI_STEP,
+  normalizeActionsPerKrForPatch,
+  normalizeTriggerStepForPatch,
+  readLhMechanics,
+  readLhState,
+} from './lhMeta.js'
 
-/** Anzeige / Kuchen: Zielwert und aktueller Rest */
-export const LH_MAX = 'lhMax'
-export const LH_REM = 'lhRemaining'
-
-/** Max. L.H.-Abzüge pro KR (Standard 2; später pro Held anpassbar). */
-export const LH_ACTIONS_PER_KR = 'lhActionsPerKr'
-
-/**
- * Abstand auf dem INI-Lineal zwischen aufeinanderfolgenden Auslösern (Standard −8).
- * Auslöser k liegt bei heroIni + k * step (k = 0 … actions−1); nur Stufen ≥ 0 zählen.
- */
-export const LH_TRIGGER_INI_STEP = 'lhTriggerIniStep'
-
-/** Kampfrunde, für die lhKrFiredMask gilt */
-export const LH_KR_FIRED_ROUND = 'lhKrFiredRound'
-
-/** Bitmaske: Auslöser k wurde in dieser KR bereits verbraucht */
-export const LH_KR_FIRED_MASK = 'lhKrFiredMask'
-/** Einmaliger Zusatz-Zug nach LH-Abschluss in der aktuellen KR (synthetische Zeile). */
-export const LH_DONE_ROUND = 'lhDoneRound'
-export const LH_DONE_INI = 'lhDoneIni'
+export {
+  LH_MAX,
+  LH_REM,
+  LH_ACTIONS_PER_KR,
+  LH_TRIGGER_INI_STEP,
+  LH_KR_FIRED_ROUND,
+  LH_KR_FIRED_MASK,
+  LH_DONE_ROUND,
+  LH_DONE_INI,
+  DEFAULT_LH_ACTIONS_PER_KR,
+  DEFAULT_LH_TRIGGER_INI_STEP,
+  readLhMechanics,
+  readLhState,
+} from './lhMeta.js'
 
 const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
 const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
-
-export const DEFAULT_LH_ACTIONS_PER_KR = 2
-export const DEFAULT_LH_TRIGGER_INI_STEP = -8
-
-const MAX_ACTIONS = 8
 
 let lhPrevCombat = null
 
@@ -59,8 +61,9 @@ function parseIni(value) {
 }
 
 function getCurrentStepContext(rows, items, tieOrderIds, combat) {
-  const merged = buildMergedDisplayRows(rows, items, tieOrderIds)
-  const steps = buildCombatTurnSteps(rows, items, tieOrderIds)
+  const combatRound = combat.started ? combat.round : null
+  const merged = buildMergedDisplayRows(rows, items, tieOrderIds, combatRound)
+  const steps = buildCombatTurnSteps(rows, items, tieOrderIds, combatRound)
   const idx = findCombatStepIndex(steps, combat)
   const ownerIniById = new Map(rows.map((r) => [r.id, parseIni(r.initiative)]))
   if (idx < 0 || idx >= merged.length) {
@@ -91,30 +94,6 @@ function stripLegacyLhKeys(m) {
   delete m[LEGACY_LH_P2_INI]
 }
 
-function normalizeActionsPerKr(raw) {
-  const n = Math.floor(Number(raw))
-  if (!Number.isFinite(n)) return DEFAULT_LH_ACTIONS_PER_KR
-  return Math.min(MAX_ACTIONS, Math.max(1, n))
-}
-
-function normalizeTriggerStep(raw) {
-  if (raw == null || raw === '') return DEFAULT_LH_TRIGGER_INI_STEP
-  const n = Number(raw)
-  if (!Number.isFinite(n) || n === 0) return DEFAULT_LH_TRIGGER_INI_STEP
-  return n
-}
-
-function normalizeFiredRound(raw) {
-  const n = Math.floor(Number(raw))
-  return Number.isFinite(n) && n >= 1 ? n : null
-}
-
-function normalizeFiredMask(raw) {
-  const n = Math.floor(Number(raw))
-  if (!Number.isFinite(n) || n < 0) return 0
-  return n & 0xff
-}
-
 function normalizeDoneRound(raw) {
   const n = Math.floor(Number(raw))
   return Number.isFinite(n) && n >= 1 ? n : null
@@ -123,36 +102,6 @@ function normalizeDoneRound(raw) {
 function normalizeDoneIni(raw) {
   const n = Number(raw)
   return Number.isFinite(n) ? n : null
-}
-
-/**
- * Mechanik-Parameter (Defaults für spätere Helden-Anpassung).
- */
-export function readLhMechanics(meta) {
-  if (!meta || typeof meta !== 'object') {
-    return {
-      actionsPerKr: DEFAULT_LH_ACTIONS_PER_KR,
-      triggerIniStep: DEFAULT_LH_TRIGGER_INI_STEP,
-      firedRound: null,
-      firedMask: 0,
-    }
-  }
-  return {
-    actionsPerKr: normalizeActionsPerKr(meta[LH_ACTIONS_PER_KR]),
-    triggerIniStep: normalizeTriggerStep(meta[LH_TRIGGER_INI_STEP]),
-    firedRound: normalizeFiredRound(meta[LH_KR_FIRED_ROUND]),
-    firedMask: normalizeFiredMask(meta[LH_KR_FIRED_MASK]),
-  }
-}
-
-export function readLhState(meta) {
-  if (!meta || typeof meta !== 'object') {
-    return { max: 0, rem: 0 }
-  }
-  const max = Math.max(0, Math.floor(Number(meta[LH_MAX])) || 0)
-  let rem = Math.max(0, Math.floor(Number(meta[LH_REM])) || 0)
-  if (rem > max && max > 0) rem = max
-  return { max, rem }
 }
 
 /** Auslöser-INI auf dem Lineal [heroIni … 0]; nur Einträge ≥ 0. */
@@ -176,25 +125,16 @@ function triggerIniForIndex(heroIni, k, step) {
 function crossedForward(prevIni, currIni, T) {
   if (!Number.isFinite(T) || T < 0) return false
   if (!Number.isFinite(currIni)) return false
-  const prevInf = prevIni === Number.POSITIVE_INFINITY
-  const prevOk = Number.isFinite(prevIni) || prevInf
+  const prevOk =
+    Number.isFinite(prevIni) || prevIni === Number.POSITIVE_INFINITY
   if (!prevOk) return false
-  if (prevInf) {
-    return prevIni > T && currIni <= T
-  }
-  if (!(currIni < prevIni)) return false
-  if (prevIni > T && currIni <= T) return true
-  if (prevIni === T && currIni < T) return true
-  return false
+  return prevIni > T && currIni <= T
 }
 
 function crossedBackward(prevIni, currIni, T) {
   if (!Number.isFinite(T) || T < 0) return false
   if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
-  if (!(currIni > prevIni)) return false
-  if (prevIni < T && currIni >= T) return true
-  if (prevIni === T && currIni > T) return true
-  return false
+  return prevIni <= T && currIni > T
 }
 
 /**
@@ -446,9 +386,10 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
     const sameRound = p.mechanics.firedRound === prevMech.firedRound
     const sameMask = p.mechanics.firedMask === prevMech.firedMask
     const sameActions =
-      normalizeActionsPerKr(meta[LH_ACTIONS_PER_KR]) === p.mechanics.actionsPerKr
+      normalizeActionsPerKrForPatch(meta[LH_ACTIONS_PER_KR]) ===
+      p.mechanics.actionsPerKr
     const sameStep =
-      normalizeTriggerStep(meta[LH_TRIGGER_INI_STEP]) ===
+      normalizeTriggerStepForPatch(meta[LH_TRIGGER_INI_STEP]) ===
       p.mechanics.triggerIniStep
     const sameDoneRound = p.doneRound === prevDoneRound
     const sameDoneIni = p.doneIni === prevDoneIni

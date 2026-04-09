@@ -9,14 +9,20 @@ import {
   TRACKER_ID,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
+import {
+  LH_DONE_INI,
+  LH_DONE_ROUND,
+  effectiveLhFiredMaskForRound,
+  hookIniForLhProgressRow,
+  readLhMechanics,
+  readLhState,
+} from './lhMeta.js'
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
 
 /** Synthetischer Zug „Ende der Kampfrunde“ (INI intern 0); kein Szenen-Token. */
 export const ROUND_END_STEP_ID = `${TRACKER_ID}/roundEndStep`
 export const LH_DONE_STEP_ID = `${TRACKER_ID}/lhDoneStep`
-const LH_DONE_ROUND = 'lhDoneRound'
-const LH_DONE_INI = 'lhDoneIni'
 
 /** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der 2.A.-Wurzeln ownerId:linkId */
 let zaoRootTieOrderByIniCache = {}
@@ -502,7 +508,12 @@ export function formatIniForSort(n) {
  * Token-Zeilen + Phasen-Zeilen, nach INI sortiert (wie Kampfliste).
  * @param {string[]} tieOrderIds manuelle Reihenfolge bei gleicher INI (Token-Zeilen)
  */
-export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
+export function buildMergedDisplayRows(
+  tokenRows,
+  items,
+  tieOrderIds = [],
+  combatRound = null
+) {
   const metaOf = (id) => {
     const it = items.find((i) => i.id === id)
     return it?.metadata?.[TRACKER_ITEM_META_KEY]
@@ -544,20 +555,40 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
     const doneRound = Math.floor(Number(meta?.[LH_DONE_ROUND]))
     const doneIni = Number(meta?.[LH_DONE_INI])
     const ownerIni = iniNumeric(row.initiative)
-    if (
+    const hasCompletedLhDone =
       Number.isFinite(doneRound) &&
       doneRound >= 1 &&
       Number.isFinite(doneIni) &&
       doneIni >= 0 &&
       (!Number.isFinite(ownerIni) || doneIni !== ownerIni)
-    ) {
+
+    if (hasCompletedLhDone) {
       entries.push({
         kind: 'lhDone',
         ownerId: row.id,
         ownerName: row.name,
         ownerIniStr: row.initiative,
         hookIni: doneIni,
+        lhPending: false,
       })
+    } else {
+      const { max: lhMax, rem: lhRem } = readLhState(meta)
+      if (lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIni)) {
+        const mech = readLhMechanics(meta)
+        const firedMask = effectiveLhFiredMaskForRound(meta, combatRound)
+        const hookIni = hookIniForLhProgressRow(ownerIni, mech, firedMask)
+        if (hookIni != null) {
+          entries.push({
+            kind: 'lhDone',
+            ownerId: row.id,
+            ownerName: row.name,
+            ownerIniStr: row.initiative,
+            hookIni,
+            lhPending: true,
+            lhProgressLabel: `${lhMax - lhRem}/${lhMax}`,
+          })
+        }
+      }
     }
   }
 
@@ -643,8 +674,18 @@ export function buildMergedDisplayRows(tokenRows, items, tieOrderIds = []) {
  * Zug-Reihenfolge für Kampf-Navigation (Token-Zeilen und zusätzliche INI-Zeilen).
  * Reihenfolge entspricht der angezeigten Liste.
  */
-export function buildCombatTurnSteps(tokenRows, items, tieOrderIds = []) {
-  return buildMergedDisplayRows(tokenRows, items, tieOrderIds).map((e) =>
+export function buildCombatTurnSteps(
+  tokenRows,
+  items,
+  tieOrderIds = [],
+  combatRound = null
+) {
+  return buildMergedDisplayRows(
+    tokenRows,
+    items,
+    tieOrderIds,
+    combatRound
+  ).map((e) =>
     e.kind === 'token'
       ? { kind: 'token', id: e.row.id }
       : e.kind === 'roundEnd'
