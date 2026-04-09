@@ -1,8 +1,8 @@
 {
   "name": "vierpunkteins_kampf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "manifest_version": 1,
-  "description": "Kampfliste und Initiative für Charakter-Tokens (CHARACTER).",
+  "description": "[v1.0.1] Kampfliste und Initiative für Charakter-Tokens (CHARACTER).",
   "action": {
     "title": "vierpunkteins_kampf",
     "icon": "/action-sword-idle.svg",
