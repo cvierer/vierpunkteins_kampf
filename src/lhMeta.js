@@ -153,10 +153,9 @@ export function computeLhProgressDisplayHookIni(
 }
 
 /**
- * Extra-INI-Zeile „L.H. läuft“ (2.A.) anzeigen?
- * Bei genau einer Gesamt-Aktion (max=1): erst ab Anzeige 0/1 in der Zelle (rem===max===1),
- * auch wenn Auslöser-INI = Helden-INI (Zeile steht dann direkt unter dem Heldenzug).
- * Bei max>1 wie bisher: solange rem>0 und Auslöser-INI ≠ Helden-INI.
+ * Extra-INI-Zeile „L.H. läuft“ (synthetisches lhDone) anzeigen?
+ * Bei max=1 nicht genutzt — 2.A. läuft über die normale Phasen-Zeile (+).
+ * Bei max>1: solange rem>0 und Auslöser-INI ≠ Helden-INI.
  */
 export function shouldShowLhProgressRow(lhMax, lhRem, hookIni, heroIni) {
   if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(heroIni))) return false
@@ -181,6 +180,7 @@ export function trackerShowsLhSyntheticRow(meta, ownerIniNum, combatRound) {
   if (hasCompletedLhDone) return true
   const { max: lhMax, rem: lhRem } = readLhState(meta)
   if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIniNum))) return false
+  if (lhMax === 1) return false
   const hook = computeLhProgressDisplayHookIni(
     lhMax,
     lhRem,

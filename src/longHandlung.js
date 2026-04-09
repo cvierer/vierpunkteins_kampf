@@ -5,6 +5,7 @@ import {
   buildCombatTurnSteps,
   buildMergedDisplayRows,
   findCombatStepIndex,
+  openSecondActionPhaseForLhSingle,
 } from './phaseLinks.js'
 import {
   applyLhOneClickStamp,
@@ -199,7 +200,10 @@ export async function commitLhValue(itemId, text) {
   if (n === 1) {
     const alreadyOne = prevSt.max === 1 && prevSt.rem === 1
     if (!alreadyOne) {
-      void applyLhOneClickStamp(itemId)
+      await applyLhOneClickStamp(itemId)
+      const iniStr =
+        itemAfter.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
+      await openSecondActionPhaseForLhSingle(itemId, iniStr)
     }
   } else {
     void clearKrLhStampsForItem(itemId)

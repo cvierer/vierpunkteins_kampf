@@ -308,6 +308,29 @@ export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
   })
 }
 
+/**
+ * Wie erster Klick auf „+“ (2.A.): Panel öffnen und ggf. erste Wurzel — kein zusätzliches + bei bestehenden Wurzeln.
+ * Für L.H. mit genau einer Aktion (Eingabe „1“).
+ */
+export function openSecondActionPhaseForLhSingle(itemId, ownerIniStr) {
+  if (!canCreateSecondActionRoot(ownerIniStr)) {
+    return Promise.resolve()
+  }
+  return patchItemPhases(itemId, (p) => {
+    const nextLinks =
+      p.links.length === 0
+        ? [
+            {
+              id: uuid(),
+              parentId: null,
+              offset: safeDefaultOffset(ownerIniStr),
+            },
+          ]
+        : p.links
+    return { ...p, rowPanelOpen: true, links: nextLinks }
+  })
+}
+
 export function addPhaseChildLink(itemId, parentLinkId, ownerIniStr) {
   return patchItemPhases(itemId, (p) => {
     const parentHook = hookIniForLink(parentLinkId, ownerIniStr, p.links)
@@ -573,7 +596,7 @@ export function buildMergedDisplayRows(
       }
     } else {
       const { max: lhMax, rem: lhRem } = readLhState(meta)
-      if (lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIni)) {
+      if (lhMax > 1 && lhRem > 0 && Number.isFinite(ownerIni)) {
         const hookIni = computeLhProgressDisplayHookIni(
           lhMax,
           lhRem,
