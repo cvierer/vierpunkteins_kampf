@@ -128,19 +128,19 @@ function triggerIniForIndex(heroIni, k, step) {
   return heroIni + k * step
 }
 
-/**
- * Mehrteilige L.H.: wie singular — Auslöser erst, wenn die aktive INI **unter** T liegt,
- * nicht beim Fokus auf der 2.A.-Zeile (INI = T). Sonst schließt die L.H. sofort, die Phasenzeile
- * fällt aus der Liste und reconcileCombat springt auf die Mutterzeile zurück.
- */
-function crossedForwardPastMultiLh(prevIni, currIni, T) {
+function crossedForward(prevIni, currIni, T) {
   if (!Number.isFinite(T) || T < 0) return false
   if (!Number.isFinite(currIni)) return false
   const prevOk =
     Number.isFinite(prevIni) || prevIni === Number.POSITIVE_INFINITY
   if (!prevOk) return false
-  if (prevIni === Number.POSITIVE_INFINITY) return currIni < T
-  return prevIni >= T && currIni < T
+  return prevIni > T && currIni <= T
+}
+
+function crossedBackward(prevIni, currIni, T) {
+  if (!Number.isFinite(T) || T < 0) return false
+  if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
+  return prevIni <= T && currIni > T
 }
 
 /**
@@ -395,7 +395,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         for (let k = actionsPerKr - 1; k >= 0; k--) {
           const T = triggerIniForIndex(H, k, triggerIniStep)
           if (!Number.isFinite(T) || T < 0) continue
-          if (!crossedBackwardPastSingularLh(prevIniRaw, currIni, T)) continue
+          if (!crossedBackward(prevIniRaw, currIni, T)) continue
           const bit = 1 << k
           if (!(mask & bit)) continue
           mask &= ~bit
@@ -429,7 +429,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
           for (let k = 0; k < ap; k++) {
             const T = triggerIniForIndex(H, k, triggerIniStep)
             if (!Number.isFinite(T) || T < 0) continue
-            if (!crossedForwardPastMultiLh(prevIni, currIni, T)) continue
+            if (!crossedForward(prevIni, currIni, T)) continue
             const bit = 1 << k
             if (mask & bit) continue
             if (T > bestT) {
