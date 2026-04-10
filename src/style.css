@@ -651,8 +651,44 @@ body {
   flex-direction: row;
   justify-content: flex-start;
   align-items: flex-end;
+  gap: 0.22rem;
   margin-top: auto;
   padding-top: 0.06rem;
+}
+
+.init-row-extra-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  padding: 0.08rem;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(118, 114, 108, 0.72);
+  cursor: pointer;
+  box-sizing: content-box;
+  transition: color 0.12s ease, background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.init-row-extra-info:hover {
+  color: var(--color-accent);
+  background: rgba(139, 105, 20, 0.06);
+}
+
+.init-row-extra-info:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.45);
+  outline-offset: 1px;
+}
+
+.init-row-extra-info svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .init-row-extra-gear {
@@ -692,6 +728,226 @@ body {
 
 .kampf-hero-settings-backdrop {
   z-index: 20001;
+}
+
+.kampf-hit-zone-backdrop {
+  z-index: 20002;
+}
+
+.kampf-hit-zone-panel.kampf-settings-panel {
+  width: min(46rem, 96vw);
+  max-width: min(46rem, 96vw);
+  max-height: min(92vh, 38rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.kampf-hit-zone-layout {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.65rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-right: 0.12rem;
+}
+
+.kampf-hit-zone-figure-wrap {
+  position: relative;
+  flex: 1 1 16rem;
+  min-width: 15rem;
+  min-height: 18rem;
+  max-width: 24rem;
+}
+
+.kampf-hit-zone-svg {
+  width: 100%;
+  height: auto;
+  max-height: 20rem;
+  display: block;
+}
+
+.kampf-hit-zone-anchors {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.kampf-hit-zone-widget {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.04rem;
+  min-width: 3.2rem;
+}
+
+.kampf-hit-zone-w20 {
+  font-family: var(--font-heading);
+  font-size: 0.46rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
+  line-height: 1;
+  text-align: center;
+  cursor: default;
+  max-width: 4.2rem;
+}
+
+.kampf-hit-zone-pair {
+  display: flex;
+  flex-direction: row;
+  gap: 0.14rem;
+  align-items: flex-end;
+}
+
+.kampf-hit-zone-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.03rem;
+}
+
+.kampf-hit-zone-lbl {
+  font-family: var(--font-heading);
+  font-size: 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  line-height: 1;
+  cursor: default;
+}
+
+.kampf-hit-zone-rs {
+  width: 1.22rem;
+  height: 1.22rem;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: rgba(255, 253, 248, 0.95);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.kampf-hit-zone-rs:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.kampf-hit-zone-w {
+  position: relative;
+  width: 1.22rem;
+  height: 1.22rem;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: rgba(201, 162, 39, 0.08);
+  color: var(--color-accent);
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.kampf-hit-zone-w:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: rgba(201, 162, 39, 0.14);
+}
+
+.kampf-hit-zone-w:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hit-zone-w__digit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.kampf-hit-zone-w.hit-zone-w--1 {
+  background: rgba(198, 40, 40, 0.18);
+  border-color: rgba(198, 40, 40, 0.45);
+  color: #b71c1c;
+}
+
+.kampf-hit-zone-w.hit-zone-w--2 {
+  background: rgba(198, 40, 40, 0.3);
+  border-color: rgba(198, 40, 40, 0.55);
+  color: #7f0000;
+}
+
+.kampf-hit-zone-w.hit-zone-w--3 {
+  background: rgba(198, 40, 40, 0.42);
+  border-color: rgba(183, 28, 28, 0.65);
+  color: #3e0000;
+}
+
+.kampf-hit-zone-w.hit-zone-w--4 {
+  background: rgba(127, 0, 0, 0.5);
+  border-color: rgba(80, 0, 0, 0.75);
+  color: #fff;
+}
+
+.kampf-hit-zone-notes {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-height: 12rem;
+}
+
+.kampf-hit-zone-notes__label {
+  font-family: var(--font-heading);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.kampf-hit-zone-notes__ta {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.28rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(139, 105, 20, 0.28);
+  background: rgba(255, 253, 248, 0.96);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.kampf-hit-zone-notes__ta:focus {
+  outline: none;
+  border-color: var(--color-accent);
 }
 
 .kampf-settings-panel__section .init-row-extra-label {

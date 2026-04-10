@@ -89,6 +89,7 @@ import {
   runLongHandlungAfterCombatUpdate,
   tryCommitLhDoneTargetIni,
 } from './longHandlung.js'
+import { createHitZoneOverlay, HIT_ZONE_INFO_ICON_SVG } from './hitZoneOverlay.js'
 import { mountHeroExpandBlock } from './iniModMeta.js'
 import { KAMPF_GEAR_ICON_SVG } from './settingsPanel.js'
 
@@ -1300,6 +1301,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   heroSettingsBackdrop.appendChild(heroSettingsPanel)
   document.body.appendChild(heroSettingsBackdrop)
 
+  const hitZoneOverlay = createHitZoneOverlay({
+    trackerMetaKey: TRACKER_ITEM_META_KEY,
+  })
+
   const inpHeroOff = heroSettingsPanel.querySelector('#kampf-hero-settings-offset')
   const inpHeroAp = heroSettingsPanel.querySelector('#kampf-hero-settings-apkr')
   const titleHeroEl = heroSettingsPanel.querySelector('#kampf-hero-settings-title')
@@ -1785,6 +1790,28 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           })
           const footer = document.createElement('div')
           footer.className = 'init-row-extra-panel__footer'
+          const infoHit = document.createElement('button')
+          infoHit.type = 'button'
+          infoHit.className = 'init-row-extra-info'
+          infoHit.innerHTML = HIT_ZONE_INFO_ICON_SVG
+          infoHit.title =
+            'Trefferzonen (WdS): Figur, RS und Wunden pro Zone, Kampfnotizen'
+          infoHit.setAttribute(
+            'aria-label',
+            `Trefferzonen und Notizen für ${row.name}`
+          )
+          infoHit.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            hitZoneOverlay.setFocusReturn(infoHit)
+            hitZoneOverlay.open(
+              row.id,
+              row.name,
+              tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY],
+              canEdit
+            )
+          })
+          footer.appendChild(infoHit)
           if (isGmSync()) {
             extraPanel.classList.add('init-row-extra-panel--has-gear')
             const gearHero = document.createElement('button')
@@ -2501,6 +2528,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       }
     }
 
+    const hzId = hitZoneOverlay.getOpenItemId()
+    if (hzId) {
+      const hzItem = items.find((i) => i.id === hzId)
+      if (!hzItem || !canEditSceneItem(hzItem)) {
+        hitZoneOverlay.close()
+      } else {
+        hitZoneOverlay.syncFromItems(items)
+      }
+    }
+
     swapOverlay.replaceChildren()
     if (isGmSync()) {
       for (const [upperDisc, lowerDisc] of iniSwapDiscPairs) {
@@ -2629,6 +2666,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
   return () => {
     document.removeEventListener('keydown', onHeroSettingsDocKey)
+    hitZoneOverlay.destroy()
     heroSettingsBackdrop.remove()
     offRoomSettings()
     offStampPref()
