@@ -89,7 +89,7 @@ import {
   runLongHandlungAfterCombatUpdate,
   tryCommitLhDoneTargetIni,
 } from './longHandlung.js'
-import { mountIniModifierBlock } from './iniModMeta.js'
+import { mountHeroExpandBlock } from './iniModMeta.js'
 import { KAMPF_GEAR_ICON_SVG } from './settingsPanel.js'
 
 /** Letzter L.H.-Stand pro Token (für kurzes „fertig“ nach rem→0). */
@@ -1571,8 +1571,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             'Weitere Helden-Optionen ein- oder ausblenden'
           )
           expandBtn.title = isGmSync()
-            ? 'Zeile aufklappen: INI-Merkfelder (WdS); Phasen-Offset & Aktionen/KR über das Zahnrad'
-            : 'Zeile aufklappen: INI-Merkfelder (WdS) für laufenden Kampf'
+            ? 'Zeile aufklappen: LE, AU, AE/KE, Wunden, Zusatzmodifikatoren; SL-Einstellungen über Zahnrad'
+            : 'Zeile aufklappen: LE, AU, AE/KE, Wunden, Zusatzmodifikatoren'
           const chev = document.createElement('span')
           chev.className = 'init-row-expand-chev'
           chev.setAttribute('aria-hidden', 'true')
@@ -1775,10 +1775,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           extraPanel.hidden = true
         } else {
           extraPanel.hidden = false
-          extraPanel.classList.add('init-row-extra-panel--has-ini-block')
+          extraPanel.classList.add('init-row-extra-panel--has-hero-ex')
           const body = document.createElement('div')
           body.className = 'init-row-extra-panel__body'
-          mountIniModifierBlock(body, {
+          mountHeroExpandBlock(body, {
             itemId: row.id,
             meta: tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY],
             canEdit,
