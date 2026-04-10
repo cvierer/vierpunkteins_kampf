@@ -508,14 +508,80 @@ body {
 .init-row-extra-panel {
   width: 100%;
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.16rem 0.65rem;
-  align-items: end;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.12rem;
   padding: 0.19rem 0 0.21rem;
   margin-top: 0.06rem;
   border-top: 1px solid rgba(139, 105, 20, 0.14);
+  min-height: 0.28rem;
+}
+
+.init-row-extra-panel--has-gear {
   min-height: calc((1.22rem + 0.55rem) / 2);
+}
+
+.init-row-extra-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.init-row-extra-panel__footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-end;
+  margin-top: auto;
+  padding-top: 0.06rem;
+}
+
+.init-row-extra-gear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  padding: 0.08rem;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(118, 114, 108, 0.72);
+  cursor: pointer;
+  box-sizing: content-box;
+  transition: color 0.12s ease, background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.init-row-extra-gear:hover {
+  color: var(--color-accent);
+  background: rgba(139, 105, 20, 0.06);
+}
+
+.init-row-extra-gear:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.45);
+  outline-offset: 1px;
+}
+
+.init-row-extra-gear svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.kampf-hero-settings-backdrop {
+  z-index: 20001;
+}
+
+.kampf-settings-panel__section .init-row-extra-label {
+  display: block;
+  margin-bottom: 0.12rem;
+}
+
+.kampf-settings-panel__section .init-row-extra-input {
+  max-width: 100%;
 }
 
 .init-row-extra-panel[hidden] {

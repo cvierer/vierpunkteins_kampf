@@ -89,6 +89,7 @@ import {
   runLongHandlungAfterCombatUpdate,
   tryCommitLhDoneTargetIni,
 } from './longHandlung.js'
+import { KAMPF_GEAR_ICON_SVG } from './settingsPanel.js'
 
 /** Letzter L.H.-Stand pro Token (für kurzes „fertig“ nach rem→0). */
 const lhRenderPrev = new Map()
@@ -1267,6 +1268,188 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     })
   }
 
+  let heroSettingsItemId = null
+  let heroSettingsGearEl = null
+
+  const heroSettingsBackdrop = document.createElement('div')
+  heroSettingsBackdrop.className =
+    'kampf-settings-backdrop kampf-hero-settings-backdrop'
+  heroSettingsBackdrop.hidden = true
+  heroSettingsBackdrop.setAttribute('aria-hidden', 'true')
+  heroSettingsBackdrop.style.display = 'none'
+
+  const heroSettingsPanel = document.createElement('div')
+  heroSettingsPanel.className = 'kampf-settings-panel'
+  heroSettingsPanel.setAttribute('role', 'dialog')
+  heroSettingsPanel.setAttribute('aria-modal', 'true')
+  heroSettingsPanel.setAttribute('aria-labelledby', 'kampf-hero-settings-title')
+  heroSettingsPanel.innerHTML = `
+    <h2 class="kampf-settings-panel__title" id="kampf-hero-settings-title">Helden-Einstellungen</h2>
+    <p class="kampf-settings-panel__hint">Nur Spielleitung. Werte gelten für dieses Token in der Szene.</p>
+    <div class="kampf-settings-panel__section">
+      <label class="init-row-extra-label" for="kampf-hero-settings-offset">Phasen-Offset (Held)</label>
+      <input type="text" id="kampf-hero-settings-offset" class="init-row-extra-input" inputmode="numeric" autocomplete="off" spellcheck="false" title="Abstand der L.H.-Auslöser-INI unter der Helden-INI (Standard 8)" />
+    </div>
+    <div class="kampf-settings-panel__section">
+      <label class="init-row-extra-label" for="kampf-hero-settings-apkr">Max. Aktionen / KR</label>
+      <input type="text" id="kampf-hero-settings-apkr" class="init-row-extra-input" inputmode="numeric" autocomplete="off" spellcheck="false" title="Längerfristige Handlung: Auslöser pro Kampfrunde (1–8)" />
+    </div>
+    <button type="button" class="btn kampf-settings-panel__close" data-kampf-hero-settings-close>Schließen</button>
+  `
+  heroSettingsBackdrop.appendChild(heroSettingsPanel)
+  document.body.appendChild(heroSettingsBackdrop)
+
+  const inpHeroOff = heroSettingsPanel.querySelector('#kampf-hero-settings-offset')
+  const inpHeroAp = heroSettingsPanel.querySelector('#kampf-hero-settings-apkr')
+  const titleHeroEl = heroSettingsPanel.querySelector('#kampf-hero-settings-title')
+  const closeHeroBtn = heroSettingsPanel.querySelector(
+    '[data-kampf-hero-settings-close]'
+  )
+
+  const syncHeroSettingsFields = (items) => {
+    if (!heroSettingsItemId || !Array.isArray(items)) return
+    const it = items.find((i) => i.id === heroSettingsItemId)
+    const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
+    if (
+      !m ||
+      !(inpHeroOff instanceof HTMLInputElement) ||
+      !(inpHeroAp instanceof HTMLInputElement)
+    ) {
+      return
+    }
+    inpHeroOff.value = String(phaseOffsetFromLhMeta(m))
+    inpHeroAp.value = String(readLhMechanics(m).actionsPerKr)
+  }
+
+  const closeHeroSettings = () => {
+    heroSettingsBackdrop.hidden = true
+    heroSettingsBackdrop.style.display = 'none'
+    heroSettingsBackdrop.setAttribute('aria-hidden', 'true')
+    heroSettingsItemId = null
+    heroSettingsGearEl?.focus()
+    heroSettingsGearEl = null
+  }
+
+  const openHeroSettings = (itemId, displayName) => {
+    if (!isGmSync()) return
+    heroSettingsItemId = itemId
+    if (titleHeroEl) {
+      titleHeroEl.textContent = `Helden-Einstellungen: ${displayName}`
+    }
+    syncHeroSettingsFields(lastItems)
+    heroSettingsBackdrop.hidden = false
+    heroSettingsBackdrop.style.display = 'flex'
+    heroSettingsBackdrop.setAttribute('aria-hidden', 'false')
+    closeHeroBtn?.focus()
+  }
+
+  closeHeroBtn?.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    closeHeroSettings()
+  })
+
+  heroSettingsBackdrop.addEventListener('click', (e) => {
+    if (e.target === heroSettingsBackdrop) closeHeroSettings()
+  })
+
+  if (inpHeroOff instanceof HTMLInputElement) {
+    inpHeroOff.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        inpHeroOff.blur()
+      }
+    })
+    inpHeroOff.addEventListener('blur', () => {
+      if (!isGmSync() || !heroSettingsItemId) return
+      const id = heroSettingsItemId
+      void (async () => {
+        const fresh = await OBR.scene.items.getItems()
+        const it = fresh.find((i) => i.id === id)
+        const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
+        if (!m) return
+        const curOff = phaseOffsetFromLhMeta(m)
+        const trimmed = inpHeroOff.value.trim()
+        if (trimmed === '') {
+          inpHeroOff.value = String(curOff)
+          return
+        }
+        const n = Math.floor(Number(trimmed.replace(',', '.')))
+        if (!Number.isFinite(n) || n < 0 || n > 99) {
+          inpHeroOff.value = String(curOff)
+          return
+        }
+        const newStep = storedTriggerIniStepFromPhaseOffsetPositive(n)
+        if (readLhMechanics(m).triggerIniStep === newStep) return
+        await OBR.scene.items.updateItems([id], (drafts) => {
+          for (const d of drafts) {
+            const mm = d.metadata[TRACKER_ITEM_META_KEY]
+            if (!mm) continue
+            mm[LH_TRIGGER_INI_STEP] = newStep
+          }
+        })
+        const fresh2 = await OBR.scene.items.getItems()
+        const it2 = fresh2.find((i) => i.id === id)
+        const m2 = it2?.metadata?.[TRACKER_ITEM_META_KEY]
+        const lhSt = readLhState(m2)
+        if (lhSt.max > 0) {
+          const iniStr = String(m2?.initiative ?? '')
+          await upsertLhLinkedZaoRoot(id, lhSt.max, iniStr)
+        }
+      })()
+    })
+  }
+
+  if (inpHeroAp instanceof HTMLInputElement) {
+    inpHeroAp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        inpHeroAp.blur()
+      }
+    })
+    inpHeroAp.addEventListener('blur', () => {
+      if (!isGmSync() || !heroSettingsItemId) return
+      const id = heroSettingsItemId
+      void (async () => {
+        const fresh = await OBR.scene.items.getItems()
+        const it = fresh.find((i) => i.id === id)
+        const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
+        if (!m) return
+        const curAp = readLhMechanics(m).actionsPerKr
+        const trimmed = inpHeroAp.value.trim()
+        if (trimmed === '') {
+          inpHeroAp.value = String(curAp)
+          return
+        }
+        const n = Math.floor(Number(trimmed.replace(',', '.')))
+        if (!Number.isFinite(n)) {
+          inpHeroAp.value = String(curAp)
+          return
+        }
+        const next = clampLhActionsPerKrForStorage(n)
+        if (next === curAp) {
+          inpHeroAp.value = String(curAp)
+          return
+        }
+        await OBR.scene.items.updateItems([id], (drafts) => {
+          for (const d of drafts) {
+            const mm = d.metadata[TRACKER_ITEM_META_KEY]
+            if (!mm) continue
+            mm[LH_ACTIONS_PER_KR] = next
+          }
+        })
+      })()
+    })
+  }
+
+  const onHeroSettingsDocKey = (e) => {
+    if (e.key === 'Escape' && !heroSettingsBackdrop.hidden) {
+      e.preventDefault()
+      closeHeroSettings()
+    }
+  }
+  document.addEventListener('keydown', onHeroSettingsDocKey)
+
   const renderList = (items) => {
     lastItems = items
     const tokenRows = collectSortedParticipants(items, getIniTieOrder())
@@ -1386,8 +1569,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             'aria-label',
             'Weitere Helden-Optionen ein- oder ausblenden'
           )
-          expandBtn.title =
-            'Weitere Helden-Optionen: Phasen-Offset (L.H.), max. Aktionen pro KR'
+          expandBtn.title = isGmSync()
+            ? 'Zeile aufklappen: Helden-Einstellungen (Phasen-Offset, Aktionen/KR) über das Zahnrad'
+            : 'Zeile aufklappen'
           const chev = document.createElement('span')
           chev.className = 'init-row-expand-chev'
           chev.setAttribute('aria-hidden', 'true')
@@ -1590,126 +1774,30 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           extraPanel.hidden = true
         } else {
           extraPanel.hidden = false
-          const mech = readLhMechanics(meta)
-          const offDisplay = phaseOffsetFromLhMeta(meta)
-
-          const fieldOff = document.createElement('div')
-          fieldOff.className = 'init-row-extra-field'
-          const labOff = document.createElement('label')
-          labOff.className = 'init-row-extra-label'
-          labOff.textContent = 'Phasen-Offset (Held)'
-          labOff.setAttribute('for', `init-extra-off-${row.id}`)
-          const inpOff = document.createElement('input')
-          inpOff.id = `init-extra-off-${row.id}`
-          inpOff.type = 'text'
-          inpOff.inputMode = 'numeric'
-          inpOff.className = 'init-row-extra-input'
-          inpOff.autocomplete = 'off'
-          inpOff.spellcheck = false
-          inpOff.value = String(offDisplay)
-          inpOff.title =
-            'Abstand der L.H.-Auslöser-INI unter der Helden-INI (Standard 8)'
-          inpOff.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+          const body = document.createElement('div')
+          body.className = 'init-row-extra-panel__body'
+          const footer = document.createElement('div')
+          footer.className = 'init-row-extra-panel__footer'
+          if (isGmSync()) {
+            extraPanel.classList.add('init-row-extra-panel--has-gear')
+            const gearHero = document.createElement('button')
+            gearHero.type = 'button'
+            gearHero.className = 'init-row-extra-gear'
+            gearHero.innerHTML = KAMPF_GEAR_ICON_SVG
+            gearHero.title = 'Helden-Einstellungen (Spielleitung)'
+            gearHero.setAttribute(
+              'aria-label',
+              `Helden-Einstellungen für ${row.name}`
+            )
+            gearHero.addEventListener('click', (e) => {
               e.preventDefault()
-              inpOff.blur()
-            }
-          })
-          inpOff.addEventListener('blur', () => {
-            if (!canEdit) return
-            void (async () => {
-              const fresh = await OBR.scene.items.getItems()
-              const it = fresh.find((i) => i.id === row.id)
-              const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
-              if (!m) return
-              const curOff = phaseOffsetFromLhMeta(m)
-              const trimmed = inpOff.value.trim()
-              if (trimmed === '') {
-                inpOff.value = String(curOff)
-                return
-              }
-              const n = Math.floor(Number(trimmed.replace(',', '.')))
-              if (!Number.isFinite(n) || n < 0 || n > 99) {
-                inpOff.value = String(curOff)
-                return
-              }
-              const newStep = storedTriggerIniStepFromPhaseOffsetPositive(n)
-              if (readLhMechanics(m).triggerIniStep === newStep) return
-              await OBR.scene.items.updateItems([row.id], (drafts) => {
-                for (const d of drafts) {
-                  const mm = d.metadata[TRACKER_ITEM_META_KEY]
-                  if (!mm) continue
-                  mm[LH_TRIGGER_INI_STEP] = newStep
-                }
-              })
-              const fresh2 = await OBR.scene.items.getItems()
-              const it2 = fresh2.find((i) => i.id === row.id)
-              const m2 = it2?.metadata?.[TRACKER_ITEM_META_KEY]
-              const lhSt = readLhState(m2)
-              if (lhSt.max > 0) {
-                const iniStr = String(m2?.initiative ?? row.initiative)
-                await upsertLhLinkedZaoRoot(row.id, lhSt.max, iniStr)
-              }
-            })()
-          })
-          fieldOff.append(labOff, inpOff)
-
-          const fieldAp = document.createElement('div')
-          fieldAp.className = 'init-row-extra-field'
-          const labAp = document.createElement('label')
-          labAp.className = 'init-row-extra-label'
-          labAp.textContent = 'Max. Aktionen / KR'
-          labAp.setAttribute('for', `init-extra-apkr-${row.id}`)
-          const inpAp = document.createElement('input')
-          inpAp.id = `init-extra-apkr-${row.id}`
-          inpAp.type = 'text'
-          inpAp.inputMode = 'numeric'
-          inpAp.className = 'init-row-extra-input'
-          inpAp.autocomplete = 'off'
-          inpAp.spellcheck = false
-          inpAp.value = String(mech.actionsPerKr)
-          inpAp.title = 'Längerfristige Handlung: Auslöser pro Kampfrunde (1–8)'
-          inpAp.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              inpAp.blur()
-            }
-          })
-          inpAp.addEventListener('blur', () => {
-            if (!canEdit) return
-            void (async () => {
-              const fresh = await OBR.scene.items.getItems()
-              const it = fresh.find((i) => i.id === row.id)
-              const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
-              if (!m) return
-              const curAp = readLhMechanics(m).actionsPerKr
-              const trimmed = inpAp.value.trim()
-              if (trimmed === '') {
-                inpAp.value = String(curAp)
-                return
-              }
-              const n = Math.floor(Number(trimmed.replace(',', '.')))
-              if (!Number.isFinite(n)) {
-                inpAp.value = String(curAp)
-                return
-              }
-              const next = clampLhActionsPerKrForStorage(n)
-              if (next === curAp) {
-                inpAp.value = String(curAp)
-                return
-              }
-              await OBR.scene.items.updateItems([row.id], (drafts) => {
-                for (const d of drafts) {
-                  const mm = d.metadata[TRACKER_ITEM_META_KEY]
-                  if (!mm) continue
-                  mm[LH_ACTIONS_PER_KR] = next
-                }
-              })
-            })()
-          })
-          fieldAp.append(labAp, inpAp)
-
-          extraPanel.append(fieldOff, fieldAp)
+              e.stopPropagation()
+              heroSettingsGearEl = gearHero
+              openHeroSettings(row.id, row.name)
+            })
+            footer.appendChild(gearHero)
+          }
+          extraPanel.append(body, footer)
         }
 
         if (extrasOpen) li.classList.add('init-row--extras-open')
@@ -2397,6 +2485,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     element.replaceChildren(frag)
 
+    if (heroSettingsItemId) {
+      const stillThere = items.some((i) => i.id === heroSettingsItemId)
+      if (!stillThere) {
+        closeHeroSettings()
+      } else if (!heroSettingsBackdrop.hidden) {
+        syncHeroSettingsFields(items)
+      }
+    }
+
     swapOverlay.replaceChildren()
     if (isGmSync()) {
       for (const [upperDisc, lowerDisc] of iniSwapDiscPairs) {
@@ -2519,10 +2616,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     void OBR.scene.items.getItems().then(renderList)
   })
   const offPlayer = OBR.player.onChange(() => {
+    if (!isGmSync()) closeHeroSettings()
     void OBR.scene.items.getItems().then(renderList)
   })
 
   return () => {
+    document.removeEventListener('keydown', onHeroSettingsDocKey)
+    heroSettingsBackdrop.remove()
     offRoomSettings()
     offStampPref()
     offPlayer()
