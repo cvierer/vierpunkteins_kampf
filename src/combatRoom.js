@@ -71,8 +71,6 @@ function normalize(raw) {
 }
 
 let cache = defaultCombat()
-/** Kampf-Cache unmittelbar vor dem letzten erfolgreichen pullFromRoom-Wechsel (für Reconcile-Korrekturen). */
-let combatBeforeLastPull = null
 let tieOrderCache = []
 let actionStampsCache = { anchorId: null, entries: [] }
 
@@ -115,11 +113,6 @@ export function getCombat() {
   return cache
 }
 
-/** Nur sinnvoll kurz nach einem geänderten Kampf-Eintrag in den Raum-Metadaten. */
-export function getCombatBeforeLastPull() {
-  return combatBeforeLastPull
-}
-
 export function onCombatChange(fn) {
   listeners.add(fn)
   return () => listeners.delete(fn)
@@ -151,13 +144,6 @@ async function pullFromRoom() {
     next.roundIntroPrevItemId === cache.roundIntroPrevItemId &&
     next.roundIntroPrevPhaseLinkId === cache.roundIntroPrevPhaseLinkId
   if (same) return
-  combatBeforeLastPull = {
-    started: cache.started,
-    round: cache.round,
-    currentItemId: cache.currentItemId,
-    currentPhaseLinkId: cache.currentPhaseLinkId,
-    roundIntroPending: cache.roundIntroPending,
-  }
   cache = next
   notify()
 }
