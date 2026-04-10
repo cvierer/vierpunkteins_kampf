@@ -328,6 +328,13 @@ function appendKrCounterPair(
   appendLhCell(container, ownerItemId, trackerMeta, canEdit, lhStampPhaseLinkId)
 }
 
+/**
+ * Wie Token-Zeile (null): L.H.-Stempel / commitLhValue nur mit Phasen-Anker, wenn L.H. aktiv (max > 0).
+ */
+function lhStampPhaseLinkIdWhenLhActive(trackerMeta, phaseLinkId) {
+  return readLhState(trackerMeta).max > 0 ? phaseLinkId : null
+}
+
 function applyLhVisual(wrap, max, rem) {
   const pie = wrap.querySelector('.init-lh-cell__pie')
   if (!pie) return
@@ -1603,7 +1610,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerTrackerMeta,
           canEdit,
           ownerIniStr,
-          LH_DONE_STEP_ID
+          lhStampPhaseLinkIdWhenLhActive(ownerTrackerMeta, LH_DONE_STEP_ID)
         )
 
         const lhRemove = document.createElement('button')
@@ -1833,7 +1840,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerTrackerMeta,
           canEdit,
           ownerIniStr,
-          link.id
+          lhStampPhaseLinkIdWhenLhActive(ownerTrackerMeta, link.id)
         )
 
         if (isZaoRoot) {
