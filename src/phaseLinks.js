@@ -14,7 +14,6 @@ import {
   LH_DONE_INI,
   LH_DONE_ROUND,
   computeLhProgressDisplayHookIni,
-  lhMultiLhDefers2AListUntilLastSegment,
   lhProgressFractionText,
   readLhState,
   shouldShowLhProgressRow,
@@ -586,11 +585,7 @@ export function buildMergedDisplayRows(
       new Map(roots.map((l, i) => [l.id, i]))
     )
 
-    if (
-      !lhMultiLhDefers2AListUntilLastSegment(lhMax, lhRem) &&
-      phases.rowPanelOpen &&
-      phases.links.length > 0
-    ) {
+    if (phases.rowPanelOpen && phases.links.length > 0) {
       for (const link of sortedLinksForLayout(phases.links)) {
         const hook = hookIniForLink(link.id, row.initiative, phases.links)
         if (hook === null || hook < 0) continue
