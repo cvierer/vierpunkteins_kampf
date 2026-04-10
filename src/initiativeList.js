@@ -1179,11 +1179,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         })
         return
       }
-      const cTokenOnly = { ...c, currentPhaseLinkId: null }
-      if (findCombatStepIndex(steps, cTokenOnly) >= 0) {
-        await patchCombat({ currentPhaseLinkId: null })
-        return
-      }
+      // Link noch in Meta, aber kein passender Schritt in steps: Combat nicht auf Mutter korrigieren
+      // (z. B. 2.A. nach L.H.-Abschluss kurz aus der Liste — Fokus soll auf der Phasenzeile bleiben).
+      return
     }
 
     await patchCombat({
