@@ -67,6 +67,14 @@ export function readLhState(meta) {
   return { max, rem }
 }
 
+/**
+ * Anzeige „aktueller Anteil / Gesamt“ (1-basiert): bei rem === max steht „1/x“, nicht „0/x“.
+ */
+export function lhProgressFractionText(max, rem) {
+  if (!(max > 0 && rem > 0)) return ''
+  return `${max - rem + 1}/${max}`
+}
+
 const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
 const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
 

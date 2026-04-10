@@ -14,6 +14,7 @@ import {
   LH_DONE_INI,
   LH_DONE_ROUND,
   computeLhProgressDisplayHookIni,
+  lhProgressFractionText,
   readLhState,
   shouldShowLhProgressRow,
 } from './lhMeta.js'
@@ -637,7 +638,7 @@ export function buildMergedDisplayRows(
             ownerIniStr: row.initiative,
             hookIni,
             lhPending: true,
-            lhProgressLabel: `${lhMax - lhRem}/${lhMax}`,
+            lhProgressLabel: lhProgressFractionText(lhMax, lhRem),
           })
         }
       }

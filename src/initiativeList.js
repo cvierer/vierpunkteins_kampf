@@ -69,6 +69,7 @@ import {
 } from './roomSettings.js'
 import {
   computeLhProgressDisplayHookIni,
+  lhProgressFractionText,
   readLhState,
   trackerShowsLhSyntheticRow,
 } from './lhMeta.js'
@@ -366,10 +367,8 @@ function appendLhCell(
   const fraction = document.createElement('span')
   fraction.className = 'init-lh-cell__fraction'
   fraction.setAttribute('aria-hidden', 'true')
-  if (st.max > 0) {
-    const consumed = Math.max(0, st.max - st.rem)
-    fraction.textContent = `${consumed}/${st.max}`
-  }
+  const fracLabel = lhProgressFractionText(st.max, st.rem)
+  if (fracLabel) fraction.textContent = fracLabel
 
   const inp = document.createElement('input')
   inp.type = 'text'
@@ -385,8 +384,8 @@ function appendLhCell(
   inp.title = lhTitleActive
   inp.setAttribute(
     'aria-label',
-    st.max > 0
-      ? `Längerfristige Handlung, ${st.rem} von ${st.max} Aktionen`
+    fracLabel
+      ? `Längerfristige Handlung, Anteil ${fracLabel} (${st.rem} verbleibend von ${st.max})`
       : 'Längerfristige Handlung, inaktiv'
   )
   inp.readOnly = !canEdit
