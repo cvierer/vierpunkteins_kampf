@@ -459,7 +459,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
       ) {
         pack.doneRound = curr.round
         pack.doneIni = completionIni
-      } else if (movedBack || roundDecreased) {
+      } else if (roundDecreased) {
         pack.doneRound = null
         pack.doneIni = null
       }
