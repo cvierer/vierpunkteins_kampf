@@ -10,7 +10,12 @@ import {
   TRACKER_ID,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
-import { LH_DONE_INI, LH_DONE_ROUND } from './lhMeta.js'
+import {
+  LH_DONE_INI,
+  LH_DONE_ROUND,
+  phaseOffsetFromLhMeta,
+  readLhState,
+} from './lhMeta.js'
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
 
@@ -236,7 +241,7 @@ function uuid() {
   return crypto.randomUUID()
 }
 
-function safeDefaultOffset(ownerIniStr) {
+function safeDefaultOffset(_ownerIniStr) {
   return DEFAULT_PHASE_OFFSET
 }
 
@@ -245,11 +250,18 @@ export function secondActionStepForOwnerIni(_ownerIniStr) {
   return DEFAULT_SECOND_ACTION_STEP
 }
 
-/** Darf eine 2.A.-Wurzel erzeugt werden? (Ziel-INI der 2.A. muss >= 0 sein) */
-export function canCreateSecondActionRoot(ownerIniStr) {
+/**
+ * Darf eine 2.A.-Wurzel erzeugt werden? (Ziel-INI der 2.A. muss >= 0 sein)
+ * @param {string|undefined} ownerIniStr
+ * @param {number} [storedPhaseOffset] — aus L.H.-Trigger; sonst globaler Standard (8)
+ */
+export function canCreateSecondActionRoot(ownerIniStr, storedPhaseOffset) {
   const base = iniNumeric(ownerIniStr)
   if (!Number.isFinite(base)) return false
-  const step = secondActionStepForOwnerIni(ownerIniStr)
+  const step =
+    storedPhaseOffset != null && Number.isFinite(Number(storedPhaseOffset))
+      ? clampStoredOffset(storedPhaseOffset)
+      : secondActionStepForOwnerIni(ownerIniStr)
   return base - step >= 0
 }
 
@@ -259,7 +271,64 @@ export function patchItemPhases(itemId, updater) {
       const meta = d.metadata[TRACKER_ITEM_META_KEY]
       if (!meta) continue
       const prev = normalizePhases(meta.phases)
-      meta.phases = normalizePhases(updater(prev))
+      meta.phases = normalizePhases(updater(prev, meta))
+    }
+  })
+}
+
+/**
+ * Bei L.H. mit genau einem offenen Auslöser (max>0, rem===1): Panel öffnen, erste Wurzel mit
+ * Offset aus L.H.-Trigger anlegen bzw. Wurzel-Offsets angleichen.
+ * @param {import('@owlbear-rodeo/sdk').Item[] | undefined} itemsIfKnown — optional: aktuelle Szene-Items, vermeidet extra getItems
+ */
+export async function ensureSecondActionPhaseAtLhGo(
+  itemId,
+  ownerIniStrOpt,
+  itemsIfKnown
+) {
+  const item =
+    itemsIfKnown?.find((i) => i.id === itemId) ??
+    (await OBR.scene.items.getItems((i) => i.id === itemId))[0]
+  if (!item) return
+  const meta = item.metadata?.[TRACKER_ITEM_META_KEY]
+  if (!meta) return
+  const st = readLhState(meta)
+  if (!(st.max > 0 && st.rem === 1)) return
+  const ownerIniStr =
+    ownerIniStrOpt !== undefined
+      ? String(ownerIniStrOpt)
+      : String(meta.initiative ?? '')
+  const off = phaseOffsetFromLhMeta(meta)
+  if (!canCreateSecondActionRoot(ownerIniStr, off)) return
+  const p = normalizePhases(meta.phases)
+  const roots = p.links.filter((l) => l.parentId === null)
+  if (roots.length === 0) {
+    await patchItemPhases(itemId, (prev, m) => {
+      const o = phaseOffsetFromLhMeta(m)
+      if (!canCreateSecondActionRoot(ownerIniStr, o)) return prev
+      return {
+        ...prev,
+        rowPanelOpen: true,
+        links: [
+          ...prev.links,
+          { id: uuid(), parentId: null, offset: o },
+        ],
+      }
+    })
+    return
+  }
+  const allMatch =
+    roots.every((r) => clampStoredOffset(r.offset) === off) && p.rowPanelOpen
+  if (allMatch) return
+  await patchItemPhases(itemId, (prev, m) => {
+    const o = phaseOffsetFromLhMeta(m)
+    if (!canCreateSecondActionRoot(ownerIniStr, o)) return prev
+    return {
+      ...prev,
+      rowPanelOpen: true,
+      links: prev.links.map((l) =>
+        l.parentId === null ? { ...l, offset: o } : l
+      ),
     }
   })
 }
@@ -269,11 +338,12 @@ export function patchItemPhases(itemId, updater) {
  * Shift+Klick: Panel schließen.
  */
 export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
-  return patchItemPhases(itemId, (p) => {
+  return patchItemPhases(itemId, (p, meta) => {
     if (shiftKey) {
       return { ...p, rowPanelOpen: false }
     }
-    if (!canCreateSecondActionRoot(ownerIniStr)) {
+    const off = phaseOffsetFromLhMeta(meta)
+    if (!canCreateSecondActionRoot(ownerIniStr, off)) {
       return p
     }
     if (!p.rowPanelOpen) {
@@ -283,7 +353,7 @@ export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
               {
                 id: uuid(),
                 parentId: null,
-                offset: safeDefaultOffset(ownerIniStr),
+                offset: off,
               },
             ]
           : p.links
@@ -296,7 +366,7 @@ export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
         {
           id: uuid(),
           parentId: null,
-          offset: safeDefaultOffset(ownerIniStr),
+          offset: off,
         },
       ],
     }
@@ -308,17 +378,16 @@ export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
  * Für L.H. mit genau einer Aktion (Eingabe „1“).
  */
 export function openSecondActionPhaseForLhSingle(itemId, ownerIniStr) {
-  if (!canCreateSecondActionRoot(ownerIniStr)) {
-    return Promise.resolve()
-  }
-  return patchItemPhases(itemId, (p) => {
+  return patchItemPhases(itemId, (p, meta) => {
+    const off = phaseOffsetFromLhMeta(meta)
+    if (!canCreateSecondActionRoot(ownerIniStr, off)) return p
     const nextLinks =
       p.links.length === 0
         ? [
             {
               id: uuid(),
               parentId: null,
-              offset: safeDefaultOffset(ownerIniStr),
+              offset: off,
             },
           ]
         : p.links
@@ -576,7 +645,14 @@ export function buildMergedDisplayRows(
       new Map(roots.map((l, i) => [l.id, i]))
     )
 
-    if (phases.rowPanelOpen && phases.links.length > 0) {
+    const lhSt = readLhState(meta)
+    const lhMotherReadyForSecondAction = lhSt.max > 0 && lhSt.rem === 1
+
+    if (
+      lhMotherReadyForSecondAction &&
+      phases.rowPanelOpen &&
+      phases.links.length > 0
+    ) {
       for (const link of sortedLinksForLayout(phases.links)) {
         const hook = hookIniForLink(link.id, row.initiative, phases.links)
         if (hook === null || hook < 0) continue

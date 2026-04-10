@@ -4,6 +4,7 @@ import { getCombat } from './combatRoom.js'
 import {
   buildCombatTurnSteps,
   buildMergedDisplayRows,
+  ensureSecondActionPhaseAtLhGo,
   findCombatStepIndex,
   openSecondActionPhaseForLhSingle,
 } from './phaseLinks.js'
@@ -556,6 +557,24 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         }
       }
     })
+    const freshItems = await OBR.scene.items.getItems()
+    for (const c of changed) {
+      if (c.max > 0 && c.rem === 1) {
+        const it = freshItems.find((i) => i.id === c.id)
+        const iniStr = String(
+          it?.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
+        )
+        await ensureSecondActionPhaseAtLhGo(c.id, iniStr, freshItems)
+      }
+    }
+  } else if (isGmSync()) {
+    for (const item of trackerItems) {
+      const m = item.metadata[TRACKER_ITEM_META_KEY]
+      const st = readLhState(m)
+      if (!(st.max > 0 && st.rem === 1)) continue
+      const iniStr = String(m?.initiative ?? '')
+      await ensureSecondActionPhaseAtLhGo(item.id, iniStr, items)
+    }
   }
 
   lhPrevCombat = combatSnapshot(curr)

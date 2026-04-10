@@ -71,6 +71,7 @@ import {
   computeLhProgressDisplayHookIni,
   lhProgressFractionText,
   lhProgressPieFillRatio,
+  phaseOffsetFromLhMeta,
   readLhState,
   trackerShowsLhSyntheticRow,
 } from './lhMeta.js'
@@ -1330,7 +1331,14 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         plusAnchor.className = 'init-phase-plus-anchor'
 
         const rootCount = phases.links.filter((l) => l.parentId === null).length
-        const canCreateSecondAction = canCreateSecondActionRoot(row.initiative)
+        const lhSt = readLhState(meta)
+        const phaseOff =
+          lhSt.max > 0 ? phaseOffsetFromLhMeta(meta) : undefined
+        const canCreateSecondAction = canCreateSecondActionRoot(
+          row.initiative,
+          phaseOff
+        )
+        const lhBlocksPhasePlus = lhSt.max > 1 && lhSt.rem > 1
 
         const phasePlus = document.createElement('button')
         phasePlus.type = 'button'
@@ -1357,12 +1365,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           if (rootCount <= 0) return
           void removeLastZaoRoot(row.id)
         })
-        phasePlus.disabled = !canEdit || !canCreateSecondAction
+        phasePlus.disabled =
+          !canEdit || !canCreateSecondAction || lhBlocksPhasePlus
         if (!canEdit) {
           phasePlus.title =
             'Nur Spielleitung oder Besitzer dieses Tokens (2. Aktionsphase / Phasen)'
+        } else if (lhBlocksPhasePlus) {
+          phasePlus.title =
+            '2. Aktionsphase ab „GO!“ bei laufender L.H. (letzter Auslöser)'
         } else if (!canCreateSecondAction) {
-          phasePlus.title = '2. Aktionsphase erst ab INI >= 8 (Standard)'
+          phasePlus.title = '2. Aktionsphase erst ab INI ≥ Phasen-Offset (Standard 8)'
         }
         phasePlus.hidden = !canCreateSecondAction
 

@@ -68,6 +68,24 @@ export function readLhState(meta) {
 }
 
 /**
+ * Gespeichertes Phasen-Offset (positiv) aus L.H.-Auslöser-Schritt, z. B. −8 → 8.
+ */
+export function phaseOffsetFromLhTriggerStep(triggerIniStep) {
+  const n = Number(triggerIniStep)
+  if (!Number.isFinite(n) || n === 0) {
+    return Math.max(
+      0,
+      Math.min(99, Math.round(Math.abs(DEFAULT_LH_TRIGGER_INI_STEP)))
+    )
+  }
+  return Math.max(0, Math.min(99, Math.round(Math.abs(n))))
+}
+
+export function phaseOffsetFromLhMeta(meta) {
+  return phaseOffsetFromLhTriggerStep(readLhMechanics(meta).triggerIniStep)
+}
+
+/**
  * Kurztext im L.H.-Kuchen am Token: 1/x … (x−1)/x, zuletzt „GO!“ wenn nur noch ein Auslöser offen (mehrteilige L.H.).
  */
 export function lhProgressFractionText(max, rem) {
