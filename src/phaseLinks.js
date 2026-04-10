@@ -551,6 +551,15 @@ export function buildMergedDisplayRows(
     entries.push({ kind: 'token', row })
     const meta = metaOf(row.id)
     const phases = normalizePhases(meta?.phases)
+    const doneRound = Math.floor(Number(meta?.[LH_DONE_ROUND]))
+    const doneIni = Number(meta?.[LH_DONE_INI])
+    const ownerIni = iniNumeric(row.initiative)
+    const hasCompletedLhDone =
+      Number.isFinite(doneRound) &&
+      doneRound >= 1 &&
+      Number.isFinite(doneIni) &&
+      doneIni >= 0
+
     const roots = sortedLinksForLayout(phases.links).filter(
       (l) => l.parentId === null
     )
@@ -563,6 +572,17 @@ export function buildMergedDisplayRows(
       for (const link of sortedLinksForLayout(phases.links)) {
         const hook = hookIniForLink(link.id, row.initiative, phases.links)
         if (hook === null || hook < 0) continue
+        // L.H. max=1: Phasen-2.A.-Wurzel und L.H.-Abschluss-Zeile (lhDone) teilen dieselbe Ziel-INI.
+        // In der KR, in der lhDone gesetzt wurde, übernimmt lhDone — Wurzel ausblenden (ab nächster KR wieder sichtbar).
+        if (
+          hasCompletedLhDone &&
+          combatRound != null &&
+          doneRound === combatRound &&
+          link.parentId === null &&
+          hook === doneIni
+        ) {
+          continue
+        }
         entries.push({
           kind: 'phase',
           ownerId: row.id,
@@ -573,15 +593,6 @@ export function buildMergedDisplayRows(
         })
       }
     }
-
-    const doneRound = Math.floor(Number(meta?.[LH_DONE_ROUND]))
-    const doneIni = Number(meta?.[LH_DONE_INI])
-    const ownerIni = iniNumeric(row.initiative)
-    const hasCompletedLhDone =
-      Number.isFinite(doneRound) &&
-      doneRound >= 1 &&
-      Number.isFinite(doneIni) &&
-      doneIni >= 0
 
     if (hasCompletedLhDone) {
       if (!Number.isFinite(ownerIni) || doneIni !== ownerIni) {
