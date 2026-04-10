@@ -46,6 +46,7 @@ import {
   tryCommitPhaseTargetIni,
   upsertLhLinkedZaoRoot,
   zaoRootKey,
+  zaoTieSwapKeyForMergedEntry,
 } from './phaseLinks.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 import {
@@ -157,7 +158,7 @@ function mergeActionStampsIntoMerged(merged, stampEntries) {
 
 /**
  * INI-Tausch nur zwischen direkt aufeinanderfolgenden Listeneinträgen (wie angezeigt);
- * Action-Stempel dazwischen = kein Paar. Token–Token und 2.A.-Wurzel–2.A.-Wurzel.
+ * Action-Stempel dazwischen = kein Paar. Token–Token; 2.A.-Wurzel / L.H.-Zeile mit gleicher Ziel-INI.
  */
 function collectAdjacentSameIniSwapPairs(mergedWithStamps) {
   const tiePairs = []
@@ -173,22 +174,20 @@ function collectAdjacentSameIniSwapPairs(mergedWithStamps) {
       }
       continue
     }
-    if (
-      u.kind === 'phase' &&
-      l.kind === 'phase' &&
-      u.link.parentId === null &&
-      l.link.parentId === null
-    ) {
+    const zKUpper = zaoTieSwapKeyForMergedEntry(u)
+    const zKLower = zaoTieSwapKeyForMergedEntry(l)
+    if (zKUpper && zKLower) {
+      const iniU =
+        u.kind === 'token' ? u.row.initiative : formatIniForSort(u.hookIni)
+      const iniL =
+        l.kind === 'token' ? l.row.initiative : formatIniForSort(l.hookIni)
       if (
         initiativeCompareOnlyIni(
-          { initiative: formatIniForSort(u.hookIni), name: '' },
-          { initiative: formatIniForSort(l.hookIni), name: '' }
+          { initiative: iniU, name: '' },
+          { initiative: iniL, name: '' }
         ) === 0
       ) {
-        zaoPairs.push([
-          zaoRootKey(u.ownerId, u.link.id),
-          zaoRootKey(l.ownerId, l.link.id),
-        ])
+        zaoPairs.push([zKUpper, zKLower])
       }
     }
   }
@@ -2439,10 +2438,10 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       arrDown.textContent = '↓'
       swapBtn.append(arrUp, arrDown)
         swapBtn.title =
-          'Reihenfolge mit dem nächsten 2.A.-Eintrag tauschen (gleiche INI)'
+          'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche Ziel-INI: 2.A. / L.H.-Zeile)'
       swapBtn.setAttribute(
         'aria-label',
-          'Gleiche INI: 2. Aktionsphase mit darunterliegendem 2.A.-Eintrag tauschen'
+          'Gleiche Ziel-INI: mit darunterliegendem 2.A.- oder L.H.-Eintrag die Reihenfolge tauschen'
       )
       swapBtn.addEventListener('click', (e) => {
         e.preventDefault()
@@ -2452,7 +2451,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             upperKey,
             lowerKey,
             fresh,
-            getIniTieOrder()
+            getIniTieOrder(),
+            combat.started ? combat.round : null
           )
         })
       })

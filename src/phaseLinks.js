@@ -73,40 +73,56 @@ export function zaoRootKey(ownerId, linkId) {
 }
 
 /**
- * Zwei direkt untereinander stehende 2.A.-Wurzeln mit gleicher Ziel-INI tauschen (Kampflisten-Reihenfolge).
+ * Schlüssel für Ziel-INI-Tausch (Raum „2.A.-Reihenfolge“): 2.A.-Wurzel oder L.H.-Abschlusszeile (lhDone).
+ */
+export function zaoTieSwapKeyForMergedEntry(e) {
+  if (!e || typeof e !== 'object') return null
+  if (e.kind === 'phase' && e.link?.parentId === null) {
+    return zaoRootKey(e.ownerId, e.link.id)
+  }
+  if (e.kind === 'lhDone') {
+    return zaoRootKey(e.ownerId, LH_DONE_STEP_ID)
+  }
+  return null
+}
+
+/**
+ * Zwei direkt untereinander stehende Einträge mit gleicher Ziel-INI tauschen:
+ * 2.A.-Wurzeln und/oder L.H.-Abschlusszeile (gleicher INI-Bucket in der Kampfliste).
+ * @param [combatRound] wie in `buildMergedDisplayRows` (lhDone-Sichtbarkeit).
  */
 export async function swapAdjacentZaoRootKeys(
   keyUpper,
   keyLower,
   items,
-  tieOrderIds
+  tieOrderIds,
+  combatRound = null
 ) {
   if (!isGmSync()) return
   const tokenRows = collectSortedParticipants(items, tieOrderIds)
-  const merged = buildMergedDisplayRows(tokenRows, items, tieOrderIds)
-  const zaoIdx = (k) =>
-    merged.findIndex(
-      (e) =>
-        e.kind === 'phase' &&
-        e.link.parentId === null &&
-        zaoRootKey(e.ownerId, e.link.id) === k
-    )
-  const iu = zaoIdx(keyUpper)
-  const il = zaoIdx(keyLower)
+  const merged = buildMergedDisplayRows(
+    tokenRows,
+    items,
+    tieOrderIds,
+    combatRound
+  )
+  const rowIdx = (k) =>
+    merged.findIndex((e) => zaoTieSwapKeyForMergedEntry(e) === k)
+  const iu = rowIdx(keyUpper)
+  const il = rowIdx(keyLower)
   if (iu < 0 || il < 0 || il !== iu + 1) return
   const eu = merged[iu]
   const el = merged[il]
-  if (eu.kind !== 'phase' || el.kind !== 'phase') return
+  if (zaoTieSwapKeyForMergedEntry(eu) !== keyUpper) return
+  if (zaoTieSwapKeyForMergedEntry(el) !== keyLower) return
   if (formatIniForSort(eu.hookIni) !== formatIniForSort(el.hookIni)) return
   const iniK = formatIniForSort(eu.hookIni)
   const keysInMerged = merged
-    .filter(
-      (e) =>
-        e.kind === 'phase' &&
-        e.link.parentId === null &&
-        formatIniForSort(e.hookIni) === iniK
-    )
-    .map((e) => zaoRootKey(e.ownerId, e.link.id))
+    .filter((e) => {
+      if (zaoTieSwapKeyForMergedEntry(e) == null) return false
+      return formatIniForSort(e.hookIni) === iniK
+    })
+    .map((e) => zaoTieSwapKeyForMergedEntry(e))
   let bucket = [...(zaoRootTieOrderByIniCache[iniK] ?? [])].filter((k) =>
     keysInMerged.includes(k)
   )
