@@ -301,6 +301,12 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
   const movedBack = isBackward(prev, curr, prevCtx.idx, currCtx.idx)
   const trackerItems = items.filter((i) => i.metadata?.[TRACKER_ITEM_META_KEY])
 
+  const lhHadGoBeforeNav = new Map()
+  for (const item of trackerItems) {
+    const st0 = readLhState(item.metadata[TRACKER_ITEM_META_KEY])
+    lhHadGoBeforeNav.set(item.id, lhShowsGo(st0.max, st0.rem))
+  }
+
   const prevIniRaw = prevCtx.activeIni
   const currIni = currCtx.activeIni
 
@@ -588,19 +594,24 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         tieOrderIds,
         rRound
       )
-      const entry = mergedNav[currIdxNav]
-      if (entry?.kind === 'token') {
-        const ownerId = entry.row.id
+      const prevEntry = mergedNav[prevIdxNav]
+      const currEntry = mergedNav[currIdxNav]
+
+      if (prevIdxNav < currIdxNav && prevEntry?.kind === 'token') {
+        const ownerId = prevEntry.row.id
+        if (lhHadGoBeforeNav.get(ownerId)) {
+          await setFirstZaoRootExpiresNextRound(ownerId, true)
+        }
+      }
+
+      if (prevIdxNav > currIdxNav && currEntry?.kind === 'token') {
+        const ownerId = currEntry.row.id
         const meta = itemsNav.find((i) => i.id === ownerId)?.metadata?.[
           TRACKER_ITEM_META_KEY
         ]
         const st = readLhState(meta)
         if (lhShowsGo(st.max, st.rem)) {
-          if (prevIdxNav < currIdxNav) {
-            await setFirstZaoRootExpiresNextRound(ownerId, true)
-          } else {
-            await setFirstZaoRootExpiresNextRound(ownerId, false)
-          }
+          await setFirstZaoRootExpiresNextRound(ownerId, false)
         }
       }
     }
