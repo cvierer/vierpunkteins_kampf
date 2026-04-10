@@ -8,6 +8,7 @@ import {
 import {
   computeValidIniTieInsertSlots,
   getCombat,
+  getCombatBeforeLastPull,
   getActionStamps,
   getIniTieOrder,
   isCombatNavMutationActive,
@@ -1156,6 +1157,44 @@ export function setupInitiativeList(element, { onListChange } = {}) {
       })
       return
     }
+
+    const cPrev = getCombatBeforeLastPull()
+    if (
+      cPrev &&
+      c.started &&
+      cPrev.started &&
+      !c.roundIntroPending &&
+      c.round === cPrev.round &&
+      typeof c.currentItemId === 'string' &&
+      c.currentItemId === cPrev.currentItemId &&
+      typeof cPrev.currentPhaseLinkId === 'string' &&
+      cPrev.currentPhaseLinkId &&
+      cPrev.currentPhaseLinkId !== LH_DONE_STEP_ID &&
+      !c.currentPhaseLinkId
+    ) {
+      const ownerId = c.currentItemId
+      const linkId = cPrev.currentPhaseLinkId
+      if (phaseLinkExistsOnItem(items, ownerId, linkId)) {
+        const iTok = steps.findIndex(
+          (s) => s.kind === 'token' && s.id === ownerId
+        )
+        const iPh = steps.findIndex(
+          (s) =>
+            s.kind === 'phase' &&
+            s.ownerId === ownerId &&
+            s.linkId === linkId
+        )
+        if (iTok >= 0 && iPh >= 0 && iPh > iTok + 1) {
+          await patchCombat({
+            currentItemId: ownerId,
+            currentPhaseLinkId: linkId,
+            round: c.round,
+          })
+          return
+        }
+      }
+    }
+
     if (findCombatStepIndex(steps, c) >= 0) return
 
     const phaseId = c.currentPhaseLinkId
