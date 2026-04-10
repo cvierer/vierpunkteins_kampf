@@ -14,6 +14,7 @@ import {
   LH_DONE_INI,
   LH_DONE_ROUND,
   computeLhProgressDisplayHookIni,
+  lhMultiLhDefers2AListUntilLastSegment,
   lhProgressFractionText,
   readLhState,
   shouldShowLhProgressRow,
@@ -575,6 +576,8 @@ export function buildMergedDisplayRows(
       Number.isFinite(doneIni) &&
       doneIni >= 0
 
+    const { max: lhMax, rem: lhRem } = readLhState(meta)
+
     const roots = sortedLinksForLayout(phases.links).filter(
       (l) => l.parentId === null
     )
@@ -583,7 +586,11 @@ export function buildMergedDisplayRows(
       new Map(roots.map((l, i) => [l.id, i]))
     )
 
-    if (phases.rowPanelOpen && phases.links.length > 0) {
+    if (
+      !lhMultiLhDefers2AListUntilLastSegment(lhMax, lhRem) &&
+      phases.rowPanelOpen &&
+      phases.links.length > 0
+    ) {
       for (const link of sortedLinksForLayout(phases.links)) {
         const hook = hookIniForLink(link.id, row.initiative, phases.links)
         if (hook === null || hook < 0) continue
@@ -621,7 +628,6 @@ export function buildMergedDisplayRows(
         })
       }
     } else {
-      const { max: lhMax, rem: lhRem } = readLhState(meta)
       if (lhMax > 1 && lhRem > 0 && Number.isFinite(ownerIni)) {
         const hookIni = computeLhProgressDisplayHookIni(
           lhMax,
