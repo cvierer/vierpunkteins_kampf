@@ -70,6 +70,7 @@ import {
 import {
   computeLhProgressDisplayHookIni,
   lhProgressFractionText,
+  lhProgressPieFillRatio,
   readLhState,
   trackerShowsLhSyntheticRow,
 } from './lhMeta.js'
@@ -334,7 +335,7 @@ function applyLhVisual(wrap, max, rem) {
     pie.style.setProperty('--lh-consumed', '0deg')
     return
   }
-  const frac = Math.max(0, Math.min(1, (max - rem) / max))
+  const frac = lhProgressPieFillRatio(max, rem)
   pie.style.setProperty('--lh-consumed', `${frac * 360}deg`)
 }
 

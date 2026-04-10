@@ -75,6 +75,13 @@ export function lhProgressFractionText(max, rem) {
   return `${max - rem + 1}/${max}`
 }
 
+/** Füllgrad 0…1 für den L.H.-Kuchen, gleiche Logik wie die 1-basierte Bruch-Anzeige. */
+export function lhProgressPieFillRatio(max, rem) {
+  if (max <= 0) return 0
+  if (rem <= 0) return 1
+  return Math.max(0, Math.min(1, (max - rem + 1) / max))
+}
+
 const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'
 const LEGACY_LH_P2_INI = 'lhPendingSecondTargetIni'
 
