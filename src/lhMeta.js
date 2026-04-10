@@ -168,17 +168,9 @@ export function computeLhProgressDisplayHookIni(
 }
 
 /**
- * L.H. mit mehreren Aktionen: die zusätzliche INI-Zeile „L.H. läuft“ (synthetisches lhDone) erst ab Bruch max/max
- * (rem === 1). Phasen-2.A.-Zeilen aus dem +-Panel bleiben unabhängig davon sichtbar.
- */
-export function lhMultiLhDefers2AListUntilLastSegment(lhMax, lhRem) {
-  return lhMax > 1 && lhRem > 1
-}
-
-/**
  * Extra-INI-Zeile „L.H. läuft“ (synthetisches lhDone) anzeigen?
  * Bei max=1 nicht genutzt — 2.A. läuft über die normale Phasen-Zeile (+).
- * Bei max>1: erst ab letztem Anteil (Bruch max/max); sonst Auslöser-INI ≠ Helden-INI.
+ * Bei max>1: solange rem>0 und Auslöser-INI ≠ Helden-INI (auch direkt nach neuem Gesamtwert rem=max).
  */
 export function shouldShowLhProgressRow(lhMax, lhRem, hookIni, heroIni) {
   if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(heroIni))) return false
@@ -186,7 +178,6 @@ export function shouldShowLhProgressRow(lhMax, lhRem, hookIni, heroIni) {
   if (lhMax === 1) {
     return lhRem === lhMax
   }
-  if (lhMultiLhDefers2AListUntilLastSegment(lhMax, lhRem)) return false
   return hookIni !== heroIni
 }
 
