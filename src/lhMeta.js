@@ -68,10 +68,11 @@ export function readLhState(meta) {
 }
 
 /**
- * Anzeige „aktueller Anteil / Gesamt“ (1-basiert): bei rem === max steht „1/x“, nicht „0/x“.
+ * Kurztext im L.H.-Kuchen am Token: 1/x … (x−1)/x, zuletzt „GO!“ wenn nur noch ein Auslöser offen (mehrteilige L.H.).
  */
 export function lhProgressFractionText(max, rem) {
   if (!(max > 0 && rem > 0)) return ''
+  if (max > 1 && rem === 1) return 'GO!'
   return `${max - rem + 1}/${max}`
 }
 
@@ -168,42 +169,20 @@ export function computeLhProgressDisplayHookIni(
 }
 
 /**
- * Extra-INI-Zeile „L.H. läuft“ (synthetisches lhDone) anzeigen?
- * Bei max=1 nicht genutzt — 2.A. läuft über die normale Phasen-Zeile (+).
- * Bei max>1: solange rem>0 und Auslöser-INI ≠ Helden-INI (auch direkt nach neuem Gesamtwert rem=max).
+ * Synthetische 2.A.-INI-Zeile nur nach abgeschlossener L.H. (Zusatzaktion laut Regelwerk).
+ * Laufender Fortschritt (1/x … GO!) steht ausschließlich am Mutter-Token.
  */
-export function shouldShowLhProgressRow(lhMax, lhRem, hookIni, heroIni) {
-  if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(heroIni))) return false
-  if (hookIni == null) return false
-  if (lhMax === 1) {
-    return lhRem === lhMax
-  }
-  return hookIni !== heroIni
-}
-
-/** Wie buildMergedDisplayRows: synthetische L.H.-Zeile (läuft oder abgeschlossen). */
-export function trackerShowsLhSyntheticRow(meta, ownerIniNum, combatRound) {
+export function trackerShowsLhSyntheticRow(meta, ownerIniNum, _combatRound) {
   if (!meta || typeof meta !== 'object') return false
   const doneRound = Math.floor(Number(meta[LH_DONE_ROUND]))
   const doneIni = Number(meta[LH_DONE_INI])
-  const hasCompletedLhDone =
+  return (
     Number.isFinite(doneRound) &&
     doneRound >= 1 &&
     Number.isFinite(doneIni) &&
     doneIni >= 0 &&
     (!Number.isFinite(ownerIniNum) || doneIni !== ownerIniNum)
-  if (hasCompletedLhDone) return true
-  const { max: lhMax, rem: lhRem } = readLhState(meta)
-  if (!(lhMax > 0 && lhRem > 0 && Number.isFinite(ownerIniNum))) return false
-  if (lhMax === 1) return false
-  const hook = computeLhProgressDisplayHookIni(
-    lhMax,
-    lhRem,
-    ownerIniNum,
-    meta,
-    combatRound
   )
-  return shouldShowLhProgressRow(lhMax, lhRem, hook, ownerIniNum)
 }
 
 export function normalizeActionsPerKrForPatch(raw) {

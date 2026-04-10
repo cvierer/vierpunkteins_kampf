@@ -25,8 +25,8 @@ export function setupSettingsPanel(gearHost) {
   gear.type = 'button'
   gear.className = 'kampf-settings-gear'
   gear.innerHTML = GEAR_ICON
-  gear.title = 'Kampf-Einstellungen'
-  gear.setAttribute('aria-label', 'Kampf-Einstellungen öffnen')
+  gear.title = 'Einstellungen'
+  gear.setAttribute('aria-label', 'Einstellungen öffnen')
   gearHost.appendChild(gear)
 
   const backdrop = document.createElement('div')

@@ -393,7 +393,9 @@ function appendLhCell(
   inp.setAttribute(
     'aria-label',
     fracLabel
-      ? `Längerfristige Handlung, Anteil ${fracLabel} (${st.rem} verbleibend von ${st.max})`
+      ? fracLabel === 'GO!'
+        ? `Längerfristige Handlung, letzter Auslöser (GO!), ${st.rem} verbleibend von ${st.max}`
+        : `Längerfristige Handlung, Anteil ${fracLabel} (${st.rem} verbleibend von ${st.max})`
       : 'Längerfristige Handlung, inaktiv'
   )
   inp.readOnly = !canEdit

@@ -421,17 +421,29 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
           if (rem <= 0) completionIni = Tsingle
         }
       } else {
-        for (let k = 0; k < actionsPerKr; k++) {
-          const T = triggerIniForIndex(H, k, triggerIniStep)
-          if (!Number.isFinite(T) || T < 0) continue
-          if (!crossedForward(prevIni, currIni, T)) continue
-          const bit = 1 << k
-          if (mask & bit) continue
-          if (rem <= 0) break
+        const ap = Math.max(1, Math.floor(actionsPerKr) || 0)
+        let jumpGuard = 0
+        while (rem > 0 && jumpGuard++ < 32) {
+          let bestK = -1
+          let bestT = Number.NEGATIVE_INFINITY
+          for (let k = 0; k < ap; k++) {
+            const T = triggerIniForIndex(H, k, triggerIniStep)
+            if (!Number.isFinite(T) || T < 0) continue
+            if (!crossedForward(prevIni, currIni, T)) continue
+            const bit = 1 << k
+            if (mask & bit) continue
+            if (T > bestT) {
+              bestT = T
+              bestK = k
+            }
+          }
+          if (bestK < 0) break
+          const bit = 1 << bestK
+          const Tfire = triggerIniForIndex(H, bestK, triggerIniStep)
           mask |= bit
           rem -= 1
           if (rem <= 0) {
-            completionIni = T
+            completionIni = Tfire
             break
           }
         }

@@ -10,14 +10,7 @@ import {
   TRACKER_ID,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
-import {
-  LH_DONE_INI,
-  LH_DONE_ROUND,
-  computeLhProgressDisplayHookIni,
-  lhProgressFractionText,
-  readLhState,
-  shouldShowLhProgressRow,
-} from './lhMeta.js'
+import { LH_DONE_INI, LH_DONE_ROUND } from './lhMeta.js'
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
 
@@ -575,8 +568,6 @@ export function buildMergedDisplayRows(
       Number.isFinite(doneIni) &&
       doneIni >= 0
 
-    const { max: lhMax, rem: lhRem } = readLhState(meta)
-
     const roots = sortedLinksForLayout(phases.links).filter(
       (l) => l.parentId === null
     )
@@ -621,27 +612,6 @@ export function buildMergedDisplayRows(
           hookIni: doneIni,
           lhPending: false,
         })
-      }
-    } else {
-      if (lhMax > 1 && lhRem > 0 && Number.isFinite(ownerIni)) {
-        const hookIni = computeLhProgressDisplayHookIni(
-          lhMax,
-          lhRem,
-          ownerIni,
-          meta,
-          combatRound
-        )
-        if (shouldShowLhProgressRow(lhMax, lhRem, hookIni, ownerIni)) {
-          entries.push({
-            kind: 'lhDone',
-            ownerId: row.id,
-            ownerName: row.name,
-            ownerIniStr: row.initiative,
-            hookIni,
-            lhPending: true,
-            lhProgressLabel: lhProgressFractionText(lhMax, lhRem),
-          })
-        }
       }
     }
   }
