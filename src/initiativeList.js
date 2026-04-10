@@ -1179,11 +1179,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         })
         return
       }
-      const cTokenOnly = { ...c, currentPhaseLinkId: null }
-      if (findCombatStepIndex(steps, cTokenOnly) >= 0) {
-        await patchCombat({ currentPhaseLinkId: null })
-        return
-      }
+      // Phasen-Link existiert noch, aber kein Eintrag in steps: nicht auf Mutter zurückspringen
+      // (typisch nach Listen-/L.H.-Kantenfall; sonst INI-21 statt gewählter 2.A.-INI).
+      return
     }
 
     await patchCombat({

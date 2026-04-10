@@ -128,19 +128,18 @@ function triggerIniForIndex(heroIni, k, step) {
   return heroIni + k * step
 }
 
-function crossedForward(prevIni, currIni, T) {
+/**
+ * Mehrteilige L.H.: Auslöser erst bei INI **unter** T, nicht beim Fokus auf der 2.A.-Zeile (INI = T).
+ * Sonst schließt die L.H. sofort, die 2.A. fehlt in `steps`, und reconcileCombat springt zur Mutter-INI.
+ */
+function crossedForwardPastMultiLh(prevIni, currIni, T) {
   if (!Number.isFinite(T) || T < 0) return false
   if (!Number.isFinite(currIni)) return false
   const prevOk =
     Number.isFinite(prevIni) || prevIni === Number.POSITIVE_INFINITY
   if (!prevOk) return false
-  return prevIni > T && currIni <= T
-}
-
-function crossedBackward(prevIni, currIni, T) {
-  if (!Number.isFinite(T) || T < 0) return false
-  if (!Number.isFinite(prevIni) || !Number.isFinite(currIni)) return false
-  return prevIni <= T && currIni > T
+  if (prevIni === Number.POSITIVE_INFINITY) return currIni < T
+  return prevIni >= T && currIni < T
 }
 
 /**
@@ -401,7 +400,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         for (let k = actionsPerKr - 1; k >= 0; k--) {
           const T = triggerIniForIndex(H, k, triggerIniStep)
           if (!Number.isFinite(T) || T < 0) continue
-          if (!crossedBackward(prevIniRaw, currIni, T)) continue
+          if (!crossedBackwardPastSingularLh(prevIniRaw, currIni, T)) continue
           const bit = 1 << k
           if (!(mask & bit)) continue
           mask &= ~bit
@@ -435,7 +434,7 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
           for (let k = 0; k < ap; k++) {
             const T = triggerIniForIndex(H, k, triggerIniStep)
             if (!Number.isFinite(T) || T < 0) continue
-            if (!crossedForward(prevIni, currIni, T)) continue
+            if (!crossedForwardPastMultiLh(prevIni, currIni, T)) continue
             const bit = 1 << k
             if (mask & bit) continue
             if (T > bestT) {
