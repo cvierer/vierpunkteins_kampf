@@ -1570,14 +1570,21 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           hookIni,
           ownerIniStr,
           lhPending = false,
+          lhProgressLabel,
         } = entry
         const ownerSceneItem = items.find((i) => i.id === ownerId)
         const canEdit = canEditSceneItem(ownerSceneItem)
         const ownerTrackerMeta =
           ownerSceneItem?.metadata?.[TRACKER_ITEM_META_KEY]
+        const heroNum = parseIniNumber(ownerIniStr)
+        const offsetDisplay =
+          Number.isFinite(heroNum) && Number.isFinite(hookIni)
+            ? String(Math.max(0, Math.round(heroNum - hookIni)))
+            : '—'
+
         const li = document.createElement('li')
         li.className =
-          'init-row init-row--phase init-row--phase-zao init-row--phase-lhdone' +
+          'init-row init-row--phase init-row--phase-zao' +
           (!lhPending && canEdit ? ' init-row--phase-draggable' : '')
         if (!canEdit) li.classList.add('init-row--locked')
         li.dataset.phaseOwnerId = ownerId
@@ -1620,7 +1627,32 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           else void removeLhDoneRow(ownerId)
         })
         lhRemove.disabled = !canEdit
-        btnCol.appendChild(lhRemove)
+
+        const lhPadlock = document.createElement('button')
+        lhPadlock.type = 'button'
+        lhPadlock.className = 'init-row-zao-padlock'
+        lhPadlock.innerHTML = zaoPadlockInnerHtml(false)
+        lhPadlock.title =
+          'L.H.-Zeile: wie 2.A. dargestellt; kein Umschalten (nur Anzeige)'
+        lhPadlock.setAttribute(
+          'aria-label',
+          'L.H.-Zeile, Schloss nur zur einheitlichen Darstellung'
+        )
+        lhPadlock.setAttribute('aria-pressed', 'false')
+        lhPadlock.disabled = true
+
+        btnCol.append(lhRemove, lhPadlock)
+
+        const offsetInput = document.createElement('input')
+        offsetInput.type = 'text'
+        offsetInput.inputMode = 'numeric'
+        offsetInput.className = 'phase-offset-input phase-offset-input--zao-inline'
+        offsetInput.value = offsetDisplay
+        offsetInput.setAttribute('aria-label', 'Phasen später')
+        offsetInput.title =
+          'Abstand Helden-INI zur Ziel-INI (Anzeige; L.H.-Zeile)'
+        offsetInput.readOnly = true
+        offsetInput.tabIndex = -1
 
         const phaseZaoMeta = document.createElement('div')
         phaseZaoMeta.className = 'init-phase-zao-meta'
@@ -1628,7 +1660,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         iniActLabel.className = 'init-phase-zao-ini-label'
         iniActLabel.textContent = '2.A.'
         iniActLabel.title = lhPending
-          ? 'Längerfristige Handlung (Fortschritt)'
+          ? `L.H. (${lhProgressLabel ?? '?/?'}) — Fortschritt`
           : 'Längerfristige Handlung abgeschlossen: Zusatz-Aktion'
         const nameEl = document.createElement('span')
         nameEl.className = 'init-row-name'
@@ -1640,12 +1672,12 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         nameEl.title = lhPending
           ? 'Längerfristige Handlung — Fortschritt in der INI-Spalte'
           : '2. Aktionsphase · Ziel-INI am Lineal ziehen'
-        phaseZaoMeta.append(iniActLabel, nameEl)
+        phaseZaoMeta.append(offsetInput, iniActLabel, nameEl)
 
         const iniInput = document.createElement('input')
         iniInput.className = 'init-row-init'
         iniInput.type = 'text'
-        iniInput.inputMode = lhPending ? 'text' : 'decimal'
+        iniInput.inputMode = 'decimal'
         iniInput.autocomplete = 'off'
         iniInput.spellcheck = false
         iniInput.value = formatHookDisplay(hookIni)

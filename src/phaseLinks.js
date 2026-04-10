@@ -3,6 +3,7 @@ import { isGmSync } from './editAccess.js'
 import {
   compareInitiativeRows,
   compareInitiativeRowsWithTieOrder,
+  initiativeCompareOnlyIni,
 } from './initiativeSort.js'
 import {
   collectSortedParticipants,
@@ -526,6 +527,19 @@ export function formatIniForSort(n) {
   return String(n)
 }
 
+function mergedEntryIniSortKey(e) {
+  if (e.kind === 'token') return e.row.initiative
+  if (e.kind === 'phase' || e.kind === 'lhDone') return formatIniForSort(e.hookIni)
+  return ''
+}
+
+/** Bei gleicher INI: L.H.-Zusatzzeile, dann 2.A.-Wurzel, dann übrige Einträge. */
+function mergedEntryIniSectionRank(e) {
+  if (e.kind === 'lhDone') return 0
+  if (e.kind === 'phase' && e.link.parentId === null) return 1
+  return 2
+}
+
 /**
  * Token-Zeilen + Phasen-Zeilen, nach INI sortiert (wie Kampfliste).
  * @param {string[]} tieOrderIds manuelle Reihenfolge bei gleicher INI (Token-Zeilen)
@@ -631,6 +645,18 @@ export function buildMergedDisplayRows(
   }
 
   entries.sort((a, b) => {
+    const ka = mergedEntryIniSortKey(a)
+    const kb = mergedEntryIniSortKey(b)
+    const iniCmp = initiativeCompareOnlyIni(
+      { initiative: ka, name: '' },
+      { initiative: kb, name: '' }
+    )
+    if (iniCmp !== 0) return iniCmp
+
+    const ra = mergedEntryIniSectionRank(a)
+    const rb = mergedEntryIniSectionRank(b)
+    if (ra !== rb) return ra - rb
+
     if (a.kind === 'token' && b.kind === 'token') {
       return compareInitiativeRowsWithTieOrder(
         {
@@ -663,11 +689,11 @@ export function buildMergedDisplayRows(
           }
         }
         const bucket = zaoRootTieOrderByIniCache[ha]
-        const ka = zaoRootKey(a.ownerId, a.link.id)
-        const kb = zaoRootKey(b.ownerId, b.link.id)
+        const kza = zaoRootKey(a.ownerId, a.link.id)
+        const kzb = zaoRootKey(b.ownerId, b.link.id)
         if (bucket?.length) {
-          const ia = bucket.indexOf(ka)
-          const ib = bucket.indexOf(kb)
+          const ia = bucket.indexOf(kza)
+          const ib = bucket.indexOf(kzb)
           const ma = ia === -1 ? 1e9 : ia
           const mb = ib === -1 ? 1e9 : ib
           if (ma !== mb) return ma - mb
