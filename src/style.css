@@ -528,7 +528,7 @@ body {
 }
 
 .init-row-extra-panel--has-hero-ex .init-row-extra-panel__body {
-  max-height: 4.5rem;
+  max-height: 6.25rem;
   overflow-x: hidden;
   overflow-y: auto;
   padding-right: 0.06rem;
@@ -611,6 +611,81 @@ body {
   font-size: 0.48rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+/* Trefferpunkte: ~4 Ziffern in Standardgröße, bis 7 mit kleinerer Schrift */
+.init-hero-ex__micro--tp {
+  width: 2.82rem;
+  min-width: 2.82rem;
+  max-width: 3.35rem;
+  padding-left: 0.1rem;
+  padding-right: 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.init-hero-ex__micro--tp-compact {
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+}
+
+.init-hero-ex__pair-cell .init-hero-ex__pair-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.14rem;
+}
+
+.init-hero-ex__mod {
+  box-sizing: border-box;
+  height: 1.22rem;
+  width: 5.4rem;
+  min-width: 4.8rem;
+  max-width: 6.6rem;
+  padding: 0 0.14rem;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: rgba(255, 253, 248, 0.95);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 0.48rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.init-hero-ex__mod:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.init-hero-ex__mod:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.init-hero-ex__abbr--info-spacer {
+  visibility: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+.init-hero-ex__info-wrap .init-hero-ex__info-btn {
+  width: 1.22rem;
+  height: 1.22rem;
+  min-width: 1.22rem;
+  min-height: 1.22rem;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.init-hero-ex__info-wrap .init-hero-ex__info-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 .init-hero-ex__zusatz-col {

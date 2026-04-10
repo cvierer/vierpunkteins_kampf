@@ -2,12 +2,26 @@ import OBR from '@owlbear-rodeo/sdk'
 import { TRACKER_ITEM_META_KEY } from './participants.js'
 
 export const HERO_EX_LE = 'heroExLe'
-export const HERO_EX_AU = 'heroExAu'
 export const HERO_EX_AE = 'heroExAe'
+export const HERO_EX_AT = 'heroExAt'
+export const HERO_EX_PA = 'heroExPa'
+export const HERO_EX_KO = 'heroExKo'
+export const HERO_EX_TP = 'heroExTp'
+export const HERO_EX_A = 'heroExA'
+export const HERO_EX_AMOD = 'heroExAMod'
+export const HERO_EX_B = 'heroExB'
+export const HERO_EX_BMOD = 'heroExBMod'
+export const HERO_EX_C = 'heroExC'
+export const HERO_EX_CMOD = 'heroExCMod'
+/** @deprecated Nur Lesen/Migration, nicht mehr in der UI */
+export const HERO_EX_AU = 'heroExAu'
+/** @deprecated Nur Lesen/Migration */
 export const HERO_EX_KE = 'heroExKe'
 /** @deprecated Nur Lesen/Migration */
 export const HERO_EX_AEKE_LEGACY = 'heroExAeKe'
+/** @deprecated Nur Lesen/Migration */
 export const HERO_EX_WUNDEN_ANZ = 'heroExWnAnz'
+/** @deprecated Nur Lesen/Migration */
 export const HERO_EX_WUNDEN_ORT = 'heroExWnOrt'
 /** @deprecated Nur Lesen/Migration */
 export const HERO_EX_WUNDEN_LEGACY = 'heroExWunden'
@@ -18,47 +32,23 @@ function strOrEmpty(v) {
   return String(v)
 }
 
-function migrateAeKe(meta) {
-  let ae = strOrEmpty(meta?.[HERO_EX_AE])
-  let ke = strOrEmpty(meta?.[HERO_EX_KE])
-  if (ae || ke) return { ae, ke }
-  const leg = strOrEmpty(meta?.[HERO_EX_AEKE_LEGACY])
-  if (!leg) return { ae: '', ke: '' }
-  const m = leg.match(/^(.+?)\s*[/|]\s*(.+)$/)
-  if (m) {
-    return { ae: m[1].trim(), ke: m[2].trim() }
-  }
-  return { ae: leg, ke: '' }
-}
-
-function migrateWunden(meta) {
-  let anz = strOrEmpty(meta?.[HERO_EX_WUNDEN_ANZ])
-  let ort = strOrEmpty(meta?.[HERO_EX_WUNDEN_ORT])
-  if (anz || ort) return { anz, ort }
-  const leg = strOrEmpty(meta?.[HERO_EX_WUNDEN_LEGACY])
-  if (!leg) return { anz: '', ort: '' }
-  const mm = leg.match(/^(\d+)\s+(.+)$/)
-  if (mm) {
-    return { anz: mm[1], ort: mm[2].trim() }
-  }
-  const n = leg.match(/^\d+$/)
-  if (n) return { anz: leg, ort: '' }
-  return { anz: '', ort: leg }
-}
-
 /**
  * @param {Record<string, unknown> | undefined} meta
  */
 export function readHeroExpandSnapshot(meta) {
-  const { ae, ke } = migrateAeKe(meta)
-  const { anz, ort } = migrateWunden(meta)
   return {
+    at: strOrEmpty(meta?.[HERO_EX_AT]),
+    pa: strOrEmpty(meta?.[HERO_EX_PA]),
     le: strOrEmpty(meta?.[HERO_EX_LE]),
-    au: strOrEmpty(meta?.[HERO_EX_AU]),
-    ae,
-    ke,
-    wundenAnz: anz,
-    wundenOrt: ort,
+    ae: strOrEmpty(meta?.[HERO_EX_AE]),
+    ko: strOrEmpty(meta?.[HERO_EX_KO]),
+    tp: strOrEmpty(meta?.[HERO_EX_TP]),
+    a: strOrEmpty(meta?.[HERO_EX_A]),
+    aMod: strOrEmpty(meta?.[HERO_EX_AMOD]),
+    b: strOrEmpty(meta?.[HERO_EX_B]),
+    bMod: strOrEmpty(meta?.[HERO_EX_BMOD]),
+    c: strOrEmpty(meta?.[HERO_EX_C]),
+    cMod: strOrEmpty(meta?.[HERO_EX_CMOD]),
     zusatz: strOrEmpty(meta?.[HERO_EX_ZUSATZ]),
   }
 }
@@ -79,12 +69,18 @@ export async function applyHeroExpandFields(itemId, next) {
         else m[key] = t
       }
 
+      setStr(HERO_EX_AT, next.at)
+      setStr(HERO_EX_PA, next.pa)
       setStr(HERO_EX_LE, next.le)
-      setStr(HERO_EX_AU, next.au)
       setStr(HERO_EX_AE, next.ae)
-      setStr(HERO_EX_KE, next.ke)
-      setStr(HERO_EX_WUNDEN_ANZ, next.wundenAnz)
-      setStr(HERO_EX_WUNDEN_ORT, next.wundenOrt)
+      setStr(HERO_EX_KO, next.ko)
+      setStr(HERO_EX_TP, next.tp)
+      setStr(HERO_EX_A, next.a)
+      setStr(HERO_EX_AMOD, next.aMod)
+      setStr(HERO_EX_B, next.b)
+      setStr(HERO_EX_BMOD, next.bMod)
+      setStr(HERO_EX_C, next.c)
+      setStr(HERO_EX_CMOD, next.cMod)
       setStr(HERO_EX_ZUSATZ, next.zusatz)
 
       delete m[HERO_EX_AEKE_LEGACY]
@@ -94,12 +90,20 @@ export async function applyHeroExpandFields(itemId, next) {
 }
 
 /**
+ * @param {HTMLInputElement} tpInp
+ */
+function syncTpFontSize(tpInp) {
+  const n = tpInp.value.length
+  tpInp.classList.toggle('init-hero-ex__micro--tp-compact', n > 4)
+}
+
+/**
  * Wie Token-Zeile: gleiches Raster; unter der Zählerspalte Micro-Felder (1.22rem, 2 Ziffern);
  * Abkürzung darüber, ausführlicher Text im Mouseover (title).
  * @param {HTMLElement} container
- * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean }} opts
+ * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean, stripLeading?: Node[] }} opts
  */
-export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
+export function mountHeroExpandBlock(container, { itemId, meta, canEdit, stripLeading = [] }) {
   const snap = readHeroExpandSnapshot(meta)
   container.replaceChildren()
 
@@ -113,7 +117,11 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
   const strip = document.createElement('div')
   strip.className = 'init-hero-ex__strip'
 
-  const mkMicro = (abbr, fullName, idSuf, value, maxLen, denseClass, numeric) => {
+  for (const node of stripLeading) {
+    strip.appendChild(node)
+  }
+
+  const mkMicro = (abbr, fullName, idSuf, value, maxLen, extraClass, numeric) => {
     const cell = document.createElement('div')
     cell.className = 'init-hero-ex__micro-cell'
     const ab = document.createElement('span')
@@ -124,7 +132,7 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
     inp.type = 'text'
     if (numeric) inp.inputMode = 'numeric'
     inp.className =
-      'init-hero-ex__micro' + (denseClass ? ` ${denseClass}` : '')
+      'init-hero-ex__micro' + (extraClass ? ` ${extraClass}` : '')
     inp.id = `hero-ex-${itemId}-${idSuf}`
     inp.autocomplete = 'off'
     inp.spellcheck = false
@@ -137,68 +145,83 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
     return { cell, inp }
   }
 
-  const le = mkMicro(
-    'LE',
-    'Lebensenergie (LE)',
-    'le',
-    snap.le,
-    2,
-    '',
-    true
-  )
-  const au = mkMicro(
-    'AU',
-    'Ausdauer (AU)',
-    'au',
-    snap.au,
-    2,
-    '',
-    true
-  )
-  const ae = mkMicro(
-    'AE',
-    'Astralenergie (AE)',
-    'ae',
-    snap.ae,
-    2,
-    '',
-    true
-  )
-  const ke = mkMicro(
-    'KE',
-    'Karmaenergie (KE)',
-    'ke',
-    snap.ke,
-    2,
-    '',
-    true
-  )
-  const wn = mkMicro(
-    'W',
-    'Anzahl der Wunden',
-    'wn',
-    snap.wundenAnz,
-    2,
-    '',
-    true
-  )
-  const wo = mkMicro(
-    'Wo',
-    'Ort der Wunden',
-    'wo',
-    snap.wundenOrt,
-    4,
-    'init-hero-ex__micro--dense',
-    false
-  )
+  const mkPair = (letter, idLetter, numVal, modVal) => {
+    const cell = document.createElement('div')
+    cell.className = 'init-hero-ex__micro-cell init-hero-ex__pair-cell'
+    const ab = document.createElement('span')
+    ab.className = 'init-hero-ex__abbr'
+    ab.textContent = letter
+    ab.title = `${letter}: Zahl und Modifikator`
+    const row = document.createElement('div')
+    row.className = 'init-hero-ex__pair-row'
+    const numInp = document.createElement('input')
+    numInp.type = 'text'
+    numInp.inputMode = 'numeric'
+    numInp.className = 'init-hero-ex__micro'
+    numInp.id = `hero-ex-${itemId}-${idLetter}`
+    numInp.autocomplete = 'off'
+    numInp.spellcheck = false
+    numInp.disabled = !canEdit
+    numInp.value = numVal
+    numInp.maxLength = 2
+    numInp.title = `${letter} (zwei Ziffern)`
+    numInp.setAttribute('aria-label', `${letter} Zahl`)
+    const modInp = document.createElement('input')
+    modInp.type = 'text'
+    modInp.className = 'init-hero-ex__mod'
+    modInp.id = `hero-ex-${itemId}-${idLetter}mod`
+    modInp.autocomplete = 'off'
+    modInp.spellcheck = false
+    modInp.disabled = !canEdit
+    modInp.value = modVal
+    modInp.maxLength = 12
+    modInp.title = `${letter} Modifikator (bis 12 Zeichen)`
+    modInp.setAttribute('aria-label', `${letter} Modifikator`)
+    row.append(numInp, modInp)
+    cell.append(ab, row)
+    return { cell, numInp, modInp }
+  }
+
+  const pairA = mkPair('A', 'a', snap.a, snap.aMod)
+  const pairB = mkPair('B', 'b', snap.b, snap.bMod)
+  const pairC = mkPair('C', 'c', snap.c, snap.cMod)
+
+  const at = mkMicro('AT', 'Attacke (AT)', 'at', snap.at, 2, '', true)
+  const pa = mkMicro('PA', 'Parade (PA)', 'pa', snap.pa, 2, '', true)
+  const le = mkMicro('LE', 'Lebensenergie (LE)', 'le', snap.le, 2, '', true)
+  const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
+  const ko = mkMicro('KO', 'Konstitution (KO)', 'ko', snap.ko, 2, '', true)
+
+  const tpCell = document.createElement('div')
+  tpCell.className = 'init-hero-ex__micro-cell'
+  const tpAbbr = document.createElement('span')
+  tpAbbr.className = 'init-hero-ex__abbr'
+  tpAbbr.textContent = 'TP'
+  tpAbbr.title = 'Trefferpunkte (TP)'
+  const tpInp = document.createElement('input')
+  tpInp.type = 'text'
+  tpInp.className = 'init-hero-ex__micro init-hero-ex__micro--tp'
+  tpInp.id = `hero-ex-${itemId}-tp`
+  tpInp.autocomplete = 'off'
+  tpInp.spellcheck = false
+  tpInp.disabled = !canEdit
+  tpInp.value = snap.tp
+  tpInp.maxLength = 7
+  tpInp.title = 'Trefferpunkte (TP), bis 7 Zeichen'
+  tpInp.setAttribute('aria-label', 'Trefferpunkte (TP)')
+  tpCell.append(tpAbbr, tpInp)
+  syncTpFontSize(tpInp)
 
   strip.append(
+    pairA.cell,
+    pairB.cell,
+    pairC.cell,
+    at.cell,
+    pa.cell,
     le.cell,
-    au.cell,
     ae.cell,
-    ke.cell,
-    wn.cell,
-    wo.cell
+    ko.cell,
+    tpCell
   )
 
   const gutter = document.createElement('div')
@@ -243,13 +266,21 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
 
   if (!canEdit) return
 
+  tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
+
   const gather = () => ({
+    at: at.inp.value,
+    pa: pa.inp.value,
     le: le.inp.value,
-    au: au.inp.value,
     ae: ae.inp.value,
-    ke: ke.inp.value,
-    wundenAnz: wn.inp.value,
-    wundenOrt: wo.inp.value,
+    ko: ko.inp.value,
+    tp: tpInp.value,
+    a: pairA.numInp.value,
+    aMod: pairA.modInp.value,
+    b: pairB.numInp.value,
+    bMod: pairB.modInp.value,
+    c: pairC.numInp.value,
+    cMod: pairC.modInp.value,
     zusatz: zInp.value,
   })
 
@@ -258,12 +289,18 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
   }
 
   for (const inp of [
+    at.inp,
+    pa.inp,
     le.inp,
-    au.inp,
     ae.inp,
-    ke.inp,
-    wn.inp,
-    wo.inp,
+    ko.inp,
+    tpInp,
+    pairA.numInp,
+    pairA.modInp,
+    pairB.numInp,
+    pairB.modInp,
+    pairC.numInp,
+    pairC.modInp,
     zInp,
   ]) {
     inp.addEventListener('blur', commit)
