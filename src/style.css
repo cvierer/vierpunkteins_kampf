@@ -527,6 +527,142 @@ body {
   min-height: 0;
 }
 
+.init-row-extra-panel--has-ini-block .init-row-extra-panel__body {
+  max-height: 11.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0.12rem;
+}
+
+/* WdS INI-Merkfelder (ausklappbar, Besitzer + SL) */
+.init-ini-mod {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding-bottom: 0.06rem;
+}
+
+.init-ini-mod__intro {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+}
+
+.init-ini-mod__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.14rem;
+}
+
+.init-ini-mod__section-title {
+  font-family: var(--font-heading);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(90, 82, 72, 0.88);
+  border-bottom: 1px solid rgba(139, 105, 20, 0.12);
+  padding-bottom: 0.06rem;
+}
+
+.init-ini-mod__grid {
+  display: grid;
+  gap: 0.18rem 0.55rem;
+}
+
+.init-ini-mod__grid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.init-ini-mod__grid--1 {
+  grid-template-columns: 1fr;
+}
+
+.init-ini-mod__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.init-ini-mod__label {
+  font-family: var(--font-heading);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  line-height: 1.2;
+}
+
+.init-ini-mod__input,
+.init-ini-mod__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  padding: 0.08rem 0.22rem;
+  border-radius: 4px;
+  border: 1px solid rgba(139, 105, 20, 0.28);
+  background: rgba(255, 253, 248, 0.95);
+  color: var(--color-ink);
+}
+
+.init-ini-mod__textarea {
+  resize: vertical;
+  min-height: 2.1rem;
+  line-height: 1.3;
+}
+
+.init-ini-mod__input:disabled,
+.init-ini-mod__textarea:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.init-ini-mod__checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.init-ini-mod__check-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.22rem;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--color-ink);
+  cursor: pointer;
+  margin: 0;
+}
+
+.init-ini-mod__check-row input {
+  margin-top: 0.12rem;
+  flex-shrink: 0;
+}
+
+.init-ini-mod__check-row--solo {
+  align-items: center;
+}
+
+.init-ini-mod__check-row--solo input {
+  margin-top: 0;
+}
+
+.init-ini-mod__hint {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: rgba(118, 114, 108, 0.82);
+  font-style: italic;
+}
+
 .init-row-extra-panel__footer {
   display: flex;
   flex-direction: row;
