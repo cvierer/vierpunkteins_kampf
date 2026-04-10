@@ -138,6 +138,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
+  --init-col-expand: 1.05rem;
   /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) à 1.22rem + Gaps */
   --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
   /* Abstand Zähler/2.A.+ → Name (halb so breit wie zuvor) */
@@ -150,11 +151,16 @@ body {
   --init-list-row-gap: 0.4rem;
 }
 
+.kampf-h-spacer--expand {
+  width: 100%;
+  min-width: 0;
+}
+
 .kampf-list-head {
   display: grid;
   grid-template-columns:
-    var(--init-col-btn) var(--init-col-gutter) 1fr var(--init-col-ini)
-    var(--init-col-swap);
+    var(--init-col-expand) var(--init-col-btn) var(--init-col-gutter) 1fr
+    var(--init-col-ini) var(--init-col-swap);
   gap: var(--init-grid-gap);
   align-items: flex-end;
   padding: 0 0.4rem 0.12rem;
@@ -434,8 +440,8 @@ body {
 .init-row-main {
   display: grid;
   grid-template-columns:
-    var(--init-col-btn) var(--init-col-gutter) 1fr var(--init-col-ini)
-    var(--init-col-swap);
+    var(--init-col-expand) var(--init-col-btn) var(--init-col-gutter) 1fr
+    var(--init-col-ini) var(--init-col-swap);
   gap: var(--init-grid-gap);
   align-items: center;
   width: 100%;
@@ -444,6 +450,115 @@ body {
   border-radius: calc(var(--radius) - 1px);
   border: 1px solid transparent;
   position: relative;
+}
+
+.init-col-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.init-row-expand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1rem;
+  margin: 0 auto;
+  padding: 0.1rem 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(26, 23, 20, 0.38);
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.init-row-expand-toggle:hover:not(:disabled) {
+  color: rgba(26, 23, 20, 0.58);
+  background: rgba(139, 105, 20, 0.06);
+}
+
+.init-row-expand-toggle:focus-visible {
+  outline: 2px solid rgba(139, 74, 28, 0.45);
+  outline-offset: 1px;
+}
+
+.init-row-expand-chev {
+  display: block;
+  width: 0.38rem;
+  height: 0.38rem;
+  box-sizing: border-box;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: -0.14rem;
+  transition: transform 0.15s ease;
+}
+
+.init-row-expand-toggle--open .init-row-expand-chev {
+  transform: rotate(225deg);
+  margin-top: 0.06rem;
+}
+
+.init-row-extra-panel {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.32rem 0.65rem;
+  align-items: end;
+  padding: 0.38rem 0 0.42rem;
+  margin-top: 0.12rem;
+  border-top: 1px solid rgba(139, 105, 20, 0.14);
+  min-height: calc(1.22rem + 0.55rem);
+}
+
+.init-row-extra-panel[hidden] {
+  display: none !important;
+}
+
+.init-row-extra-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.init-row-extra-label {
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  line-height: 1.2;
+}
+
+.init-row-extra-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  padding: 0.22rem 0.32rem;
+  border-radius: 4px;
+  border: 1px solid rgba(139, 105, 20, 0.32);
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--color-ink);
+}
+
+.init-row-extra-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+.init-row--extras-open {
+  padding-bottom: 0.08rem;
 }
 
 .init-col-swap {
@@ -1029,8 +1144,8 @@ body {
   --init-phase-gutter-inner: 1.64rem;
   --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
   grid-template-columns:
-    var(--init-col-btn) var(--init-phase-gutter-inner) minmax(0, 1fr)
-    var(--init-col-ini) var(--init-col-swap);
+    var(--init-col-expand) var(--init-col-btn) var(--init-phase-gutter-inner)
+    minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
 }
 
 .init-col-btn--phase {
@@ -1044,7 +1159,8 @@ body {
 .init-row-main--phase-zao {
   --init-col-btn: calc(7 * 1.22rem + 6 * 0.22rem);
   grid-template-columns:
-    var(--init-col-btn) minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
+    var(--init-col-expand) var(--init-col-btn) minmax(0, 1fr)
+    var(--init-col-ini) var(--init-col-swap);
 }
 
 .init-phase-zao-meta {
@@ -1127,6 +1243,7 @@ body {
   cursor: text;
 }
 
+.init-row--token-draggable .init-row-expand-toggle,
 .init-row--token-draggable .init-row-phase-plus,
 .init-row--token-draggable .init-row-phase-minus,
 .init-row--token-draggable .init-row-kr-counter:not(:disabled),

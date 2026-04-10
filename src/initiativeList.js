@@ -44,6 +44,7 @@ import {
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
   tryCommitPhaseTargetIni,
+  upsertLhLinkedZaoRoot,
   zaoRootKey,
 } from './phaseLinks.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
@@ -68,11 +69,16 @@ import {
   onRoomSettingsChange,
 } from './roomSettings.js'
 import {
+  clampLhActionsPerKrForStorage,
   computeLhProgressDisplayHookIni,
+  LH_ACTIONS_PER_KR,
+  LH_TRIGGER_INI_STEP,
   lhProgressFractionText,
   lhProgressPieFillRatio,
   phaseOffsetFromLhMeta,
+  readLhMechanics,
   readLhState,
+  storedTriggerIniStepFromPhaseOffsetPositive,
   trackerShowsLhSyntheticRow,
 } from './lhMeta.js'
 import {
@@ -187,6 +193,13 @@ function collectAdjacentSameIniSwapPairs(mergedWithStamps) {
     }
   }
   return { tiePairs, zaoPairs }
+}
+
+function createInitExpandSpacerCell() {
+  const col = document.createElement('div')
+  col.className = 'init-col-expand'
+  col.setAttribute('aria-hidden', 'true')
+  return col
 }
 
 const ACTION_STAMP_LABEL = Object.freeze({
@@ -932,6 +945,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   /** Feste X-Position der INI-Vorschau (nur Y folgt dem Zeiger). */
   let dragFloatAnchorX = 0
 
+  /** Token-Zeilen: ausgeklappte „Helden-Extras“ (nur SL / Besitzer). */
+  const expandedPlayerExtrasIds = new Set()
+
   let swapLayoutRo = null
   /** Nur bei geändertem Zug/Runde scrollen, nicht bei jedem List-Update. */
   let lastTurnScrollKey = ''
@@ -1347,6 +1363,41 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const main = document.createElement('div')
         main.className = 'init-row-main'
 
+        if (!canEdit) expandedPlayerExtrasIds.delete(row.id)
+
+        const expandCol = document.createElement('div')
+        expandCol.className = 'init-col-expand'
+        if (canEdit) {
+          const extrasOpen = expandedPlayerExtrasIds.has(row.id)
+          const expandBtn = document.createElement('button')
+          expandBtn.type = 'button'
+          expandBtn.className =
+            'init-row-expand-toggle' +
+            (extrasOpen ? ' init-row-expand-toggle--open' : '')
+          expandBtn.setAttribute('aria-expanded', extrasOpen ? 'true' : 'false')
+          expandBtn.setAttribute(
+            'aria-label',
+            'Weitere Helden-Optionen ein- oder ausblenden'
+          )
+          expandBtn.title =
+            'Weitere Helden-Optionen: Phasen-Offset (L.H.), max. Aktionen pro KR'
+          const chev = document.createElement('span')
+          chev.className = 'init-row-expand-chev'
+          chev.setAttribute('aria-hidden', 'true')
+          expandBtn.appendChild(chev)
+          expandBtn.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (expandedPlayerExtrasIds.has(row.id)) {
+              expandedPlayerExtrasIds.delete(row.id)
+            } else {
+              expandedPlayerExtrasIds.add(row.id)
+            }
+            renderList(lastItems)
+          })
+          expandCol.appendChild(expandBtn)
+        }
+
         const btnCol = document.createElement('div')
         btnCol.className = 'init-col-btn init-col-btn--phase-slot'
 
@@ -1523,8 +1574,139 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const swapCol = document.createElement('div')
         swapCol.className = 'init-col-swap'
-        main.append(btnCol, gutter, nameCol, input, swapCol)
-        li.appendChild(main)
+        main.append(expandCol, btnCol, gutter, nameCol, input, swapCol)
+
+        const extraPanel = document.createElement('div')
+        extraPanel.className = 'init-row-extra-panel'
+        const extrasOpen = canEdit && expandedPlayerExtrasIds.has(row.id)
+        if (!extrasOpen) {
+          extraPanel.hidden = true
+        } else {
+          extraPanel.hidden = false
+          const mech = readLhMechanics(meta)
+          const offDisplay = phaseOffsetFromLhMeta(meta)
+
+          const fieldOff = document.createElement('div')
+          fieldOff.className = 'init-row-extra-field'
+          const labOff = document.createElement('label')
+          labOff.className = 'init-row-extra-label'
+          labOff.textContent = 'Phasen-Offset (Held)'
+          labOff.setAttribute('for', `init-extra-off-${row.id}`)
+          const inpOff = document.createElement('input')
+          inpOff.id = `init-extra-off-${row.id}`
+          inpOff.type = 'text'
+          inpOff.inputMode = 'numeric'
+          inpOff.className = 'init-row-extra-input'
+          inpOff.autocomplete = 'off'
+          inpOff.spellcheck = false
+          inpOff.value = String(offDisplay)
+          inpOff.title =
+            'Abstand der L.H.-Auslöser-INI unter der Helden-INI (Standard 8)'
+          inpOff.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              inpOff.blur()
+            }
+          })
+          inpOff.addEventListener('blur', () => {
+            if (!canEdit) return
+            void (async () => {
+              const fresh = await OBR.scene.items.getItems()
+              const it = fresh.find((i) => i.id === row.id)
+              const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
+              if (!m) return
+              const curOff = phaseOffsetFromLhMeta(m)
+              const trimmed = inpOff.value.trim()
+              if (trimmed === '') {
+                inpOff.value = String(curOff)
+                return
+              }
+              const n = Math.floor(Number(trimmed.replace(',', '.')))
+              if (!Number.isFinite(n) || n < 0 || n > 99) {
+                inpOff.value = String(curOff)
+                return
+              }
+              const newStep = storedTriggerIniStepFromPhaseOffsetPositive(n)
+              if (readLhMechanics(m).triggerIniStep === newStep) return
+              await OBR.scene.items.updateItems([row.id], (drafts) => {
+                for (const d of drafts) {
+                  const mm = d.metadata[TRACKER_ITEM_META_KEY]
+                  if (!mm) continue
+                  mm[LH_TRIGGER_INI_STEP] = newStep
+                }
+              })
+              const fresh2 = await OBR.scene.items.getItems()
+              const it2 = fresh2.find((i) => i.id === row.id)
+              const m2 = it2?.metadata?.[TRACKER_ITEM_META_KEY]
+              const lhSt = readLhState(m2)
+              if (lhSt.max > 0) {
+                const iniStr = String(m2?.initiative ?? row.initiative)
+                await upsertLhLinkedZaoRoot(row.id, lhSt.max, iniStr)
+              }
+            })()
+          })
+          fieldOff.append(labOff, inpOff)
+
+          const fieldAp = document.createElement('div')
+          fieldAp.className = 'init-row-extra-field'
+          const labAp = document.createElement('label')
+          labAp.className = 'init-row-extra-label'
+          labAp.textContent = 'Max. Aktionen / KR'
+          labAp.setAttribute('for', `init-extra-apkr-${row.id}`)
+          const inpAp = document.createElement('input')
+          inpAp.id = `init-extra-apkr-${row.id}`
+          inpAp.type = 'text'
+          inpAp.inputMode = 'numeric'
+          inpAp.className = 'init-row-extra-input'
+          inpAp.autocomplete = 'off'
+          inpAp.spellcheck = false
+          inpAp.value = String(mech.actionsPerKr)
+          inpAp.title = 'Längerfristige Handlung: Auslöser pro Kampfrunde (1–8)'
+          inpAp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              inpAp.blur()
+            }
+          })
+          inpAp.addEventListener('blur', () => {
+            if (!canEdit) return
+            void (async () => {
+              const fresh = await OBR.scene.items.getItems()
+              const it = fresh.find((i) => i.id === row.id)
+              const m = it?.metadata?.[TRACKER_ITEM_META_KEY]
+              if (!m) return
+              const curAp = readLhMechanics(m).actionsPerKr
+              const trimmed = inpAp.value.trim()
+              if (trimmed === '') {
+                inpAp.value = String(curAp)
+                return
+              }
+              const n = Math.floor(Number(trimmed.replace(',', '.')))
+              if (!Number.isFinite(n)) {
+                inpAp.value = String(curAp)
+                return
+              }
+              const next = clampLhActionsPerKrForStorage(n)
+              if (next === curAp) {
+                inpAp.value = String(curAp)
+                return
+              }
+              await OBR.scene.items.updateItems([row.id], (drafts) => {
+                for (const d of drafts) {
+                  const mm = d.metadata[TRACKER_ITEM_META_KEY]
+                  if (!mm) continue
+                  mm[LH_ACTIONS_PER_KR] = next
+                }
+              })
+            })()
+          })
+          fieldAp.append(labAp, inpAp)
+
+          extraPanel.append(fieldOff, fieldAp)
+        }
+
+        if (extrasOpen) li.classList.add('init-row--extras-open')
+        li.append(main, extraPanel)
         frag.appendChild(li)
       } else if (entry.kind === 'actionStamp') {
         const li = document.createElement('li')
@@ -1846,7 +2028,13 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           })
         }
 
-        main.append(btnCol, phaseZaoMeta, iniInput, zaoSwapCol)
+        main.append(
+          createInitExpandSpacerCell(),
+          btnCol,
+          phaseZaoMeta,
+          iniInput,
+          zaoSwapCol
+        )
         li.appendChild(main)
         frag.appendChild(li)
       } else {
@@ -2123,10 +2311,24 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         const zaoSwapCol = document.createElement('div')
         zaoSwapCol.className = 'init-col-swap'
 
+        const phaseExpandSpacer = createInitExpandSpacerCell()
         if (isZaoRoot) {
-          main.append(btnCol, phaseZaoMeta, iniInput, zaoSwapCol)
+          main.append(
+            phaseExpandSpacer,
+            btnCol,
+            phaseZaoMeta,
+            iniInput,
+            zaoSwapCol
+          )
         } else {
-          main.append(btnCol, phaseGutter, phaseNameCol, iniInput, swapSpacer)
+          main.append(
+            phaseExpandSpacer,
+            btnCol,
+            phaseGutter,
+            phaseNameCol,
+            iniInput,
+            swapSpacer
+          )
         }
         li.appendChild(main)
 

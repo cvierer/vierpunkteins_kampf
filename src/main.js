@@ -27,6 +27,7 @@ appRoot.innerHTML = `
   <p id="standalone-hint" class="standalone-hint" hidden></p>
   <div class="kampf-list-section">
     <div class="kampf-list-head" aria-hidden="true">
+      <span class="kampf-h-spacer kampf-h-spacer--expand" aria-hidden="true"></span>
       <div class="kampf-col-za-group">
         <span class="kampf-col-label kampf-col-label--counter" title="Angriffsaktion">Ang.</span>
         <span class="kampf-col-label kampf-col-label--counter" title="Abwehraktion">Abw.</span>

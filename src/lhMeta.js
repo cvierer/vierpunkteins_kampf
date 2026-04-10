@@ -85,6 +85,23 @@ export function phaseOffsetFromLhMeta(meta) {
   return phaseOffsetFromLhTriggerStep(readLhMechanics(meta).triggerIniStep)
 }
 
+/**
+ * Positiver Phasen-Offset (z. B. 8) → gespeicherter `lhTriggerIniStep` (z. B. −8).
+ */
+export function storedTriggerIniStepFromPhaseOffsetPositive(positiveOffset) {
+  const n = Math.floor(Number(positiveOffset))
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_LH_TRIGGER_INI_STEP
+  if (n === 0) return DEFAULT_LH_TRIGGER_INI_STEP
+  return -Math.min(99, Math.max(1, n))
+}
+
+/** 1…8 für `lhActionsPerKr`. */
+export function clampLhActionsPerKrForStorage(raw) {
+  const n = Math.floor(Number(raw))
+  if (!Number.isFinite(n)) return DEFAULT_LH_ACTIONS_PER_KR
+  return Math.min(MAX_ACTIONS, Math.max(1, n))
+}
+
 function popcountLhMask8(mask) {
   let v = Math.floor(Number(mask)) & 0xff
   let c = 0
