@@ -1571,8 +1571,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             'Weitere Helden-Optionen ein- oder ausblenden'
           )
           expandBtn.title = isGmSync()
-            ? 'Zeile aufklappen: LE, AU, AE/KE, Wunden, Zusatzmodifikatoren; SL-Einstellungen über Zahnrad'
-            : 'Zeile aufklappen: LE, AU, AE/KE, Wunden, Zusatzmodifikatoren'
+            ? 'Zeile aufklappen: LE, AU, AE, KE, Wunden, Zusatz; SL-Einstellungen über Zahnrad'
+            : 'Zeile aufklappen: LE, AU, AE, KE, Wunden, Zusatzmodifikatoren'
           const chev = document.createElement('span')
           chev.className = 'init-row-expand-chev'
           chev.setAttribute('aria-hidden', 'true')
