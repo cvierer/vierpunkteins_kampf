@@ -1576,8 +1576,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             'Weitere Helden-Optionen ein- oder ausblenden'
           )
           expandBtn.title = isGmSync()
-            ? 'Zeile aufklappen: A–C, AT, PA, LE, AE, KO, TP, Zusatz; Trefferzonen (i); SL über Zahnrad'
-            : 'Zeile aufklappen: A–C, AT, PA, LE, AE, KO, TP, Zusatz; Trefferzonen (i)'
+            ? 'Zeile aufklappen: AT, PA, LE, AE, KO, TP, A–C; Trefferzonen (i); SL über Zahnrad'
+            : 'Zeile aufklappen: AT, PA, LE, AE, KO, TP, A–C; Trefferzonen (i)'
           const chev = document.createElement('span')
           chev.className = 'init-row-expand-chev'
           chev.setAttribute('aria-hidden', 'true')
@@ -1783,16 +1783,16 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           extraPanel.classList.add('init-row-extra-panel--has-hero-ex')
           const body = document.createElement('div')
           body.className = 'init-row-extra-panel__body'
-          const infoWrap = document.createElement('div')
-          infoWrap.className = 'init-hero-ex__micro-cell init-hero-ex__info-wrap'
-          const infoAbbrSpacer = document.createElement('span')
-          infoAbbrSpacer.className =
-            'init-hero-ex__abbr init-hero-ex__abbr--info-spacer'
-          infoAbbrSpacer.setAttribute('aria-hidden', 'true')
-          infoAbbrSpacer.textContent = '\u00a0'
+          mountHeroExpandBlock(body, {
+            itemId: row.id,
+            meta: tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY],
+            canEdit,
+          })
+          const footer = document.createElement('div')
+          footer.className = 'init-row-extra-panel__footer'
           const infoHit = document.createElement('button')
           infoHit.type = 'button'
-          infoHit.className = 'init-row-extra-info init-hero-ex__info-btn'
+          infoHit.className = 'init-row-extra-info'
           infoHit.innerHTML = HIT_ZONE_INFO_ICON_SVG
           infoHit.title =
             'Trefferzonen (WdS): Figur, RS und Wunden pro Zone, Kampfnotizen'
@@ -1811,17 +1811,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
               canEdit
             )
           })
-          infoWrap.append(infoAbbrSpacer, infoHit)
-          mountHeroExpandBlock(body, {
-            itemId: row.id,
-            meta: tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY],
-            canEdit,
-            stripLeading: [infoWrap],
-          })
+          footer.appendChild(infoHit)
           if (isGmSync()) {
             extraPanel.classList.add('init-row-extra-panel--has-gear')
-            const footer = document.createElement('div')
-            footer.className = 'init-row-extra-panel__footer'
             const gearHero = document.createElement('button')
             gearHero.type = 'button'
             gearHero.className = 'init-row-extra-gear'
@@ -1838,10 +1830,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
               openHeroSettings(row.id, row.name)
             })
             footer.appendChild(gearHero)
-            extraPanel.append(body, footer)
-          } else {
-            extraPanel.appendChild(body)
           }
+          extraPanel.append(body, footer)
         }
 
         if (extrasOpen) li.classList.add('init-row--extras-open')

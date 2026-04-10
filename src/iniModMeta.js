@@ -8,10 +8,13 @@ export const HERO_EX_PA = 'heroExPa'
 export const HERO_EX_KO = 'heroExKo'
 export const HERO_EX_TP = 'heroExTp'
 export const HERO_EX_A = 'heroExA'
-export const HERO_EX_AMOD = 'heroExAMod'
 export const HERO_EX_B = 'heroExB'
-export const HERO_EX_BMOD = 'heroExBMod'
 export const HERO_EX_C = 'heroExC'
+/** @deprecated Nur Lesen/Migration, nicht mehr in der UI */
+export const HERO_EX_AMOD = 'heroExAMod'
+/** @deprecated Nur Lesen/Migration */
+export const HERO_EX_BMOD = 'heroExBMod'
+/** @deprecated Nur Lesen/Migration */
 export const HERO_EX_CMOD = 'heroExCMod'
 /** @deprecated Nur Lesen/Migration, nicht mehr in der UI */
 export const HERO_EX_AU = 'heroExAu'
@@ -25,6 +28,7 @@ export const HERO_EX_WUNDEN_ANZ = 'heroExWnAnz'
 export const HERO_EX_WUNDEN_ORT = 'heroExWnOrt'
 /** @deprecated Nur Lesen/Migration */
 export const HERO_EX_WUNDEN_LEGACY = 'heroExWunden'
+/** @deprecated Zusatzfeld derzeit nicht in der ausklappbaren Zeile */
 export const HERO_EX_ZUSATZ = 'heroExZusatz'
 
 function strOrEmpty(v) {
@@ -44,12 +48,8 @@ export function readHeroExpandSnapshot(meta) {
     ko: strOrEmpty(meta?.[HERO_EX_KO]),
     tp: strOrEmpty(meta?.[HERO_EX_TP]),
     a: strOrEmpty(meta?.[HERO_EX_A]),
-    aMod: strOrEmpty(meta?.[HERO_EX_AMOD]),
     b: strOrEmpty(meta?.[HERO_EX_B]),
-    bMod: strOrEmpty(meta?.[HERO_EX_BMOD]),
     c: strOrEmpty(meta?.[HERO_EX_C]),
-    cMod: strOrEmpty(meta?.[HERO_EX_CMOD]),
-    zusatz: strOrEmpty(meta?.[HERO_EX_ZUSATZ]),
   }
 }
 
@@ -76,12 +76,8 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_KO, next.ko)
       setStr(HERO_EX_TP, next.tp)
       setStr(HERO_EX_A, next.a)
-      setStr(HERO_EX_AMOD, next.aMod)
       setStr(HERO_EX_B, next.b)
-      setStr(HERO_EX_BMOD, next.bMod)
       setStr(HERO_EX_C, next.c)
-      setStr(HERO_EX_CMOD, next.cMod)
-      setStr(HERO_EX_ZUSATZ, next.zusatz)
 
       delete m[HERO_EX_AEKE_LEGACY]
       delete m[HERO_EX_WUNDEN_LEGACY]
@@ -98,28 +94,23 @@ function syncTpFontSize(tpInp) {
 }
 
 /**
- * Wie Token-Zeile: gleiches Raster; unter der Zählerspalte Micro-Felder (1.22rem, 2 Ziffern);
- * Abkürzung darüber, ausführlicher Text im Mouseover (title).
+ * Eine Zeile Micro-Kästchen (AT … C), ausgerichtet unter der Initiative-Zeile.
  * @param {HTMLElement} container
- * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean, stripLeading?: Node[] }} opts
+ * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean }} opts
  */
-export function mountHeroExpandBlock(container, { itemId, meta, canEdit, stripLeading = [] }) {
+export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
   const snap = readHeroExpandSnapshot(meta)
   container.replaceChildren()
 
   const root = document.createElement('div')
-  root.className = 'init-hero-ex'
+  root.className = 'init-hero-ex init-hero-ex--single-row'
 
   const spacerExp = document.createElement('div')
-  spacerExp.className = 'init-hero-ex__cell-grid init-hero-ex__cell-grid--expand'
+  spacerExp.className = 'init-hero-ex__lead'
   spacerExp.setAttribute('aria-hidden', 'true')
 
   const strip = document.createElement('div')
   strip.className = 'init-hero-ex__strip'
-
-  for (const node of stripLeading) {
-    strip.appendChild(node)
-  }
 
   const mkMicro = (abbr, fullName, idSuf, value, maxLen, extraClass, numeric) => {
     const cell = document.createElement('div')
@@ -144,47 +135,6 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit, stripLe
     cell.append(ab, inp)
     return { cell, inp }
   }
-
-  const mkPair = (letter, idLetter, numVal, modVal) => {
-    const cell = document.createElement('div')
-    cell.className = 'init-hero-ex__micro-cell init-hero-ex__pair-cell'
-    const ab = document.createElement('span')
-    ab.className = 'init-hero-ex__abbr'
-    ab.textContent = letter
-    ab.title = `${letter}: Zahl und Modifikator`
-    const row = document.createElement('div')
-    row.className = 'init-hero-ex__pair-row'
-    const numInp = document.createElement('input')
-    numInp.type = 'text'
-    numInp.inputMode = 'numeric'
-    numInp.className = 'init-hero-ex__micro'
-    numInp.id = `hero-ex-${itemId}-${idLetter}`
-    numInp.autocomplete = 'off'
-    numInp.spellcheck = false
-    numInp.disabled = !canEdit
-    numInp.value = numVal
-    numInp.maxLength = 2
-    numInp.title = `${letter} (zwei Ziffern)`
-    numInp.setAttribute('aria-label', `${letter} Zahl`)
-    const modInp = document.createElement('input')
-    modInp.type = 'text'
-    modInp.className = 'init-hero-ex__mod'
-    modInp.id = `hero-ex-${itemId}-${idLetter}mod`
-    modInp.autocomplete = 'off'
-    modInp.spellcheck = false
-    modInp.disabled = !canEdit
-    modInp.value = modVal
-    modInp.maxLength = 12
-    modInp.title = `${letter} Modifikator (bis 12 Zeichen)`
-    modInp.setAttribute('aria-label', `${letter} Modifikator`)
-    row.append(numInp, modInp)
-    cell.append(ab, row)
-    return { cell, numInp, modInp }
-  }
-
-  const pairA = mkPair('A', 'a', snap.a, snap.aMod)
-  const pairB = mkPair('B', 'b', snap.b, snap.bMod)
-  const pairC = mkPair('C', 'c', snap.c, snap.cMod)
 
   const at = mkMicro('AT', 'Attacke (AT)', 'at', snap.at, 2, '', true)
   const pa = mkMicro('PA', 'Parade (PA)', 'pa', snap.pa, 2, '', true)
@@ -212,56 +162,23 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit, stripLe
   tpCell.append(tpAbbr, tpInp)
   syncTpFontSize(tpInp)
 
+  const a = mkMicro('A', 'Feld A', 'a', snap.a, 2, '', true)
+  const b = mkMicro('B', 'Feld B', 'b', snap.b, 2, '', true)
+  const c = mkMicro('C', 'Feld C', 'c', snap.c, 2, '', true)
+
   strip.append(
-    pairA.cell,
-    pairB.cell,
-    pairC.cell,
     at.cell,
     pa.cell,
     le.cell,
     ae.cell,
     ko.cell,
-    tpCell
+    tpCell,
+    a.cell,
+    b.cell,
+    c.cell
   )
 
-  const gutter = document.createElement('div')
-  gutter.className = 'init-hero-ex__cell-grid init-hero-ex__cell-grid--gutter'
-  gutter.setAttribute('aria-hidden', 'true')
-
-  const zusatzCol = document.createElement('div')
-  zusatzCol.className = 'init-hero-ex__zusatz-col'
-  const zAbbr = document.createElement('span')
-  zAbbr.className = 'init-hero-ex__abbr init-hero-ex__abbr--block'
-  zAbbr.textContent = 'Z'
-  zAbbr.title = 'Zusatzmodifikatoren'
-  const zInp = document.createElement('input')
-  zInp.type = 'text'
-  zInp.className = 'init-hero-ex__zusatz-input'
-  zInp.id = `hero-ex-${itemId}-zusatz`
-  zInp.autocomplete = 'off'
-  zInp.spellcheck = false
-  zInp.disabled = !canEdit
-  zInp.value = snap.zusatz
-  zInp.title = 'Zusatzmodifikatoren'
-  zInp.setAttribute('aria-label', 'Zusatzmodifikatoren')
-  zusatzCol.append(zAbbr, zInp)
-
-  const iniHold = document.createElement('div')
-  iniHold.className = 'init-hero-ex__cell-grid init-hero-ex__cell-grid--ini'
-  iniHold.setAttribute('aria-hidden', 'true')
-
-  const swapHold = document.createElement('div')
-  swapHold.className = 'init-hero-ex__cell-grid init-hero-ex__cell-grid--swap'
-  swapHold.setAttribute('aria-hidden', 'true')
-
-  root.append(
-    spacerExp,
-    strip,
-    gutter,
-    zusatzCol,
-    iniHold,
-    swapHold
-  )
+  root.append(spacerExp, strip)
   container.appendChild(root)
 
   if (!canEdit) return
@@ -275,13 +192,9 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit, stripLe
     ae: ae.inp.value,
     ko: ko.inp.value,
     tp: tpInp.value,
-    a: pairA.numInp.value,
-    aMod: pairA.modInp.value,
-    b: pairB.numInp.value,
-    bMod: pairB.modInp.value,
-    c: pairC.numInp.value,
-    cMod: pairC.modInp.value,
-    zusatz: zInp.value,
+    a: a.inp.value,
+    b: b.inp.value,
+    c: c.inp.value,
   })
 
   const commit = () => {
@@ -295,13 +208,9 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit, stripLe
     ae.inp,
     ko.inp,
     tpInp,
-    pairA.numInp,
-    pairA.modInp,
-    pairB.numInp,
-    pairB.modInp,
-    pairC.numInp,
-    pairC.modInp,
-    zInp,
+    a.inp,
+    b.inp,
+    c.inp,
   ]) {
     inp.addEventListener('blur', commit)
   }
