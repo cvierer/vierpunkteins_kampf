@@ -2,10 +2,14 @@ import OBR from '@owlbear-rodeo/sdk'
 import { isGmSync } from './editAccess.js'
 import {
   clearEphemeralExtraIniRows,
+  pullFullIniTieOrderFromRoom,
   pullZaoRootTieOrderFromRoom,
 } from './phaseLinks.js'
 import { pullRoomSettingsFromRoom } from './roomSettings.js'
-import { collectSortedParticipants } from './participants.js'
+import {
+  collectSortedParticipants,
+  INI_TIE_ORDER_KEY as INI_TIE_ORDER_KEY_PARTICIPANTS,
+} from './participants.js'
 import {
   compareInitiativeRowsWithTieOrder,
   initiativeCompareOnlyIni,
@@ -13,7 +17,7 @@ import {
 
 const ID = 'vierpunkteins_kampf.tracker'
 export const COMBAT_KEY = `${ID}/combat`
-export const INI_TIE_ORDER_KEY = `${ID}/iniTieOrder`
+export const INI_TIE_ORDER_KEY = INI_TIE_ORDER_KEY_PARTICIPANTS
 export const ACTION_STAMPS_KEY = `${ID}/actionStamps`
 
 const listeners = new Set()
@@ -311,12 +315,14 @@ export async function initCombatRoom() {
   await pullFromRoom()
   await pullIniTieOrderFromRoom()
   await pullZaoRootTieOrderFromRoom()
+  await pullFullIniTieOrderFromRoom()
   await pullActionStampsFromRoom()
   await pullRoomSettingsFromRoom()
   return OBR.room.onMetadataChange(() => {
     void pullFromRoom()
     void pullIniTieOrderFromRoom()
     void pullZaoRootTieOrderFromRoom()
+    void pullFullIniTieOrderFromRoom()
     void pullActionStampsFromRoom()
     void pullRoomSettingsFromRoom()
   })

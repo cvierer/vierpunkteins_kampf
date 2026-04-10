@@ -3,6 +3,7 @@ import { compareInitiativeRowsWithTieOrder } from './initiativeSort.js'
 
 export const TRACKER_ID = 'vierpunkteins_kampf.tracker'
 export const TRACKER_ITEM_META_KEY = `${TRACKER_ID}/metadata`
+export const INI_TIE_ORDER_KEY = `${TRACKER_ID}/iniTieOrder`
 const META_KEY = TRACKER_ITEM_META_KEY
 
 /** Wie auf der Karte sichtbar: Token-Text (Beschriftung), sonst Item-Name. */

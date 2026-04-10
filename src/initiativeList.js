@@ -16,7 +16,6 @@ import {
   patchCombat,
   reorderIniTieToken,
   RESET_ROUND_INTRO,
-  swapAdjacentIniTiePair,
 } from './combatRoom.js'
 import { setTrackedParticipantIds } from './listState.js'
 import {
@@ -32,7 +31,9 @@ import {
   findCombatStepIndex,
   formatIniForSort,
   hookIniForLink,
+  mergedEntryDiscriminator,
   normalizePhases,
+  onFullIniTieOrderChange,
   onNamePhasePlusClick,
   onZaoRootTieOrderChange,
   removeLastZaoRoot,
@@ -40,13 +41,12 @@ import {
   LH_DONE_STEP_ID,
   ROUND_END_STEP_ID,
   sortedLinksForLayout,
-  swapAdjacentZaoRootKeys,
+  swapAdjacentMergedIniDiscriminators,
   togglePhaseLinkExpiresNextRound,
   tryCommitPhaseOffset,
   tryCommitPhaseTargetIni,
   upsertLhLinkedZaoRoot,
   zaoRootKey,
-  zaoTieSwapKeyForMergedEntry,
 } from './phaseLinks.js'
 import { zaoPadlockInnerHtml } from './zaoPadlockIcons.js'
 import {
@@ -157,41 +157,34 @@ function mergeActionStampsIntoMerged(merged, stampEntries) {
 }
 
 /**
- * INI-Tausch nur zwischen direkt aufeinanderfolgenden Listeneinträgen (wie angezeigt);
- * Action-Stempel dazwischen = kein Paar. Token–Token; 2.A.-Wurzel / L.H.-Zeile mit gleicher Ziel-INI.
+ * INI-Tausch: direkt aufeinanderfolgende Listeneinträge (wie angezeigt) mit gleicher INI;
+ * Action-Stempel dazwischen = kein Paar. Beliebige Typen (Token, 2.A., L.H., Phasen-Kind).
  */
 function collectAdjacentSameIniSwapPairs(mergedWithStamps) {
-  const tiePairs = []
-  const zaoPairs = []
+  const discPairs = []
   for (let i = 0; i < mergedWithStamps.length - 1; i++) {
     const u = mergedWithStamps[i]
     const l = mergedWithStamps[i + 1]
     if (u.kind === 'actionStamp' || l.kind === 'actionStamp') continue
     if (u.kind === 'roundEnd' || l.kind === 'roundEnd') continue
-    if (u.kind === 'token' && l.kind === 'token') {
-      if (initiativeCompareOnlyIni(u.row, l.row) === 0) {
-        tiePairs.push([u.row.id, l.row.id])
-      }
+    const du = mergedEntryDiscriminator(u)
+    const dl = mergedEntryDiscriminator(l)
+    if (!du || !dl) continue
+    const iniU =
+      u.kind === 'token' ? u.row.initiative : formatIniForSort(u.hookIni)
+    const iniL =
+      l.kind === 'token' ? l.row.initiative : formatIniForSort(l.hookIni)
+    if (
+      initiativeCompareOnlyIni(
+        { initiative: iniU, name: '' },
+        { initiative: iniL, name: '' }
+      ) !== 0
+    ) {
       continue
     }
-    const zKUpper = zaoTieSwapKeyForMergedEntry(u)
-    const zKLower = zaoTieSwapKeyForMergedEntry(l)
-    if (zKUpper && zKLower) {
-      const iniU =
-        u.kind === 'token' ? u.row.initiative : formatIniForSort(u.hookIni)
-      const iniL =
-        l.kind === 'token' ? l.row.initiative : formatIniForSort(l.hookIni)
-      if (
-        initiativeCompareOnlyIni(
-          { initiative: iniU, name: '' },
-          { initiative: iniL, name: '' }
-        ) === 0
-      ) {
-        zaoPairs.push([zKUpper, zKLower])
-      }
-    }
+    discPairs.push([du, dl])
   }
-  return { tiePairs, zaoPairs }
+  return discPairs
 }
 
 function createInitExpandSpacerCell() {
@@ -848,33 +841,48 @@ function pickNearestValidSlot(rawSlot, validSlots) {
   return best
 }
 
-/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (Token oder 2.A.-Wurzel). */
+function findListLiForSwapDisc(ul, disc) {
+  const parts = disc.split('|')
+  const kind = parts[0]
+  if (kind === 'token' && parts[1]) {
+    return ul.querySelector(
+      `li.init-row--token-draggable[data-item-id="${CSS.escape(parts[1])}"]`
+    )
+  }
+  if (kind === 'lhdone' && parts[1]) {
+    const key = zaoRootKey(parts[1], LH_DONE_STEP_ID)
+    return ul.querySelector(
+      `li.init-row--phase-zao[data-zao-swap-key="${CSS.escape(key)}"]`
+    )
+  }
+  if (kind === 'zroot' && parts.length >= 3) {
+    const owner = parts[1]
+    const linkId = parts.slice(2).join('|')
+    const key = zaoRootKey(owner, linkId)
+    return ul.querySelector(
+      `li.init-row--phase-zao[data-zao-swap-key="${CSS.escape(key)}"]`
+    )
+  }
+  if (kind === 'pchild' && parts.length >= 3) {
+    const owner = parts[1]
+    const linkId = parts.slice(2).join('|')
+    return ul.querySelector(
+      `li.init-row--phase[data-phase-owner-id="${CSS.escape(owner)}"][data-phase-link-id="${CSS.escape(linkId)}"]`
+    )
+  }
+  return null
+}
+
+/** Tausch-Button exakt im Flex-Gap zwischen zwei `li` (gleiche INI, beliebiger Zeilentyp). */
 function layoutIniSwapBetween(ul, host, overlay) {
   if (!host || !overlay) return
   const hostR = host.getBoundingClientRect()
   for (const btn of overlay.querySelectorAll('.init-row-ini-swap')) {
-    const zU = btn.dataset.zaoSwapUpper
-    const zL = btn.dataset.zaoSwapLower
-    let upperLi
-    let lowerLi
-    if (zU && zL) {
-      upperLi = ul.querySelector(
-        `li.init-row--phase-zao[data-zao-swap-key="${CSS.escape(zU)}"]`
-      )
-      lowerLi = ul.querySelector(
-        `li.init-row--phase-zao[data-zao-swap-key="${CSS.escape(zL)}"]`
-      )
-    } else {
-      const upperId = btn.dataset.iniSwapUpper
-      const lowerId = btn.dataset.iniSwapLower
-      if (!upperId || !lowerId) continue
-      upperLi = ul.querySelector(
-        `li.init-row--token-draggable[data-item-id="${CSS.escape(upperId)}"]`
-      )
-      lowerLi = ul.querySelector(
-        `li.init-row--token-draggable[data-item-id="${CSS.escape(lowerId)}"]`
-      )
-    }
+    const dU = btn.dataset.iniSwapDiscUpper
+    const dL = btn.dataset.iniSwapDiscLower
+    if (!dU || !dL) continue
+    const upperLi = findListLiForSwapDisc(ul, dU)
+    const lowerLi = findListLiForSwapDisc(ul, dL)
     const refCol = upperLi?.querySelector('.init-col-swap')
     const prev = lowerLi?.previousElementSibling
     if (!upperLi || !lowerLi || !refCol || !prev) {
@@ -1336,7 +1344,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ? mergeActionStampsIntoMerged(merged, stampEntries)
         : merged
 
-    const { tiePairs, zaoPairs } =
+    const iniSwapDiscPairs =
       collectAdjacentSameIniSwapPairs(mergedWithStamps)
     const combatRoundForLhUi = combat.started ? combat.round : null
 
@@ -2391,71 +2399,40 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     swapOverlay.replaceChildren()
     if (isGmSync()) {
-      for (const [upperId, lowerId] of tiePairs) {
-      const swapBtn = document.createElement('button')
-      swapBtn.type = 'button'
-      swapBtn.className = 'init-row-ini-swap'
-      swapBtn.dataset.iniSwapUpper = upperId
-      swapBtn.dataset.iniSwapLower = lowerId
-      const arrUp = document.createElement('span')
-      arrUp.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--up'
-      arrUp.setAttribute('aria-hidden', 'true')
-      arrUp.textContent = '↑'
-      const arrDown = document.createElement('span')
-      arrDown.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--down'
-      arrDown.setAttribute('aria-hidden', 'true')
-      arrDown.textContent = '↓'
-      swapBtn.append(arrUp, arrDown)
-      swapBtn.title =
-        'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche INI)'
-      swapBtn.setAttribute(
-        'aria-label',
-        'Gleiche INI: mit darunterliegendem Eintrag die Reihenfolge tauschen'
-      )
-      swapBtn.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void OBR.scene.items.getItems().then((fresh) => {
-          void swapAdjacentIniTiePair(upperId, lowerId, fresh)
-        })
-      })
-        swapOverlay.appendChild(swapBtn)
-      }
-
-      for (const [upperKey, lowerKey] of zaoPairs) {
-      const swapBtn = document.createElement('button')
-      swapBtn.type = 'button'
-      swapBtn.className = 'init-row-ini-swap'
-      swapBtn.dataset.zaoSwapUpper = upperKey
-      swapBtn.dataset.zaoSwapLower = lowerKey
-      const arrUp = document.createElement('span')
-      arrUp.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--up'
-      arrUp.setAttribute('aria-hidden', 'true')
-      arrUp.textContent = '↑'
-      const arrDown = document.createElement('span')
-      arrDown.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--down'
-      arrDown.setAttribute('aria-hidden', 'true')
-      arrDown.textContent = '↓'
-      swapBtn.append(arrUp, arrDown)
+      for (const [upperDisc, lowerDisc] of iniSwapDiscPairs) {
+        const swapBtn = document.createElement('button')
+        swapBtn.type = 'button'
+        swapBtn.className = 'init-row-ini-swap'
+        swapBtn.dataset.iniSwapDiscUpper = upperDisc
+        swapBtn.dataset.iniSwapDiscLower = lowerDisc
+        const arrUp = document.createElement('span')
+        arrUp.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--up'
+        arrUp.setAttribute('aria-hidden', 'true')
+        arrUp.textContent = '↑'
+        const arrDown = document.createElement('span')
+        arrDown.className = 'init-row-ini-swap__arr init-row-ini-swap__arr--down'
+        arrDown.setAttribute('aria-hidden', 'true')
+        arrDown.textContent = '↓'
+        swapBtn.append(arrUp, arrDown)
         swapBtn.title =
-          'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche Ziel-INI: 2.A. / L.H.-Zeile)'
-      swapBtn.setAttribute(
-        'aria-label',
-          'Gleiche Ziel-INI: mit darunterliegendem 2.A.- oder L.H.-Eintrag die Reihenfolge tauschen'
-      )
-      swapBtn.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void OBR.scene.items.getItems().then((fresh) => {
-          void swapAdjacentZaoRootKeys(
-            upperKey,
-            lowerKey,
-            fresh,
-            getIniTieOrder(),
-            combat.started ? combat.round : null
-          )
+          'Reihenfolge mit dem nächsten Eintrag tauschen (gleiche INI)'
+        swapBtn.setAttribute(
+          'aria-label',
+          'Gleiche INI: mit darunterliegendem Eintrag die Reihenfolge tauschen'
+        )
+        swapBtn.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          void OBR.scene.items.getItems().then((fresh) => {
+            void swapAdjacentMergedIniDiscriminators(
+              upperDisc,
+              lowerDisc,
+              fresh,
+              getIniTieOrder(),
+              combat.started ? combat.round : null
+            )
+          })
         })
-      })
         swapOverlay.appendChild(swapBtn)
       }
     }
@@ -2534,6 +2511,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
   })
   onIniTieOrderChange(() => renderList(lastItems))
   const offZaoTie = onZaoRootTieOrderChange(() => renderList(lastItems))
+  const offFullIniTie = onFullIniTieOrderChange(() => renderList(lastItems))
   const offRoomSettings = onRoomSettingsChange(() => {
     void OBR.scene.items.getItems().then(renderList)
   })
@@ -2549,6 +2527,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
     offStampPref()
     offPlayer()
     offZaoTie()
+    offFullIniTie()
     if (listScrollEl) {
       listScrollEl.removeEventListener('scroll', runSwapLayout, { passive: true })
     }

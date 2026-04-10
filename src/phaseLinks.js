@@ -7,6 +7,7 @@ import {
 } from './initiativeSort.js'
 import {
   collectSortedParticipants,
+  INI_TIE_ORDER_KEY,
   TRACKER_ID,
   TRACKER_ITEM_META_KEY,
 } from './participants.js'
@@ -17,6 +18,7 @@ import {
 } from './lhMeta.js'
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
+const FULL_INI_TIE_ORDER_KEY = `${TRACKER_ID}/fullIniTieOrder`
 
 /** Synthetischer Zug „Ende der Kampfrunde“ (INI intern 0); kein Szenen-Token. */
 export const ROUND_END_STEP_ID = `${TRACKER_ID}/roundEndStep`
@@ -25,7 +27,11 @@ export const LH_DONE_STEP_ID = `${TRACKER_ID}/lhDoneStep`
 /** @type {Record<string, string[]>} INI-Schlüssel (formatIniForSort) → Reihenfolge der 2.A.-Wurzeln ownerId:linkId */
 let zaoRootTieOrderByIniCache = {}
 
+/** @type {Record<string, string[]>} INI-Schlüssel → Reihenfolge aller Listeneinträge (token|…, zroot|…, lhdone|…, pchild|…) */
+let fullIniTieOrderByIniCache = {}
+
 const zaoOrderListeners = new Set()
+const fullIniTieListeners = new Set()
 
 function notifyZaoRootTieOrder() {
   for (const fn of zaoOrderListeners) {
@@ -44,6 +50,21 @@ export function getZaoRootTieOrderByIni() {
 export function onZaoRootTieOrderChange(fn) {
   zaoOrderListeners.add(fn)
   return () => zaoOrderListeners.delete(fn)
+}
+
+function notifyFullIniTieOrder() {
+  for (const fn of fullIniTieListeners) {
+    try {
+      fn()
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function onFullIniTieOrderChange(fn) {
+  fullIniTieListeners.add(fn)
+  return () => fullIniTieListeners.delete(fn)
 }
 
 function normalizeZaoOrderRoom(raw) {
@@ -68,8 +89,127 @@ export async function pullZaoRootTieOrderFromRoom() {
   notifyZaoRootTieOrder()
 }
 
+function normalizeFullIniTieOrderRoom(raw) {
+  /** @type {Record<string, string[]>} */
+  const out = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [iniK, arr] of Object.entries(raw)) {
+    if (typeof iniK !== 'string') continue
+    if (!Array.isArray(arr)) continue
+    out[iniK] = arr.filter((k) => typeof k === 'string')
+  }
+  return out
+}
+
+export async function pullFullIniTieOrderFromRoom() {
+  const meta = await OBR.room.getMetadata()
+  const next = normalizeFullIniTieOrderRoom(meta[FULL_INI_TIE_ORDER_KEY])
+  const prevKeys = JSON.stringify(fullIniTieOrderByIniCache)
+  const nextKeys = JSON.stringify(next)
+  if (prevKeys === nextKeys) return
+  fullIniTieOrderByIniCache = next
+  notifyFullIniTieOrder()
+}
+
 export function zaoRootKey(ownerId, linkId) {
   return `${ownerId}:${linkId}`
+}
+
+/** Stabiler Listen-Schlüssel für volle INI-Tausch-Reihenfolge (Raum-Metadaten). */
+export function mergedEntryDiscriminator(e) {
+  if (!e || typeof e !== 'object') return ''
+  if (e.kind === 'token') return `token|${e.row.id}`
+  if (e.kind === 'lhDone') return `lhdone|${e.ownerId}`
+  if (e.kind === 'phase') {
+    if (e.link?.parentId === null) return `zroot|${e.ownerId}|${e.link.id}`
+    return `pchild|${e.ownerId}|${e.link.id}`
+  }
+  return ''
+}
+
+function zaoRootKeyToDiscriminator(key) {
+  const c = key.indexOf(':')
+  if (c < 0) return null
+  const owner = key.slice(0, c)
+  const link = key.slice(c + 1)
+  return link === LH_DONE_STEP_ID
+    ? `lhdone|${owner}`
+    : `zroot|${owner}|${link}`
+}
+
+function ensureFullTieOrderLocal(existing, sortedIds) {
+  const allowed = new Set(sortedIds)
+  const out = existing.filter((id) => allowed.has(id))
+  const seen = new Set(out)
+  for (const id of sortedIds) {
+    if (!seen.has(id)) {
+      out.push(id)
+      seen.add(id)
+    }
+  }
+  return out
+}
+
+function reorderTieIdsForIniSubset(tieOrderIds, subsetOrdered) {
+  const set = new Set(subsetOrdered)
+  const idxs = subsetOrdered.map((id) => tieOrderIds.indexOf(id)).filter((i) => i >= 0)
+  if (idxs.length === 0) return tieOrderIds
+  const minI = Math.min(...idxs)
+  const tail = tieOrderIds.filter((id, i) => i > minI && !set.has(id))
+  const head = tieOrderIds.filter((id, i) => i < minI && !set.has(id))
+  const mid = subsetOrdered.filter((id) => tieOrderIds.includes(id))
+  return [...head, ...mid, ...tail]
+}
+
+function orderRunByDiscriminatorList(run, list) {
+  const pos = new Map(list.map((d, idx) => [d, idx]))
+  return [...run].sort((a, b) => {
+    const da = mergedEntryDiscriminator(a)
+    const db = mergedEntryDiscriminator(b)
+    const pa = pos.has(da) ? pos.get(da) : 1e9
+    const pb = pos.has(db) ? pos.get(db) : 1e9
+    if (pa !== pb) return pa - pb
+    return run.indexOf(a) - run.indexOf(b)
+  })
+}
+
+function reorderSameIniRunsByFullOrder(entries) {
+  let i = 0
+  while (i < entries.length) {
+    const e = entries[i]
+    if (e.kind === 'roundEnd') {
+      i++
+      continue
+    }
+    const ka = mergedEntryIniSortKey(e)
+    if (ka == null || ka === '') {
+      i++
+      continue
+    }
+    const iniK = formatIniForSort(ka)
+    let j = i + 1
+    while (j < entries.length) {
+      const e2 = entries[j]
+      if (e2.kind === 'roundEnd') break
+      const kb = mergedEntryIniSortKey(e2)
+      if (
+        initiativeCompareOnlyIni(
+          { initiative: ka, name: '' },
+          { initiative: kb, name: '' }
+        ) !== 0
+      ) {
+        break
+      }
+      j++
+    }
+    const run = entries.slice(i, j)
+    const list = fullIniTieOrderByIniCache[iniK]
+    if (list?.length && run.length > 1) {
+      const ordered = orderRunByDiscriminatorList(run, list)
+      entries.splice(i, j - i, ...ordered)
+    }
+    i = j
+  }
 }
 
 /**
@@ -87,9 +227,107 @@ export function zaoTieSwapKeyForMergedEntry(e) {
 }
 
 /**
- * Zwei direkt untereinander stehende Einträge mit gleicher Ziel-INI tauschen:
- * 2.A.-Wurzeln und/oder L.H.-Abschlusszeile (gleicher INI-Bucket in der Kampfliste).
+ * Zwei in der Kampfliste direkt benachbarte Einträge mit gleicher INI tauschen
+ * (Token, 2.A.-Wurzel, L.H.-Zeile, Phasen-Kind).
  * @param [combatRound] wie in `buildMergedDisplayRows` (lhDone-Sichtbarkeit).
+ */
+export async function swapAdjacentMergedIniDiscriminators(
+  upperDisc,
+  lowerDisc,
+  items,
+  tieOrderIds,
+  combatRound = null
+) {
+  if (!isGmSync()) return
+  if (!upperDisc || !lowerDisc || upperDisc === lowerDisc) return
+  const tokenRows = collectSortedParticipants(items, tieOrderIds)
+  const merged = buildMergedDisplayRows(
+    tokenRows,
+    items,
+    tieOrderIds,
+    combatRound
+  )
+  let found = -1
+  for (let i = 0; i < merged.length - 1; i++) {
+    if (merged[i].kind === 'roundEnd') continue
+    const d0 = mergedEntryDiscriminator(merged[i])
+    const d1 = mergedEntryDiscriminator(merged[i + 1])
+    if (d0 === upperDisc && d1 === lowerDisc) {
+      found = i
+      break
+    }
+  }
+  if (found < 0) return
+  const ka = mergedEntryIniSortKey(merged[found])
+  const kb = mergedEntryIniSortKey(merged[found + 1])
+  if (
+    initiativeCompareOnlyIni(
+      { initiative: ka, name: '' },
+      { initiative: kb, name: '' }
+    ) !== 0
+  ) {
+    return
+  }
+  let runStart = found
+  while (
+    runStart > 0 &&
+    merged[runStart - 1].kind !== 'roundEnd' &&
+    initiativeCompareOnlyIni(
+      {
+        initiative: mergedEntryIniSortKey(merged[runStart - 1]),
+        name: '',
+      },
+      { initiative: ka, name: '' }
+    ) === 0
+  ) {
+    runStart--
+  }
+  let runEnd = found + 2
+  while (
+    runEnd < merged.length &&
+    merged[runEnd].kind !== 'roundEnd' &&
+    initiativeCompareOnlyIni(
+      { initiative: mergedEntryIniSortKey(merged[runEnd]), name: '' },
+      { initiative: ka, name: '' }
+    ) === 0
+  ) {
+    runEnd++
+  }
+  const runSlice = merged.slice(runStart, runEnd)
+  const discs = runSlice.map((e) => mergedEntryDiscriminator(e))
+  const a = found - runStart
+  if (a < 0 || a >= discs.length - 1) return
+  if (discs[a] !== upperDisc || discs[a + 1] !== lowerDisc) return
+  const nextDiscs = [...discs]
+  ;[nextDiscs[a], nextDiscs[a + 1]] = [nextDiscs[a + 1], nextDiscs[a]]
+  const iniK = formatIniForSort(ka)
+  const nextFull = { ...fullIniTieOrderByIniCache, [iniK]: nextDiscs }
+
+  /** @type {Record<string, unknown>} */
+  const metaPatch = { [FULL_INI_TIE_ORDER_KEY]: nextFull }
+
+  const tokensOrdered = nextDiscs
+    .filter((d) => d.startsWith('token|'))
+    .map((d) => d.slice('token|'.length))
+
+  if (tokensOrdered.length > 0) {
+    const meta = await OBR.room.getMetadata()
+    const rawTie = meta[INI_TIE_ORDER_KEY]
+    const curTie = Array.isArray(rawTie)
+      ? rawTie.filter((x) => typeof x === 'string')
+      : []
+    const sortedRows = collectSortedParticipants(items, curTie)
+    const sortedIds = sortedRows.map((r) => r.id)
+    const newTie = reorderTieIdsForIniSubset(curTie, tokensOrdered)
+    metaPatch[INI_TIE_ORDER_KEY] = ensureFullTieOrderLocal(newTie, sortedIds)
+  }
+
+  await OBR.room.setMetadata(metaPatch)
+  await pullFullIniTieOrderFromRoom()
+}
+
+/**
+ * @deprecated Namensgebung — nutzt dieselbe Logik wie `swapAdjacentMergedIniDiscriminators`.
  */
 export async function swapAdjacentZaoRootKeys(
   keyUpper,
@@ -98,42 +336,16 @@ export async function swapAdjacentZaoRootKeys(
   tieOrderIds,
   combatRound = null
 ) {
-  if (!isGmSync()) return
-  const tokenRows = collectSortedParticipants(items, tieOrderIds)
-  const merged = buildMergedDisplayRows(
-    tokenRows,
+  const du = zaoRootKeyToDiscriminator(keyUpper)
+  const dl = zaoRootKeyToDiscriminator(keyLower)
+  if (!du || !dl) return
+  return swapAdjacentMergedIniDiscriminators(
+    du,
+    dl,
     items,
     tieOrderIds,
     combatRound
   )
-  const rowIdx = (k) =>
-    merged.findIndex((e) => zaoTieSwapKeyForMergedEntry(e) === k)
-  const iu = rowIdx(keyUpper)
-  const il = rowIdx(keyLower)
-  if (iu < 0 || il < 0 || il !== iu + 1) return
-  const eu = merged[iu]
-  const el = merged[il]
-  if (zaoTieSwapKeyForMergedEntry(eu) !== keyUpper) return
-  if (zaoTieSwapKeyForMergedEntry(el) !== keyLower) return
-  if (formatIniForSort(eu.hookIni) !== formatIniForSort(el.hookIni)) return
-  const iniK = formatIniForSort(eu.hookIni)
-  const keysInMerged = merged
-    .filter((e) => {
-      if (zaoTieSwapKeyForMergedEntry(e) == null) return false
-      return formatIniForSort(e.hookIni) === iniK
-    })
-    .map((e) => zaoTieSwapKeyForMergedEntry(e))
-  let bucket = [...(zaoRootTieOrderByIniCache[iniK] ?? [])].filter((k) =>
-    keysInMerged.includes(k)
-  )
-  if (bucket.length === 0) bucket = [...keysInMerged]
-  const posU = bucket.indexOf(keyUpper)
-  const posL = bucket.indexOf(keyLower)
-  if (posU !== posL - 1) return
-  ;[bucket[posU], bucket[posL]] = [bucket[posL], bucket[posU]]
-  const next = { ...zaoRootTieOrderByIniCache, [iniK]: bucket }
-  await OBR.room.setMetadata({ [ZAO_ROOT_TIE_ORDER_KEY]: next })
-  await pullZaoRootTieOrderFromRoom()
 }
 
 export const DEFAULT_PHASE_OFFSET = 8
@@ -593,7 +805,7 @@ export function formatIniForSort(n) {
   return String(n)
 }
 
-function mergedEntryIniSortKey(e) {
+export function mergedEntryIniSortKey(e) {
   if (e.kind === 'token') return e.row.initiative
   if (e.kind === 'phase' || e.kind === 'lhDone') return formatIniForSort(e.hookIni)
   return ''
@@ -770,6 +982,8 @@ export function buildMergedDisplayRows(
             }
     return compareInitiativeRows(sa, sb)
   })
+
+  reorderSameIniRunsByFullOrder(entries)
 
   if (tokenRows.length > 0) {
     entries.push({ kind: 'roundEnd' })
