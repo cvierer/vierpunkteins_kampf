@@ -14,7 +14,6 @@ import {
   LH_DONE_INI,
   LH_DONE_ROUND,
   phaseOffsetFromLhMeta,
-  readLhState,
 } from './lhMeta.js'
 
 const ZAO_ROOT_TIE_ORDER_KEY = `${TRACKER_ID}/zaoRootTieOrder`
@@ -277,57 +276,60 @@ export function patchItemPhases(itemId, updater) {
 }
 
 /**
- * Bei L.H. mit genau einem offenen Auslöser (max>0, rem===1): Panel öffnen, erste Wurzel mit
- * Offset aus L.H.-Trigger anlegen bzw. Wurzel-Offsets angleichen.
- * @param {import('@owlbear-rodeo/sdk').Item[] | undefined} itemsIfKnown — optional: aktuelle Szene-Items, vermeidet extra getItems
+ * Beim Setzen der L.H.-Gesamtaktionen (n≥1): 2.A.-Wurzel mit Offset aus L.H.-Trigger anlegen/aktualisieren.
+ * n>2: geschlossenes Schloss (überdauert die KR); n≤2: offenes Schloss (ephemeral, Standard).
  */
-export async function ensureSecondActionPhaseAtLhGo(
-  itemId,
-  ownerIniStrOpt,
-  itemsIfKnown
-) {
-  const item =
-    itemsIfKnown?.find((i) => i.id === itemId) ??
-    (await OBR.scene.items.getItems((i) => i.id === itemId))[0]
-  if (!item) return
-  const meta = item.metadata?.[TRACKER_ITEM_META_KEY]
-  if (!meta) return
-  const st = readLhState(meta)
-  if (!(st.max > 0 && st.rem === 1)) return
-  const ownerIniStr =
-    ownerIniStrOpt !== undefined
-      ? String(ownerIniStrOpt)
-      : String(meta.initiative ?? '')
-  const off = phaseOffsetFromLhMeta(meta)
-  if (!canCreateSecondActionRoot(ownerIniStr, off)) return
-  const p = normalizePhases(meta.phases)
-  const roots = p.links.filter((l) => l.parentId === null)
-  if (roots.length === 0) {
-    await patchItemPhases(itemId, (prev, m) => {
-      const o = phaseOffsetFromLhMeta(m)
-      if (!canCreateSecondActionRoot(ownerIniStr, o)) return prev
+export function upsertLhLinkedZaoRoot(itemId, lhMaxCommitted, ownerIniStr) {
+  return patchItemPhases(itemId, (p, meta) => {
+    const off = phaseOffsetFromLhMeta(meta)
+    if (!canCreateSecondActionRoot(ownerIniStr, off)) return p
+    const openPadlockEphemeral = lhMaxCommitted <= 2
+    const roots = sortedLinksForLayout(p.links).filter((l) => l.parentId === null)
+    const firstRootId = roots[0]?.id
+    if (!firstRootId) {
       return {
-        ...prev,
+        ...p,
         rowPanelOpen: true,
         links: [
-          ...prev.links,
-          { id: uuid(), parentId: null, offset: o },
+          ...p.links,
+          {
+            id: uuid(),
+            parentId: null,
+            offset: off,
+            expiresNextRound: openPadlockEphemeral,
+          },
         ],
       }
-    })
-    return
-  }
-  const allMatch =
-    roots.every((r) => clampStoredOffset(r.offset) === off) && p.rowPanelOpen
-  if (allMatch) return
-  await patchItemPhases(itemId, (prev, m) => {
-    const o = phaseOffsetFromLhMeta(m)
-    if (!canCreateSecondActionRoot(ownerIniStr, o)) return prev
+    }
     return {
-      ...prev,
+      ...p,
       rowPanelOpen: true,
-      links: prev.links.map((l) =>
-        l.parentId === null ? { ...l, offset: o } : l
+      links: p.links.map((l) => {
+        if (l.parentId !== null) return l
+        return {
+          ...l,
+          offset: l.id === firstRootId ? off : l.offset,
+          expiresNextRound: openPadlockEphemeral,
+        }
+      }),
+    }
+  })
+}
+
+/**
+ * Erste 2.A.-Wurzel: Schloss öffnen (ephemeral) / schließen (bleibt über KR).
+ * @param {boolean} openPadlock — true = offenes Schloss (expiresNextRound), false = geschlossen
+ */
+export function setFirstZaoRootExpiresNextRound(itemId, openPadlock) {
+  return patchItemPhases(itemId, (p) => {
+    const roots = sortedLinksForLayout(p.links).filter((l) => l.parentId === null)
+    const targetId = roots[0]?.id
+    if (!targetId) return p
+    const expiresNextRound = Boolean(openPadlock)
+    return {
+      ...p,
+      links: p.links.map((l) =>
+        l.id === targetId ? { ...l, expiresNextRound } : l
       ),
     }
   })
@@ -374,25 +376,10 @@ export function onNamePhasePlusClick(itemId, { shiftKey }, ownerIniStr) {
 }
 
 /**
- * Wie erster Klick auf „+“ (2.A.): Panel öffnen und ggf. erste Wurzel — kein zusätzliches + bei bestehenden Wurzeln.
- * Für L.H. mit genau einer Aktion (Eingabe „1“).
+ * Wie erster Klick auf „+“ (2.A.): L.H.-gebundene Wurzel wie bei Eingabe „1“.
  */
 export function openSecondActionPhaseForLhSingle(itemId, ownerIniStr) {
-  return patchItemPhases(itemId, (p, meta) => {
-    const off = phaseOffsetFromLhMeta(meta)
-    if (!canCreateSecondActionRoot(ownerIniStr, off)) return p
-    const nextLinks =
-      p.links.length === 0
-        ? [
-            {
-              id: uuid(),
-              parentId: null,
-              offset: off,
-            },
-          ]
-        : p.links
-    return { ...p, rowPanelOpen: true, links: nextLinks }
-  })
+  return upsertLhLinkedZaoRoot(itemId, 1, ownerIniStr)
 }
 
 export function addPhaseChildLink(itemId, parentLinkId, ownerIniStr) {
@@ -645,14 +632,7 @@ export function buildMergedDisplayRows(
       new Map(roots.map((l, i) => [l.id, i]))
     )
 
-    const lhSt = readLhState(meta)
-    const lhMotherReadyForSecondAction = lhSt.max > 0 && lhSt.rem === 1
-
-    if (
-      lhMotherReadyForSecondAction &&
-      phases.rowPanelOpen &&
-      phases.links.length > 0
-    ) {
+    if (phases.rowPanelOpen && phases.links.length > 0) {
       for (const link of sortedLinksForLayout(phases.links)) {
         const hook = hookIniForLink(link.id, row.initiative, phases.links)
         if (hook === null || hook < 0) continue

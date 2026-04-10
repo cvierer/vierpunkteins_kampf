@@ -4,9 +4,9 @@ import { getCombat } from './combatRoom.js'
 import {
   buildCombatTurnSteps,
   buildMergedDisplayRows,
-  ensureSecondActionPhaseAtLhGo,
   findCombatStepIndex,
-  openSecondActionPhaseForLhSingle,
+  setFirstZaoRootExpiresNextRound,
+  upsertLhLinkedZaoRoot,
 } from './phaseLinks.js'
 import {
   applyLhOneClickStamp,
@@ -26,6 +26,7 @@ import {
   LH_REM,
   LH_TRIGGER_INI_STEP,
   clearLhTrackerActivity,
+  lhShowsGo,
   lhSingleActionHookIni,
   normalizeActionsPerKrForPatch,
   normalizeTriggerStepForPatch,
@@ -202,6 +203,12 @@ export async function commitLhValue(itemId, text, opts) {
   const itemAfter = itemsAfter.find((i) => i.id === itemId)
   if (!canEditSceneItem(itemAfter)) return
 
+  if (n >= 1) {
+    const iniStr =
+      itemAfter.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
+    await upsertLhLinkedZaoRoot(itemId, n, iniStr)
+  }
+
   if (n === 1) {
     const alreadyOne = prevSt.max === 1 && prevSt.rem === 1
     if (!alreadyOne) {
@@ -211,14 +218,6 @@ export async function commitLhValue(itemId, text, opts) {
           ? o.stampPhaseLinkId
           : undefined
       await applyLhOneClickStamp(itemId, stampId)
-      const openedFromTokenRow =
-        !Object.prototype.hasOwnProperty.call(o, 'stampPhaseLinkId') ||
-        o.stampPhaseLinkId === null
-      if (openedFromTokenRow) {
-        const iniStr =
-          itemAfter.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
-        await openSecondActionPhaseForLhSingle(itemId, iniStr)
-      }
     }
   } else {
     if (
@@ -557,23 +556,53 @@ export async function runLongHandlungAfterCombatUpdate(items, tieOrderIds) {
         }
       }
     })
-    const freshItems = await OBR.scene.items.getItems()
-    for (const c of changed) {
-      if (c.max > 0 && c.rem === 1) {
-        const it = freshItems.find((i) => i.id === c.id)
-        const iniStr = String(
-          it?.metadata?.[TRACKER_ITEM_META_KEY]?.initiative ?? ''
-        )
-        await ensureSecondActionPhaseAtLhGo(c.id, iniStr, freshItems)
+  }
+
+  if (
+    isGmSync() &&
+    prev &&
+    prev.started &&
+    curr.started &&
+    !curr.roundIntroPending
+  ) {
+    const itemsNav = await OBR.scene.items.getItems()
+    const rowsNav = collectSortedParticipants(itemsNav, tieOrderIds)
+    const rRound = curr.round
+    const stepsNav = buildCombatTurnSteps(
+      rowsNav,
+      itemsNav,
+      tieOrderIds,
+      rRound
+    )
+    const prevIdxNav = findCombatStepIndex(stepsNav, prev)
+    const currIdxNav = findCombatStepIndex(stepsNav, curr)
+    if (
+      prev.round === curr.round &&
+      prevIdxNav >= 0 &&
+      currIdxNav >= 0 &&
+      prevIdxNav !== currIdxNav
+    ) {
+      const mergedNav = buildMergedDisplayRows(
+        rowsNav,
+        itemsNav,
+        tieOrderIds,
+        rRound
+      )
+      const entry = mergedNav[currIdxNav]
+      if (entry?.kind === 'token') {
+        const ownerId = entry.row.id
+        const meta = itemsNav.find((i) => i.id === ownerId)?.metadata?.[
+          TRACKER_ITEM_META_KEY
+        ]
+        const st = readLhState(meta)
+        if (lhShowsGo(st.max, st.rem)) {
+          if (prevIdxNav < currIdxNav) {
+            await setFirstZaoRootExpiresNextRound(ownerId, true)
+          } else {
+            await setFirstZaoRootExpiresNextRound(ownerId, false)
+          }
+        }
       }
-    }
-  } else if (isGmSync()) {
-    for (const item of trackerItems) {
-      const m = item.metadata[TRACKER_ITEM_META_KEY]
-      const st = readLhState(m)
-      if (!(st.max > 0 && st.rem === 1)) continue
-      const iniStr = String(m?.initiative ?? '')
-      await ensureSecondActionPhaseAtLhGo(item.id, iniStr, items)
     }
   }
 

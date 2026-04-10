@@ -94,6 +94,11 @@ export function lhProgressFractionText(max, rem) {
   return `${max - rem + 1}/${max}`
 }
 
+/** Mehrteilige L.H. mit letztem offenen Auslöser („GO!“ in der Anzeige). */
+export function lhShowsGo(max, rem) {
+  return max > 1 && rem === 1
+}
+
 /** Füllgrad 0…1 für den L.H.-Kuchen, gleiche Logik wie die 1-basierte Bruch-Anzeige. */
 export function lhProgressPieFillRatio(max, rem) {
   if (max <= 0) return 0
