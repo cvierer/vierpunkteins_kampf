@@ -85,13 +85,50 @@ export function phaseOffsetFromLhMeta(meta) {
   return phaseOffsetFromLhTriggerStep(readLhMechanics(meta).triggerIniStep)
 }
 
+function popcountLhMask8(mask) {
+  let v = Math.floor(Number(mask)) & 0xff
+  let c = 0
+  while (v) {
+    c++
+    v &= v - 1
+  }
+  return c
+}
+
+/**
+ * Zähler für „x“ in x/max bei mehrteiliger L.H.: sobald in dieser KR mindestens ein Auslöser
+ * in der Maske steht, um 1 hinter `max - rem + 1` — passt zur strengen INI-Überquerung
+ * (Anzeige nicht einen Schritt vor dem tatsächlichen Verbrauch).
+ */
+function lhProgressDisplayNumerator(max, rem, meta, combatRound) {
+  if (!(max > 0 && rem > 0)) return 0
+  const naive = max - rem + 1
+  if (max === 1) return naive
+  if (
+    max > 1 &&
+    meta &&
+    typeof meta === 'object' &&
+    typeof combatRound === 'number' &&
+    combatRound >= 1
+  ) {
+    const bits = popcountLhMask8(
+      effectiveLhFiredMaskForRound(meta, combatRound)
+    )
+    return Math.max(1, naive - (bits > 0 ? 1 : 0))
+  }
+  return naive
+}
+
 /**
  * Kurztext im L.H.-Kuchen am Token: 1/x … (x−1)/x, zuletzt „GO!“ wenn nur noch ein Auslöser offen (mehrteilige L.H.).
+ * @param [meta] Tracker-Metadaten; mit `combatRound` für korrigierte Mehrteil-Anzeige.
+ * @param [combatRound] Aktuelle Kampfrunde (≥1), sonst Fallback ohne Masken-Korrektur.
  */
-export function lhProgressFractionText(max, rem) {
+export function lhProgressFractionText(max, rem, meta, combatRound) {
   if (!(max > 0 && rem > 0)) return ''
   if (max > 1 && rem === 1) return 'GO!'
-  return `${max - rem + 1}/${max}`
+  const n = lhProgressDisplayNumerator(max, rem, meta, combatRound)
+  return `${n}/${max}`
 }
 
 /** Mehrteilige L.H. mit letztem offenen Auslöser („GO!“ in der Anzeige). */
@@ -99,11 +136,18 @@ export function lhShowsGo(max, rem) {
   return max > 1 && rem === 1
 }
 
-/** Füllgrad 0…1 für den L.H.-Kuchen, gleiche Logik wie die 1-basierte Bruch-Anzeige. */
-export function lhProgressPieFillRatio(max, rem) {
+/**
+ * Füllgrad 0…1 für den L.H.-Kuchen, gleiche Logik wie die Bruch-Anzeige.
+ * @param [meta] @param [combatRound] siehe `lhProgressFractionText`.
+ */
+export function lhProgressPieFillRatio(max, rem, meta, combatRound) {
   if (max <= 0) return 0
   if (rem <= 0) return 1
-  return Math.max(0, Math.min(1, (max - rem + 1) / max))
+  if (max > 1 && rem === 1) {
+    return Math.max(0, Math.min(1, (max - rem + 1) / max))
+  }
+  const n = lhProgressDisplayNumerator(max, rem, meta, combatRound)
+  return Math.max(0, Math.min(1, n / max))
 }
 
 const LEGACY_LH_P2_ROUND = 'lhPendingSecondRound'

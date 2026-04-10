@@ -149,6 +149,46 @@ function mergeActionStampsIntoMerged(merged, stampEntries) {
   return working
 }
 
+/**
+ * INI-Tausch nur zwischen direkt aufeinanderfolgenden Listeneinträgen (wie angezeigt);
+ * Action-Stempel dazwischen = kein Paar. Token–Token und 2.A.-Wurzel–2.A.-Wurzel.
+ */
+function collectAdjacentSameIniSwapPairs(mergedWithStamps) {
+  const tiePairs = []
+  const zaoPairs = []
+  for (let i = 0; i < mergedWithStamps.length - 1; i++) {
+    const u = mergedWithStamps[i]
+    const l = mergedWithStamps[i + 1]
+    if (u.kind === 'actionStamp' || l.kind === 'actionStamp') continue
+    if (u.kind === 'roundEnd' || l.kind === 'roundEnd') continue
+    if (u.kind === 'token' && l.kind === 'token') {
+      if (initiativeCompareOnlyIni(u.row, l.row) === 0) {
+        tiePairs.push([u.row.id, l.row.id])
+      }
+      continue
+    }
+    if (
+      u.kind === 'phase' &&
+      l.kind === 'phase' &&
+      u.link.parentId === null &&
+      l.link.parentId === null
+    ) {
+      if (
+        initiativeCompareOnlyIni(
+          { initiative: formatIniForSort(u.hookIni), name: '' },
+          { initiative: formatIniForSort(l.hookIni), name: '' }
+        ) === 0
+      ) {
+        zaoPairs.push([
+          zaoRootKey(u.ownerId, u.link.id),
+          zaoRootKey(l.ownerId, l.link.id),
+        ])
+      }
+    }
+  }
+  return { tiePairs, zaoPairs }
+}
+
 const ACTION_STAMP_LABEL = Object.freeze({
   [KR_ANG]: 'Angriff',
   [KR_ABW]: 'Abwehr',
@@ -289,7 +329,8 @@ function appendKrCounterPair(
   trackerMeta,
   canEdit,
   ownerIniStr,
-  lhStampPhaseLinkId
+  lhStampPhaseLinkId,
+  combatRound = null
 ) {
   appendSplitKrCounter(
     container,
@@ -326,7 +367,14 @@ function appendKrCounterPair(
     canEdit,
     ownerIniStr
   )
-  appendLhCell(container, ownerItemId, trackerMeta, canEdit, lhStampPhaseLinkId)
+  appendLhCell(
+    container,
+    ownerItemId,
+    trackerMeta,
+    canEdit,
+    lhStampPhaseLinkId,
+    combatRound
+  )
 }
 
 /**
@@ -336,14 +384,14 @@ function lhStampPhaseLinkIdWhenLhActive(trackerMeta, phaseLinkId) {
   return readLhState(trackerMeta).max > 0 ? phaseLinkId : null
 }
 
-function applyLhVisual(wrap, max, rem) {
+function applyLhVisual(wrap, max, rem, trackerMeta, combatRound) {
   const pie = wrap.querySelector('.init-lh-cell__pie')
   if (!pie) return
   if (max <= 0) {
     pie.style.setProperty('--lh-consumed', '0deg')
     return
   }
-  const frac = lhProgressPieFillRatio(max, rem)
+  const frac = lhProgressPieFillRatio(max, rem, trackerMeta, combatRound)
   pie.style.setProperty('--lh-consumed', `${frac * 360}deg`)
 }
 
@@ -352,7 +400,8 @@ function appendLhCell(
   ownerItemId,
   trackerMeta,
   canEdit,
-  lhStampPhaseLinkId
+  lhStampPhaseLinkId,
+  combatRound = null
 ) {
   const lhCommitOpts =
     lhStampPhaseLinkId !== undefined
@@ -376,7 +425,12 @@ function appendLhCell(
   const fraction = document.createElement('span')
   fraction.className = 'init-lh-cell__fraction'
   fraction.setAttribute('aria-hidden', 'true')
-  const fracLabel = lhProgressFractionText(st.max, st.rem)
+  const fracLabel = lhProgressFractionText(
+    st.max,
+    st.rem,
+    trackerMeta,
+    combatRound
+  )
   if (fracLabel) fraction.textContent = fracLabel
 
   const inp = document.createElement('input')
@@ -407,7 +461,7 @@ function appendLhCell(
 
   wrap.append(pieWrap, fraction, inp)
 
-  applyLhVisual(wrap, st.max, st.rem)
+  applyLhVisual(wrap, st.max, st.rem, trackerMeta, combatRound)
 
   if (
     prev &&
@@ -1267,34 +1321,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         ? mergeActionStampsIntoMerged(merged, stampEntries)
         : merged
 
-    const swapLowerByUpper = new Map()
-    for (let ti = 0; ti < tokenRows.length - 1; ti++) {
-      const a = tokenRows[ti]
-      const b = tokenRows[ti + 1]
-      if (initiativeCompareOnlyIni(a, b) === 0) {
-        swapLowerByUpper.set(a.id, b.id)
-      }
-    }
-
-    const zaoSwapLowerByUpper = new Map()
-    for (let mi = 0; mi < merged.length - 1; mi++) {
-      const u = merged[mi]
-      const l = merged[mi + 1]
-      if (u.kind !== 'phase' || l.kind !== 'phase') continue
-      if (u.link.parentId !== null || l.link.parentId !== null) continue
-      if (
-        initiativeCompareOnlyIni(
-          { initiative: formatIniForSort(u.hookIni), name: '' },
-          { initiative: formatIniForSort(l.hookIni), name: '' }
-        ) !== 0
-      ) {
-        continue
-      }
-      zaoSwapLowerByUpper.set(
-        zaoRootKey(u.ownerId, u.link.id),
-        zaoRootKey(l.ownerId, l.link.id)
-      )
-    }
+    const { tiePairs, zaoPairs } =
+      collectAdjacentSameIniSwapPairs(mergedWithStamps)
+    const combatRoundForLhUi = combat.started ? combat.round : null
 
     const frag = document.createDocumentFragment()
 
@@ -1323,7 +1352,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
         const slotRow = document.createElement('div')
         slotRow.className = 'init-phase-slot-row'
-        appendKrCounterPair(slotRow, row.id, meta, canEdit, row.initiative, null)
+        appendKrCounterPair(
+          slotRow,
+          row.id,
+          meta,
+          canEdit,
+          row.initiative,
+          null,
+          combatRoundForLhUi
+        )
 
         const plusAnchor = document.createElement('div')
         plusAnchor.className = 'init-phase-plus-anchor'
@@ -1617,7 +1654,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerTrackerMeta,
           canEdit,
           ownerIniStr,
-          lhStampPhaseLinkIdWhenLhActive(ownerTrackerMeta, LH_DONE_STEP_ID)
+          lhStampPhaseLinkIdWhenLhActive(ownerTrackerMeta, LH_DONE_STEP_ID),
+          combatRoundForLhUi
         )
 
         const lhRemove = document.createElement('button')
@@ -1847,7 +1885,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           ownerTrackerMeta,
           canEdit,
           ownerIniStr,
-          lhStampPhaseLinkIdWhenLhActive(ownerTrackerMeta, link.id)
+          lhStampPhaseLinkIdWhenLhActive(ownerTrackerMeta, link.id),
+          combatRoundForLhUi
         )
 
         if (isZaoRoot) {
@@ -2151,7 +2190,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
 
     swapOverlay.replaceChildren()
     if (isGmSync()) {
-      for (const [upperId, lowerId] of swapLowerByUpper.entries()) {
+      for (const [upperId, lowerId] of tiePairs) {
       const swapBtn = document.createElement('button')
       swapBtn.type = 'button'
       swapBtn.className = 'init-row-ini-swap'
@@ -2182,7 +2221,7 @@ export function setupInitiativeList(element, { onListChange } = {}) {
         swapOverlay.appendChild(swapBtn)
       }
 
-      for (const [upperKey, lowerKey] of zaoSwapLowerByUpper.entries()) {
+      for (const [upperKey, lowerKey] of zaoPairs) {
       const swapBtn = document.createElement('button')
       swapBtn.type = 'button'
       swapBtn.className = 'init-row-ini-swap'
