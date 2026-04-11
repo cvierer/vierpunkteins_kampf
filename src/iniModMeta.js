@@ -9,9 +9,14 @@ export const HERO_EX_PA = 'heroExPa'
 /** Konstitution (Eigenschaft), nur in der Eigenschaftenzeile */
 export const HERO_EX_KO = 'heroExKo'
 export const HERO_EX_TP = 'heroExTp'
+/** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
 export const HERO_EX_A = 'heroExA'
+/** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
 export const HERO_EX_B = 'heroExB'
+/** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
 export const HERO_EX_C = 'heroExC'
+export const HERO_EX_SP = 'heroExSp'
+export const HERO_EX_TZ = 'heroExTz'
 export const HERO_EX_FK = 'heroExFk'
 /** Geschosse */
 export const HERO_EX_G = 'heroExG'
@@ -61,9 +66,8 @@ export function readHeroExpandSnapshot(meta) {
     ae: strOrEmpty(meta?.[HERO_EX_AE]),
     ko: strOrEmpty(meta?.[HERO_EX_KO]),
     tp: strOrEmpty(meta?.[HERO_EX_TP]),
-    a: strOrEmpty(meta?.[HERO_EX_A]),
-    b: strOrEmpty(meta?.[HERO_EX_B]),
-    c: strOrEmpty(meta?.[HERO_EX_C]),
+    sp: strOrEmpty(meta?.[HERO_EX_SP]),
+    tz: strOrEmpty(meta?.[HERO_EX_TZ]),
     fk: strOrEmpty(meta?.[HERO_EX_FK]),
     g: strOrEmpty(meta?.[HERO_EX_G]),
     mu: strOrEmpty(meta?.[HERO_EX_MU]),
@@ -100,9 +104,8 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_AE, next.ae)
       setStr(HERO_EX_KO, next.ko)
       setStr(HERO_EX_TP, next.tp)
-      setStr(HERO_EX_A, next.a)
-      setStr(HERO_EX_B, next.b)
-      setStr(HERO_EX_C, next.c)
+      setStr(HERO_EX_SP, next.sp)
+      setStr(HERO_EX_TZ, next.tz)
       setStr(HERO_EX_FK, next.fk)
       setStr(HERO_EX_G, next.g)
       setStr(HERO_EX_MU, next.mu)
@@ -116,6 +119,9 @@ export async function applyHeroExpandFields(itemId, next) {
 
       delete m[HERO_EX_AEKE_LEGACY]
       delete m[HERO_EX_WUNDEN_LEGACY]
+      delete m[HERO_EX_A]
+      delete m[HERO_EX_B]
+      delete m[HERO_EX_C]
     }
   })
 }
@@ -284,9 +290,61 @@ export function mountHeroExpandBlock(
 
   const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
   const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
-  const a = mkMicro('A', 'Feld A', 'a', snap.a, 2, '', true)
-  const b = mkMicro('B', 'Feld B', 'b', snap.b, 2, '', true)
-  const c = mkMicro('C', 'Feld C', 'c', snap.c, 2, '', true)
+
+  const spTzPair = document.createElement('div')
+  spTzPair.className = 'init-hero-ex__sp-tz-pair'
+  const spTzLabels = document.createElement('div')
+  spTzLabels.className = 'init-hero-ex__sp-tz-pair__labels'
+  const spAbbr = document.createElement('span')
+  spAbbr.className = 'init-hero-ex__abbr'
+  spAbbr.textContent = 'SP'
+  spAbbr.title = 'Schadenspunkte (SP)'
+  const spTzLabelPad = document.createElement('span')
+  spTzLabelPad.className = 'init-hero-ex__sp-tz-pair__label-gap'
+  spTzLabelPad.setAttribute('aria-hidden', 'true')
+  const tzAbbr = document.createElement('span')
+  tzAbbr.className = 'init-hero-ex__abbr'
+  tzAbbr.textContent = 'TZ'
+  tzAbbr.title = 'Trefferzone (TZ)'
+  spTzLabels.append(spAbbr, spTzLabelPad, tzAbbr)
+
+  const spInp = document.createElement('input')
+  spInp.type = 'text'
+  spInp.inputMode = 'numeric'
+  spInp.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-inp'
+  spInp.id = `hero-ex-${itemId}-sp`
+  spInp.autocomplete = 'off'
+  spInp.spellcheck = false
+  spInp.disabled = !canEdit
+  spInp.value = snap.sp
+  spInp.maxLength = 4
+  spInp.title = 'Schadenspunkte (SP)'
+  spInp.setAttribute('aria-label', 'Schadenspunkte (SP)')
+
+  const spTzArrow = document.createElement('button')
+  spTzArrow.type = 'button'
+  spTzArrow.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-arrow'
+  spTzArrow.textContent = '>'
+  spTzArrow.title = 'Fokus auf Trefferzone (TZ)'
+  spTzArrow.setAttribute('aria-label', 'Zu Trefferzone wechseln')
+
+  const tzInp = document.createElement('input')
+  tzInp.type = 'text'
+  tzInp.inputMode = 'numeric'
+  tzInp.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-inp'
+  tzInp.id = `hero-ex-${itemId}-tz`
+  tzInp.autocomplete = 'off'
+  tzInp.spellcheck = false
+  tzInp.disabled = !canEdit
+  tzInp.value = snap.tz
+  tzInp.maxLength = 3
+  tzInp.title = 'Trefferzone (TZ)'
+  tzInp.setAttribute('aria-label', 'Trefferzone (TZ)')
+
+  const spTzInputs = document.createElement('div')
+  spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
+  spTzInputs.append(spInp, spTzArrow, tzInp)
+  spTzPair.append(spTzLabels, spTzInputs)
 
   strip.append(
     at.cell,
@@ -296,15 +354,16 @@ export function mountHeroExpandBlock(
     tpCell,
     fk.cell,
     g.cell,
-    a.cell,
-    b.cell,
-    c.cell
+    spTzPair
   )
 
   root.append(leadSpacer, attrBlock, spacerExp, strip)
   container.appendChild(root)
 
-  if (!canEdit) return
+  if (!canEdit) {
+    spTzArrow.disabled = true
+    return
+  }
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
 
@@ -316,9 +375,8 @@ export function mountHeroExpandBlock(
     ae: ae.inp.value,
     ko: koAttr.inp.value,
     tp: tpInp.value,
-    a: a.inp.value,
-    b: b.inp.value,
-    c: c.inp.value,
+    sp: spInp.value,
+    tz: tzInp.value,
     fk: fk.inp.value,
     g: g.inp.value,
     mu: mu.inp.value,
@@ -335,6 +393,14 @@ export function mountHeroExpandBlock(
     void applyHeroExpandFields(itemId, gather())
   }
 
+  spTzArrow.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    void commit()
+    tzInp.focus()
+    tzInp.select()
+  })
+
   for (const inp of [
     at.inp,
     pa.inp,
@@ -344,9 +410,8 @@ export function mountHeroExpandBlock(
     tpInp,
     fk.inp,
     g.inp,
-    a.inp,
-    b.inp,
-    c.inp,
+    spInp,
+    tzInp,
     mu.inp,
     kl.inp,
     inn.inp,

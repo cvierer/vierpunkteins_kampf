@@ -1576,8 +1576,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             'Weitere Helden-Optionen ein- oder ausblenden'
           )
           expandBtn.title = isGmSync()
-            ? 'Zeile aufklappen: Eigenschaften (MU … BE), Kampfwerte inkl. LE/max, FK, G, A–C; links Trefferzonen (i) und SL-Zahnrad'
-            : 'Zeile aufklappen: Eigenschaften (MU … BE), Kampfwerte inkl. LE/max, FK, G, A–C; links Trefferzonen (i)'
+            ? 'Zeile aufklappen: Eigenschaften (MU … BE), Kampfwerte inkl. LE/max, FK, G, SP/TZ; links Trefferzonen (i) und SL-Zahnrad'
+            : 'Zeile aufklappen: Eigenschaften (MU … BE), Kampfwerte inkl. LE/max, FK, G, SP/TZ; links Trefferzonen (i)'
           const chev = document.createElement('span')
           chev.className = 'init-row-expand-chev'
           chev.setAttribute('aria-hidden', 'true')
