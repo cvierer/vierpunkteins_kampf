@@ -1,4 +1,4 @@
-import OBR from '@owlbear-rodeo/sdk'
+﻿import OBR from '@owlbear-rodeo/sdk'
 import { TRACKER_ITEM_META_KEY } from './participants.js'
 
 export const HERO_EX_LE = 'heroExLe'
@@ -297,6 +297,7 @@ export function mountHeroExpandBlock(
   lePairInputs.className = 'init-hero-ex__le-pair__inputs'
   lePairInputs.append(leInp, leSlash, leMaxInp)
   lePair.append(lePairLabels, lePairInputs)
+  lePair.classList.add('init-hero-ex__le-pair--in-strip')
 
   const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
 
@@ -389,14 +390,12 @@ export function mountHeroExpandBlock(
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
   spTzInputs.append(spInp, spTzArrow, tzInp)
   spTzPair.append(spTzLabels, spTzInputs)
+  spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-attr-row')
+  attrCols.appendChild(spTzPair)
 
-  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell)
+  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell, lePair)
 
-  const stripRail = document.createElement('div')
-  stripRail.className = 'init-hero-ex__strip-rail'
-  stripRail.append(lePair, spTzPair)
-
-  root.append(leadSpacer, strip, stripRail, spacerExp, attrBlock)
+  root.append(leadSpacer, strip, spacerExp, attrBlock)
   container.appendChild(root)
 
   if (!canEdit) {

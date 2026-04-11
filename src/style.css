@@ -533,15 +533,14 @@ body {
   padding-right: 0.06rem;
 }
 
-/* Ausklappbarer Heldenblock: Spalte 2 = beide Kästchenreihen, Spalte 3 = LE/max + SP>TZ über volle Höhe */
+/* Ausklappbarer Heldenblock: Spalte 1 = Chevron/Tools, Spalte 2 = Kampfwerte + Attribute (ohne rechter Rail) */
 .init-hero-ex {
   --init-hero-cell: 1.22rem;
   --init-hero-strip-gap: 0.16rem;
   /* Nur TP variabel: 6×Zelle + TP + 6 Lücken = 8×Zelle + 7 Lücken */
   --init-hero-tp-w: calc(2 * var(--init-hero-cell) + var(--init-hero-strip-gap));
-  --init-hero-strip-rail-slot: 4.05rem;
   display: grid;
-  grid-template-columns: var(--init-col-expand) minmax(0, 1fr) var(--init-hero-strip-rail-slot);
+  grid-template-columns: var(--init-col-expand) minmax(0, 1fr);
   grid-template-rows: auto auto;
   gap: 0.14rem var(--init-grid-gap);
   align-items: stretch;
@@ -589,24 +588,6 @@ body {
   min-height: 1px;
 }
 
-.init-hero-ex__strip-rail {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  align-self: stretch;
-  width: 100%;
-  min-width: 0;
-  max-width: var(--init-hero-strip-rail-slot);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 0.35rem;
-  padding: 0.06rem 0.06rem 0.06rem 0.22rem;
-  box-sizing: border-box;
-  border-left: 1px solid rgba(139, 105, 20, 0.22);
-  overflow: hidden;
-}
-
 /* LE + max: gemeinsamer Rahmen, „/“ nur hier, mittig, kräftigere Farbe */
 .init-hero-ex__le-pair {
   display: flex;
@@ -616,9 +597,10 @@ body {
   flex-shrink: 0;
 }
 
-.init-hero-ex__strip-rail .init-hero-ex__le-pair,
-.init-hero-ex__strip-rail .init-hero-ex__sp-tz-pair {
-  align-self: center;
+/* In der oberen Reihe direkt neben G: gleiche vertikale Rhythmik wie .init-hero-ex__micro-cell */
+.init-hero-ex__le-pair--in-strip {
+  align-self: flex-end;
+  gap: 0.06rem;
 }
 
 .init-hero-ex__le-pair__labels {
@@ -697,6 +679,12 @@ body {
   align-items: flex-start;
   gap: 0.05rem;
   flex-shrink: 0;
+}
+
+/* Direkt neben KO in der Attributreihe: Eingabezeile wie Mikro-Kästchen (--init-hero-cell) */
+.init-hero-ex__sp-tz-pair--in-attr-row {
+  align-self: flex-end;
+  gap: 0.06rem;
 }
 
 .init-hero-ex__sp-tz-pair__labels {
