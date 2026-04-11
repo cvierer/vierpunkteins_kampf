@@ -9,7 +9,7 @@ export const HERO_EX_PA = 'heroExPa'
 /** Konstitution (Eigenschaft), nur in der Eigenschaftenzeile */
 export const HERO_EX_KO = 'heroExKo'
 export const HERO_EX_TP = 'heroExTp'
-/** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
+/** Ausweichen (A), Kampfzeile zwischen PA und LE */
 export const HERO_EX_A = 'heroExA'
 /** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
 export const HERO_EX_B = 'heroExB'
@@ -27,6 +27,7 @@ export const HERO_EX_CH = 'heroExCh'
 export const HERO_EX_FF = 'heroExFf'
 export const HERO_EX_GE = 'heroExGe'
 export const HERO_EX_KK = 'heroExKk'
+/** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
 export const HERO_EX_BE = 'heroExBe'
 /** @deprecated Nur Lesen/Migration, nicht mehr in der UI */
 export const HERO_EX_AMOD = 'heroExAMod'
@@ -61,6 +62,7 @@ export function readHeroExpandSnapshot(meta) {
   return {
     at: strOrEmpty(meta?.[HERO_EX_AT]),
     pa: strOrEmpty(meta?.[HERO_EX_PA]),
+    a: strOrEmpty(meta?.[HERO_EX_A]),
     le: strOrEmpty(meta?.[HERO_EX_LE]),
     leMax: strOrEmpty(meta?.[HERO_EX_LE_MAX]),
     ae: strOrEmpty(meta?.[HERO_EX_AE]),
@@ -77,7 +79,6 @@ export function readHeroExpandSnapshot(meta) {
     ff: strOrEmpty(meta?.[HERO_EX_FF]),
     ge: strOrEmpty(meta?.[HERO_EX_GE]),
     kk: strOrEmpty(meta?.[HERO_EX_KK]),
-    be: strOrEmpty(meta?.[HERO_EX_BE]),
   }
 }
 
@@ -99,6 +100,7 @@ export async function applyHeroExpandFields(itemId, next) {
 
       setStr(HERO_EX_AT, next.at)
       setStr(HERO_EX_PA, next.pa)
+      setStr(HERO_EX_A, next.a)
       setStr(HERO_EX_LE, next.le)
       setStr(HERO_EX_LE_MAX, next.leMax)
       setStr(HERO_EX_AE, next.ae)
@@ -115,13 +117,12 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_FF, next.ff)
       setStr(HERO_EX_GE, next.ge)
       setStr(HERO_EX_KK, next.kk)
-      setStr(HERO_EX_BE, next.be)
 
       delete m[HERO_EX_AEKE_LEGACY]
       delete m[HERO_EX_WUNDEN_LEGACY]
-      delete m[HERO_EX_A]
       delete m[HERO_EX_B]
       delete m[HERO_EX_C]
+      delete m[HERO_EX_BE]
     }
   })
 }
@@ -198,19 +199,19 @@ export function mountHeroExpandBlock(
   const ch = mkMicro('CH', 'Charisma (CH)', 'ch', snap.ch, 2, '', true)
   const ff = mkMicro('FF', 'Fingerfertigkeit (FF)', 'ff', snap.ff, 2, '', true)
   const ge = mkMicro('GE', 'Gewandtheit (GE)', 'ge', snap.ge, 2, '', true)
-  const koAttr = mkMicro('KO', 'Konstitution (KO)', 'ko', snap.ko, 2, '', true)
   const kk = mkMicro('KK', 'Körperkraft (KK)', 'kk', snap.kk, 2, '', true)
-  const be = mkMicro('BE', 'Bewegung (BE)', 'be', snap.be, 2, '', true)
+  const koAttr = mkMicro('KO', 'Konstitution (KO)', 'ko', snap.ko, 2, '', true)
 
   const attrCols = document.createElement('div')
   attrCols.className = 'init-hero-ex__attr-cols'
-  for (const x of [mu, kl, inn, ch, ff, ge, koAttr, kk, be]) {
+  for (const x of [mu, kl, inn, ch, ff, ge, kk, koAttr]) {
     attrCols.appendChild(x.cell)
   }
   attrBlock.appendChild(attrCols)
 
   const at = mkMicro('AT', 'Attacke (AT)', 'at', snap.at, 2, '', true)
   const pa = mkMicro('PA', 'Parade (PA)', 'pa', snap.pa, 2, '', true)
+  const ausw = mkMicro('A', 'Ausweichen (A)', 'a', snap.a, 2, '', true)
 
   const lePair = document.createElement('div')
   lePair.className = 'init-hero-ex__le-pair'
@@ -349,6 +350,7 @@ export function mountHeroExpandBlock(
   strip.append(
     at.cell,
     pa.cell,
+    ausw.cell,
     lePair,
     ae.cell,
     tpCell,
@@ -370,6 +372,7 @@ export function mountHeroExpandBlock(
   const gather = () => ({
     at: at.inp.value,
     pa: pa.inp.value,
+    a: ausw.inp.value,
     le: leInp.value,
     leMax: leMaxInp.value,
     ae: ae.inp.value,
@@ -386,7 +389,6 @@ export function mountHeroExpandBlock(
     ff: ff.inp.value,
     ge: ge.inp.value,
     kk: kk.inp.value,
-    be: be.inp.value,
   })
 
   const commit = () => {
@@ -404,6 +406,7 @@ export function mountHeroExpandBlock(
   for (const inp of [
     at.inp,
     pa.inp,
+    ausw.inp,
     leInp,
     leMaxInp,
     ae.inp,
@@ -418,9 +421,8 @@ export function mountHeroExpandBlock(
     ch.inp,
     ff.inp,
     ge.inp,
-    koAttr.inp,
     kk.inp,
-    be.inp,
+    koAttr.inp,
   ]) {
     inp.addEventListener('blur', commit)
   }
