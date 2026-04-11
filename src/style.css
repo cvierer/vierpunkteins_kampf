@@ -524,7 +524,7 @@ body {
 }
 
 .init-row-extra-panel--has-hero-ex .init-row-extra-panel__body {
-  max-height: 7rem;
+  max-height: 8.25rem;
   overflow-x: auto;
   overflow-y: hidden;
   padding-right: 0.06rem;
@@ -563,52 +563,13 @@ body {
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 0.09rem;
+  gap: 0.16rem;
   min-width: 0;
   width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 0.02rem 0 0.04rem;
+  padding: 0.04rem 0 0.06rem;
   box-sizing: border-box;
-}
-
-.init-hero-ex__attr-col {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 1.14rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.05rem;
-}
-
-.init-hero-ex__attr-abbr {
-  font-family: var(--font-heading);
-  font-size: 0.44rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  line-height: 1;
-  cursor: default;
-  text-align: center;
-  width: 100%;
-}
-
-.init-hero-ex__micro--attr {
-  width: 100%;
-  max-width: 1.08rem;
-  aspect-ratio: 1;
-  height: auto;
-  min-height: 0.78rem;
-  max-height: 1.05rem;
-  margin: 0;
-  min-width: 0;
-  box-sizing: border-box;
-  font-size: 0.58rem;
-  font-weight: 800;
-  border-radius: 4px;
 }
 
 .init-hero-ex__lead {
@@ -629,7 +590,7 @@ body {
 
 .init-hero-ex__le-pair__labels {
   display: grid;
-  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) minmax(1rem, 1.18rem);
+  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) 1.22rem;
   width: fit-content;
   align-items: end;
   justify-items: center;
@@ -644,7 +605,7 @@ body {
 
 .init-hero-ex__le-pair__inputs {
   display: grid;
-  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) minmax(1rem, 1.18rem);
+  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) 1.22rem;
   width: fit-content;
   align-items: stretch;
   box-sizing: border-box;
@@ -668,7 +629,7 @@ body {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
@@ -686,7 +647,7 @@ body {
   margin: 0;
   padding: 0;
   align-self: stretch;
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   font-weight: 700;
   line-height: 1;
   color: rgba(62, 56, 48, 0.88);
@@ -694,11 +655,6 @@ body {
   border-left: 1px solid rgba(201, 162, 39, 0.48);
   border-right: 1px solid rgba(201, 162, 39, 0.48);
   background: rgba(201, 162, 39, 0.1);
-}
-
-.init-hero-ex__micro--lemax.init-hero-ex__micro--le-pair-inp {
-  font-size: 0.62rem;
-  letter-spacing: -0.02em;
 }
 
 /* i + Zahnrad unter Aufklapp-Chevron, bündig zur AT-Zeile */
@@ -742,13 +698,13 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.05rem;
+  gap: 0.09rem;
   flex-shrink: 0;
 }
 
 .init-hero-ex__abbr {
   font-family: var(--font-heading);
-  font-size: 0.46rem;
+  font-size: 0.54rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -768,7 +724,7 @@ body {
   background: rgba(201, 162, 39, 0.12);
   color: var(--color-accent);
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
@@ -796,7 +752,7 @@ body {
   max-width: 3.35rem;
   padding-left: 0.1rem;
   padding-right: 0.1rem;
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0.02em;
 }

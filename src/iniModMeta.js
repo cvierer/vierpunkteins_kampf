@@ -12,6 +12,9 @@ export const HERO_EX_TP = 'heroExTp'
 export const HERO_EX_A = 'heroExA'
 export const HERO_EX_B = 'heroExB'
 export const HERO_EX_C = 'heroExC'
+export const HERO_EX_FK = 'heroExFk'
+/** Geschosse */
+export const HERO_EX_G = 'heroExG'
 export const HERO_EX_MU = 'heroExMu'
 export const HERO_EX_KL = 'heroExKl'
 export const HERO_EX_IN = 'heroExIn'
@@ -61,6 +64,8 @@ export function readHeroExpandSnapshot(meta) {
     a: strOrEmpty(meta?.[HERO_EX_A]),
     b: strOrEmpty(meta?.[HERO_EX_B]),
     c: strOrEmpty(meta?.[HERO_EX_C]),
+    fk: strOrEmpty(meta?.[HERO_EX_FK]),
+    g: strOrEmpty(meta?.[HERO_EX_G]),
     mu: strOrEmpty(meta?.[HERO_EX_MU]),
     kl: strOrEmpty(meta?.[HERO_EX_KL]),
     inn: strOrEmpty(meta?.[HERO_EX_IN]),
@@ -98,6 +103,8 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_A, next.a)
       setStr(HERO_EX_B, next.b)
       setStr(HERO_EX_C, next.c)
+      setStr(HERO_EX_FK, next.fk)
+      setStr(HERO_EX_G, next.g)
       setStr(HERO_EX_MU, next.mu)
       setStr(HERO_EX_KL, next.kl)
       setStr(HERO_EX_IN, next.inn)
@@ -179,43 +186,20 @@ export function mountHeroExpandBlock(
     return { cell, inp }
   }
 
-  const mkAttrCol = (abbr, fullName, idSuf, value, maxLen) => {
-    const col = document.createElement('div')
-    col.className = 'init-hero-ex__attr-col'
-    const ab = document.createElement('span')
-    ab.className = 'init-hero-ex__attr-abbr'
-    ab.textContent = abbr
-    ab.title = fullName
-    const inp = document.createElement('input')
-    inp.type = 'text'
-    inp.inputMode = 'numeric'
-    inp.className = 'init-hero-ex__micro init-hero-ex__micro--attr'
-    inp.id = `hero-ex-${itemId}-${idSuf}`
-    inp.autocomplete = 'off'
-    inp.spellcheck = false
-    inp.disabled = !canEdit
-    inp.value = value
-    inp.maxLength = maxLen
-    inp.title = fullName
-    inp.setAttribute('aria-label', fullName)
-    col.append(ab, inp)
-    return { col, inp }
-  }
-
-  const mu = mkAttrCol('MU', 'Mut (MU)', 'mu', snap.mu, 2)
-  const kl = mkAttrCol('KL', 'Klugheit (KL)', 'kl', snap.kl, 2)
-  const inn = mkAttrCol('IN', 'Intuition (IN)', 'inn', snap.inn, 2)
-  const ch = mkAttrCol('CH', 'Charisma (CH)', 'ch', snap.ch, 2)
-  const ff = mkAttrCol('FF', 'Fingerfertigkeit (FF)', 'ff', snap.ff, 2)
-  const ge = mkAttrCol('GE', 'Gewandtheit (GE)', 'ge', snap.ge, 2)
-  const koAttr = mkAttrCol('KO', 'Konstitution (KO)', 'ko', snap.ko, 2)
-  const kk = mkAttrCol('KK', 'Körperkraft (KK)', 'kk', snap.kk, 2)
-  const be = mkAttrCol('BE', 'Bewegung (BE)', 'be', snap.be, 2)
+  const mu = mkMicro('MU', 'Mut (MU)', 'mu', snap.mu, 2, '', true)
+  const kl = mkMicro('KL', 'Klugheit (KL)', 'kl', snap.kl, 2, '', true)
+  const inn = mkMicro('IN', 'Intuition (IN)', 'inn', snap.inn, 2, '', true)
+  const ch = mkMicro('CH', 'Charisma (CH)', 'ch', snap.ch, 2, '', true)
+  const ff = mkMicro('FF', 'Fingerfertigkeit (FF)', 'ff', snap.ff, 2, '', true)
+  const ge = mkMicro('GE', 'Gewandtheit (GE)', 'ge', snap.ge, 2, '', true)
+  const koAttr = mkMicro('KO', 'Konstitution (KO)', 'ko', snap.ko, 2, '', true)
+  const kk = mkMicro('KK', 'Körperkraft (KK)', 'kk', snap.kk, 2, '', true)
+  const be = mkMicro('BE', 'Bewegung (BE)', 'be', snap.be, 2, '', true)
 
   const attrCols = document.createElement('div')
   attrCols.className = 'init-hero-ex__attr-cols'
   for (const x of [mu, kl, inn, ch, ff, ge, koAttr, kk, be]) {
-    attrCols.appendChild(x.col)
+    attrCols.appendChild(x.cell)
   }
   attrBlock.appendChild(attrCols)
 
@@ -298,6 +282,8 @@ export function mountHeroExpandBlock(
   tpCell.append(tpAbbr, tpInp)
   syncTpFontSize(tpInp)
 
+  const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
+  const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
   const a = mkMicro('A', 'Feld A', 'a', snap.a, 2, '', true)
   const b = mkMicro('B', 'Feld B', 'b', snap.b, 2, '', true)
   const c = mkMicro('C', 'Feld C', 'c', snap.c, 2, '', true)
@@ -308,6 +294,8 @@ export function mountHeroExpandBlock(
     lePair,
     ae.cell,
     tpCell,
+    fk.cell,
+    g.cell,
     a.cell,
     b.cell,
     c.cell
@@ -331,6 +319,8 @@ export function mountHeroExpandBlock(
     a: a.inp.value,
     b: b.inp.value,
     c: c.inp.value,
+    fk: fk.inp.value,
+    g: g.inp.value,
     mu: mu.inp.value,
     kl: kl.inp.value,
     inn: inn.inp.value,
@@ -352,6 +342,8 @@ export function mountHeroExpandBlock(
     leMaxInp,
     ae.inp,
     tpInp,
+    fk.inp,
+    g.inp,
     a.inp,
     b.inp,
     c.inp,
