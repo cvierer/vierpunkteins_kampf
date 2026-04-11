@@ -297,7 +297,8 @@ export function mountHeroExpandBlock(
   lePairInputs.className = 'init-hero-ex__le-pair__inputs'
   lePairInputs.append(leInp, leSlash, leMaxInp)
   lePair.append(lePairLabels, lePairInputs)
-  lePair.classList.add('init-hero-ex__le-pair--in-strip')
+  lePair.classList.add('init-hero-ex__le-pair--in-attr-row')
+  attrCols.appendChild(lePair)
 
   const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
 
@@ -390,10 +391,9 @@ export function mountHeroExpandBlock(
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
   spTzInputs.append(spInp, spTzArrow, tzInp)
   spTzPair.append(spTzLabels, spTzInputs)
-  spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-attr-row')
-  attrCols.appendChild(spTzPair)
+  spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-strip')
 
-  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell, lePair)
+  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell, spTzPair)
 
   root.append(leadSpacer, strip, spacerExp, attrBlock)
   container.appendChild(root)
