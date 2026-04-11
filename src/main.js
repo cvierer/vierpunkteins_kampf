@@ -8,6 +8,7 @@ import { initCombatRoom } from './combatRoom.js'
 import { setupCombatControls } from './combatControls.js'
 import { syncActionChrome } from './actionChrome.js'
 import { setupSettingsPanel } from './settingsPanel.js'
+import { cleanupLegacyTurnMarkers } from './turnMarkerCleanup.js'
 
 const appRoot = document.querySelector('#app')
 appRoot.innerHTML = `
@@ -82,6 +83,7 @@ if (OBR.isAvailable) {
   OBR.onReady(async () => {
     await initCombatRoom()
     await initEditAccess()
+    void cleanupLegacyTurnMarkers()
     const combatRoot = document.querySelector('[data-combat-root]')
     const { refreshBar } = await setupCombatControls(combatRoot)
     setupContextMenu()
