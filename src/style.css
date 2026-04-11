@@ -138,16 +138,19 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
-  --init-col-expand: 1.05rem;
-  /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) à 1.22rem + Gaps */
-  --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
+  /* Objektkästchen wie AT im Heldenblock; horizontaler Abstand wie AT–PA */
+  --init-obj-cell: 1.22rem;
+  --init-obj-gap: 0.16rem;
+  --init-col-expand: var(--init-obj-cell);
+  /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) */
+  --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-obj-gap));
   /* Abstand Zähler/2.A.+ → Name (halb so breit wie zuvor) */
   --init-col-gutter: 0.36rem;
   /* INI etwas schmaler → mehr Platz für Namen */
   --init-col-ini: calc(4.75rem * 3.4 / 9);
   /* Tauschpfeile-Spalte halb so breit */
   --init-col-swap: 0.3rem;
-  --init-grid-gap: 0.3rem;
+  --init-grid-gap: var(--init-obj-gap);
   --init-list-row-gap: 0.4rem;
 }
 
@@ -201,7 +204,7 @@ body {
   flex-direction: row;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 0.22rem;
+  gap: var(--init-obj-gap);
   min-width: 0;
   box-sizing: border-box;
 }
@@ -465,7 +468,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 1rem;
+  max-width: var(--init-obj-cell);
   margin: 0 auto;
   padding: 0.1rem 0;
   border: 0;
@@ -1315,7 +1318,7 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.22rem;
+  gap: var(--init-obj-gap);
 }
 
 /* Ang., Abw., S.R.A., F.A., L.H., 2.A.+ in einer Zeile (1.22rem hoch). */
@@ -1324,9 +1327,9 @@ body {
   align-items: center;
   justify-content: flex-start;
   gap: 0;
-  min-height: 1.22rem;
-  max-height: 1.22rem;
-  height: 1.22rem;
+  min-height: var(--init-obj-cell);
+  max-height: var(--init-obj-cell);
+  height: var(--init-obj-cell);
 }
 
 .init-phase-slot-row {
@@ -1335,14 +1338,14 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.22rem;
+  gap: var(--init-obj-gap);
   flex-shrink: 0;
 }
 
 .init-phase-plus-anchor {
   position: relative;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   flex-shrink: 0;
 }
 
@@ -1378,8 +1381,8 @@ body {
 
 .init-row-kr-counter {
   flex-shrink: 0;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   padding: 0;
   margin: 0;
   box-sizing: border-box;
@@ -1463,8 +1466,8 @@ body {
 .init-lh-cell {
   position: relative;
   flex-shrink: 0;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   box-sizing: border-box;
   border-radius: 4px;
   border: 1px solid rgba(201, 162, 39, 0.45);
@@ -1665,8 +1668,8 @@ body {
 .init-row-phase-plus,
 .init-row-phase-minus {
   flex-shrink: 0;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   padding: 0;
   margin: 0;
   border-radius: 4px;
@@ -1710,8 +1713,8 @@ body {
 
 .init-row-zao-remove {
   flex-shrink: 0;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   padding: 0;
   margin: 0;
   border-radius: 4px;
@@ -1741,8 +1744,8 @@ body {
 .init-row-zao-padlock {
   flex-shrink: 0;
   box-sizing: border-box;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   padding: 0;
   margin: 0;
   display: flex;
@@ -1831,7 +1834,7 @@ body {
   position: relative;
   /* Phasen-Zeile: Abstand zur Namensspalte wie Token-Zeile schmaler */
   --init-phase-gutter-inner: 1.64rem;
-  --init-col-btn: calc(6 * 1.22rem + 5 * 0.22rem);
+  --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-obj-gap));
   grid-template-columns:
     var(--init-col-expand) var(--init-col-btn) var(--init-phase-gutter-inner)
     minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
@@ -1842,11 +1845,11 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.22rem;
+  gap: var(--init-obj-gap);
 }
 
 .init-row-main--phase-zao {
-  --init-col-btn: calc(7 * 1.22rem + 6 * 0.22rem);
+  --init-col-btn: calc(7 * var(--init-obj-cell) + 6 * var(--init-obj-gap));
   grid-template-columns:
     var(--init-col-expand) var(--init-col-btn) minmax(0, 1fr)
     var(--init-col-ini) var(--init-col-swap);
@@ -1876,11 +1879,11 @@ body {
   transform: none;
   flex-shrink: 0;
   z-index: auto;
-  width: 1.22rem;
-  min-width: 1.22rem;
-  max-width: 1.22rem;
-  height: 1.22rem;
-  min-height: 1.22rem;
+  width: var(--init-obj-cell);
+  min-width: var(--init-obj-cell);
+  max-width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
+  min-height: var(--init-obj-cell);
   padding: 0;
   border-radius: 4px;
   border: 1px solid rgba(201, 162, 39, 0.45);
@@ -2222,8 +2225,8 @@ body {
 .init-fa-cell {
   position: relative;
   flex-shrink: 0;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   box-sizing: border-box;
   border-radius: 4px;
   border: 1px solid rgba(123, 31, 162, 0.45);
