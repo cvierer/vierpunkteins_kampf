@@ -377,19 +377,17 @@ export function mountHeroExpandBlock(
   spTzInputs.append(spInp, spTzArrow, tzInp)
   spTzPair.append(spTzLabels, spTzInputs)
 
-  strip.append(
-    at.cell,
-    pa.cell,
-    ausw.cell,
-    lePair,
-    ae.cell,
-    tpCell,
-    fk.cell,
-    g.cell,
-    spTzPair
-  )
+  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell)
 
-  root.append(leadSpacer, attrBlock, spacerExp, strip)
+  const stripRail = document.createElement('div')
+  stripRail.className = 'init-hero-ex__strip-rail'
+  stripRail.append(lePair, spTzPair)
+
+  const combatWrap = document.createElement('div')
+  combatWrap.className = 'init-hero-ex__combat-wrap'
+  combatWrap.append(strip, stripRail)
+
+  root.append(leadSpacer, combatWrap, spacerExp, attrBlock)
   container.appendChild(root)
 
   if (!canEdit) {

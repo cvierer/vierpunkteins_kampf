@@ -579,6 +579,35 @@ body {
   min-height: 1px;
 }
 
+/* Obere Zeile: linke Kampf-Kästchen + rechter Bereich (LE/max, SP>TZ) */
+.init-hero-ex__combat-wrap {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.42rem;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.init-hero-ex__strip-rail {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  padding: 0 0 0.02rem 0.22rem;
+  margin: 0 0 0.02rem;
+  box-sizing: border-box;
+  border-left: 1px solid rgba(139, 105, 20, 0.22);
+  min-width: 0;
+}
+
 /* LE + max: gemeinsamer Rahmen, „/“ nur hier, mittig, kräftigere Farbe */
 .init-hero-ex__le-pair {
   display: flex;
@@ -785,8 +814,7 @@ body {
 }
 
 .init-hero-ex__strip {
-  grid-column: 2;
-  grid-row: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -795,6 +823,7 @@ body {
   gap: 0.16rem;
   min-width: 0;
   box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .init-hero-ex__micro-cell {
