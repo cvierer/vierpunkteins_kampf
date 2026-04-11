@@ -691,6 +691,18 @@ body {
   gap: 0.06rem;
 }
 
+/* Beschriftungszeile wie einzelne .init-hero-ex__abbr-Zeile (kein visueller Zuwachs durch scale) */
+.init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-pair__labels {
+  align-items: center;
+  height: 0.54rem;
+  max-height: 0.54rem;
+  box-sizing: border-box;
+}
+
+.init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-label-btn {
+  transform: none;
+}
+
 .init-hero-ex__sp-tz-pair__labels {
   display: grid;
   grid-template-columns: var(--init-hero-cell) var(--init-hero-cell) var(--init-hero-cell);
@@ -756,6 +768,9 @@ body {
   width: fit-content;
   align-items: stretch;
   box-sizing: border-box;
+  height: var(--init-hero-cell);
+  min-height: var(--init-hero-cell);
+  max-height: var(--init-hero-cell);
   border: 1px solid rgba(201, 162, 39, 0.5);
   border-radius: 4px;
   overflow: hidden;
