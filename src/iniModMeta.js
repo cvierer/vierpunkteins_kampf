@@ -96,9 +96,12 @@ function syncTpFontSize(tpInp) {
 /**
  * Eine Zeile Micro-Kästchen (AT … C), ausgerichtet unter der Initiative-Zeile.
  * @param {HTMLElement} container
- * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean }} opts
+ * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean, leadButtons?: HTMLElement[] }} opts
  */
-export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
+export function mountHeroExpandBlock(
+  container,
+  { itemId, meta, canEdit, leadButtons }
+) {
   const snap = readHeroExpandSnapshot(meta)
   container.replaceChildren()
 
@@ -107,7 +110,13 @@ export function mountHeroExpandBlock(container, { itemId, meta, canEdit }) {
 
   const spacerExp = document.createElement('div')
   spacerExp.className = 'init-hero-ex__lead'
-  spacerExp.setAttribute('aria-hidden', 'true')
+  const leadEls = Array.isArray(leadButtons) ? leadButtons.filter(Boolean) : []
+  if (leadEls.length > 0) {
+    spacerExp.classList.add('init-hero-ex__lead--tools')
+    for (const el of leadEls) spacerExp.appendChild(el)
+  } else {
+    spacerExp.setAttribute('aria-hidden', 'true')
+  }
 
   const strip = document.createElement('div')
   strip.className = 'init-hero-ex__strip'

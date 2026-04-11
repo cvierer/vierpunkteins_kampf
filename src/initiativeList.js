@@ -1576,8 +1576,8 @@ export function setupInitiativeList(element, { onListChange } = {}) {
             'Weitere Helden-Optionen ein- oder ausblenden'
           )
           expandBtn.title = isGmSync()
-            ? 'Zeile aufklappen: AT, PA, LE, AE, KO, TP, A–C; Trefferzonen (i); SL über Zahnrad'
-            : 'Zeile aufklappen: AT, PA, LE, AE, KO, TP, A–C; Trefferzonen (i)'
+            ? 'Zeile aufklappen: AT, PA, LE, AE, KO, TP, A–C; links daneben Trefferzonen (i) und SL-Zahnrad'
+            : 'Zeile aufklappen: AT, PA, LE, AE, KO, TP, A–C; links daneben Trefferzonen (i)'
           const chev = document.createElement('span')
           chev.className = 'init-row-expand-chev'
           chev.setAttribute('aria-hidden', 'true')
@@ -1783,13 +1783,6 @@ export function setupInitiativeList(element, { onListChange } = {}) {
           extraPanel.classList.add('init-row-extra-panel--has-hero-ex')
           const body = document.createElement('div')
           body.className = 'init-row-extra-panel__body'
-          mountHeroExpandBlock(body, {
-            itemId: row.id,
-            meta: tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY],
-            canEdit,
-          })
-          const footer = document.createElement('div')
-          footer.className = 'init-row-extra-panel__footer'
           const infoHit = document.createElement('button')
           infoHit.type = 'button'
           infoHit.className = 'init-row-extra-info'
@@ -1811,9 +1804,9 @@ export function setupInitiativeList(element, { onListChange } = {}) {
               canEdit
             )
           })
-          footer.appendChild(infoHit)
+          /** @type {HTMLElement[]} */
+          const leadButtons = [infoHit]
           if (isGmSync()) {
-            extraPanel.classList.add('init-row-extra-panel--has-gear')
             const gearHero = document.createElement('button')
             gearHero.type = 'button'
             gearHero.className = 'init-row-extra-gear'
@@ -1829,9 +1822,15 @@ export function setupInitiativeList(element, { onListChange } = {}) {
               heroSettingsGearEl = gearHero
               openHeroSettings(row.id, row.name)
             })
-            footer.appendChild(gearHero)
+            leadButtons.push(gearHero)
           }
-          extraPanel.append(body, footer)
+          mountHeroExpandBlock(body, {
+            itemId: row.id,
+            meta: tokenSceneItem?.metadata?.[TRACKER_ITEM_META_KEY],
+            canEdit,
+            leadButtons,
+          })
+          extraPanel.appendChild(body)
         }
 
         if (extrasOpen) li.classList.add('init-row--extras-open')

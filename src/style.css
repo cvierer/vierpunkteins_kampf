@@ -511,15 +511,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.12rem;
-  padding: 0.19rem 0 0.21rem;
+  gap: 0.08rem;
+  padding: 0.14rem 0 0.14rem;
   margin-top: 0.06rem;
   border-top: 1px solid rgba(139, 105, 20, 0.14);
   min-height: 0.28rem;
-}
-
-.init-row-extra-panel--has-gear {
-  min-height: calc((1.22rem + 0.55rem) / 2);
 }
 
 .init-row-extra-panel__body {
@@ -548,6 +544,30 @@ body {
 .init-hero-ex__lead {
   min-width: 0;
   min-height: 1px;
+}
+
+/* i + Zahnrad unter Aufklapp-Chevron, bündig zur AT-Zeile */
+.init-hero-ex__lead--tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.05rem;
+  padding-bottom: 0.04rem;
+  box-sizing: border-box;
+}
+
+.init-hero-ex__lead--tools .init-row-extra-info,
+.init-hero-ex__lead--tools .init-row-extra-gear {
+  min-width: 0.68rem;
+  min-height: 0.68rem;
+  padding: 0.03rem;
+}
+
+.init-hero-ex__lead--tools .init-row-extra-info svg,
+.init-hero-ex__lead--tools .init-row-extra-gear svg {
+  width: 11px;
+  height: 11px;
 }
 
 .init-hero-ex__strip {
@@ -633,16 +653,6 @@ body {
 .init-hero-ex__micro:disabled {
   opacity: 0.72;
   cursor: not-allowed;
-}
-
-.init-row-extra-panel__footer {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: flex-end;
-  gap: 0.22rem;
-  margin-top: auto;
-  padding-top: 0.06rem;
 }
 
 .init-row-extra-info {
