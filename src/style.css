@@ -729,15 +729,18 @@ body {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: rgba(26, 23, 20, 0.72);
+  color: rgba(26, 23, 20, 0.92);
   font-family: var(--font-heading);
   font-size: 0.54rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   cursor: pointer;
   transition: color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  transform: scale(1.16);
+  transform-origin: 50% 100%;
 }
 
 .init-hero-ex__sp-tz-label-btn:hover:not(:disabled) {
