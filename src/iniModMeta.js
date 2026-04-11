@@ -353,12 +353,21 @@ export function mountHeroExpandBlock(
   spInp.title = 'Schadenspunkte (SP)'
   spInp.setAttribute('aria-label', 'Schadenspunkte (SP)')
 
-  const spTzArrow = document.createElement('button')
-  spTzArrow.type = 'button'
-  spTzArrow.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-arrow'
-  spTzArrow.textContent = '>'
-  spTzArrow.title = 'Fokus auf Trefferzone (TZ)'
-  spTzArrow.setAttribute('aria-label', 'Zu Trefferzone wechseln')
+  const spTzMid = document.createElement('div')
+  spTzMid.className = 'init-hero-ex__sp-tz-mid'
+  const spTzUndo = document.createElement('button')
+  spTzUndo.type = 'button'
+  spTzUndo.className = 'init-hero-ex__sp-tz-mid-btn'
+  spTzUndo.textContent = '<'
+  spTzUndo.title = 'Schadenspunkte / Trefferzone: letzte Änderung rückgängig'
+  spTzUndo.setAttribute('aria-label', 'SP und TZ: rückgängig')
+  const spTzRedo = document.createElement('button')
+  spTzRedo.type = 'button'
+  spTzRedo.className = 'init-hero-ex__sp-tz-mid-btn'
+  spTzRedo.textContent = '>'
+  spTzRedo.title = 'Schadenspunkte / Trefferzone: wiederholen'
+  spTzRedo.setAttribute('aria-label', 'SP und TZ: wiederholen')
+  spTzMid.append(spTzUndo, spTzRedo)
 
   const tzInp = document.createElement('input')
   tzInp.type = 'text'
@@ -374,7 +383,7 @@ export function mountHeroExpandBlock(
 
   const spTzInputs = document.createElement('div')
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
-  spTzInputs.append(spInp, spTzArrow, tzInp)
+  spTzInputs.append(spInp, spTzMid, tzInp)
   spTzPair.append(spTzLabels, spTzInputs)
 
   strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell)
@@ -387,12 +396,25 @@ export function mountHeroExpandBlock(
   container.appendChild(root)
 
   if (!canEdit) {
-    spTzArrow.disabled = true
+    spTzUndo.disabled = true
+    spTzRedo.disabled = true
     return
   }
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
   tzInp.addEventListener('input', () => syncTzTooltip(tzInp))
+
+  /** @type {{ sp: string, tz: string }} */
+  let spTzCheckpoint = { sp: snap.sp, tz: snap.tz }
+  /** @type {{ sp: string, tz: string }[]} */
+  const spTzUndoStack = []
+  /** @type {{ sp: string, tz: string }[]} */
+  const spTzRedoStack = []
+
+  const syncSpTzHistoryButtons = () => {
+    spTzUndo.disabled = spTzUndoStack.length === 0
+    spTzRedo.disabled = spTzRedoStack.length === 0
+  }
 
   const gather = () => ({
     at: at.inp.value,
@@ -417,16 +439,46 @@ export function mountHeroExpandBlock(
   })
 
   const commit = () => {
+    const g = gather()
+    if (g.sp !== spTzCheckpoint.sp || g.tz !== spTzCheckpoint.tz) {
+      spTzUndoStack.push({ ...spTzCheckpoint })
+      spTzRedoStack.length = 0
+      spTzCheckpoint = { sp: g.sp, tz: g.tz }
+    }
+    syncSpTzHistoryButtons()
+    void applyHeroExpandFields(itemId, g)
+  }
+
+  const applySpTzPairToScene = (pair) => {
+    spInp.value = pair.sp
+    tzInp.value = pair.tz
+    syncTzTooltip(tzInp)
     void applyHeroExpandFields(itemId, gather())
   }
 
-  spTzArrow.addEventListener('click', (e) => {
+  spTzUndo.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    void commit()
-    tzInp.focus()
-    tzInp.select()
+    if (spTzUndoStack.length === 0) return
+    const prev = spTzUndoStack.pop()
+    spTzRedoStack.push({ ...spTzCheckpoint })
+    spTzCheckpoint = { ...prev }
+    applySpTzPairToScene(prev)
+    syncSpTzHistoryButtons()
   })
+
+  spTzRedo.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (spTzRedoStack.length === 0) return
+    const next = spTzRedoStack.pop()
+    spTzUndoStack.push({ ...spTzCheckpoint })
+    spTzCheckpoint = { ...next }
+    applySpTzPairToScene(next)
+    syncSpTzHistoryButtons()
+  })
+
+  syncSpTzHistoryButtons()
 
   for (const inp of [
     at.inp,

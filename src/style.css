@@ -751,26 +751,36 @@ body {
   background: rgba(255, 255, 255, 0.12) !important;
 }
 
-.init-hero-ex__micro.init-hero-ex__micro--sp-tz-arrow {
+/* SP | < > | TZ: eine Gitterspalte wie zuvor, zwei dezent getrennte Steuerflächen */
+.init-hero-ex__sp-tz-mid {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: stretch;
   width: 100%;
   min-width: 0;
   height: var(--init-hero-cell);
+  box-sizing: border-box;
+  border-left: 1px solid rgba(201, 162, 39, 0.48);
+  border-right: 1px solid rgba(201, 162, 39, 0.48);
+  background: rgba(201, 162, 39, 0.1);
+}
+
+.init-hero-ex__sp-tz-mid-btn {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  border: 0 !important;
-  border-left: 1px solid rgba(201, 162, 39, 0.48) !important;
-  border-right: 1px solid rgba(201, 162, 39, 0.48) !important;
-  border-radius: 0 !important;
-  background: rgba(201, 162, 39, 0.1);
-  color: var(--color-accent);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(90, 82, 68, 0.52);
   font-family: var(--font-body);
-  font-size: 0.86rem;
-  font-weight: 800;
+  font-size: 0.62rem;
+  font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.04em;
   cursor: pointer;
   transition:
     background 0.12s ease,
@@ -778,18 +788,23 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.init-hero-ex__micro--sp-tz-arrow:hover:not(:disabled) {
-  background: rgba(201, 162, 39, 0.22);
+.init-hero-ex__sp-tz-mid-btn + .init-hero-ex__sp-tz-mid-btn {
+  border-left: 1px solid rgba(201, 162, 39, 0.32);
 }
 
-.init-hero-ex__micro--sp-tz-arrow:focus-visible {
-  outline: 2px solid rgba(201, 162, 39, 0.55);
+.init-hero-ex__sp-tz-mid-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(62, 56, 48, 0.72);
+}
+
+.init-hero-ex__sp-tz-mid-btn:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.45);
   outline-offset: -1px;
   z-index: 1;
 }
 
-.init-hero-ex__micro--sp-tz-arrow:disabled {
-  opacity: 0.55;
+.init-hero-ex__sp-tz-mid-btn:disabled {
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
