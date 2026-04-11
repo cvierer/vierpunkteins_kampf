@@ -512,8 +512,8 @@ body {
   flex-direction: column;
   align-items: stretch;
   gap: 0.08rem;
-  padding: 0.14rem 0 0.14rem;
-  margin-top: 0.06rem;
+  padding: 0.1rem 0 0.14rem;
+  margin-top: 0.03rem;
   border-top: 1px solid rgba(139, 105, 20, 0.14);
   min-height: 0.28rem;
 }
@@ -532,14 +532,17 @@ body {
 
 /* Ausklappbarer Heldenblock: oben Kampfzeile, unten Eigenschaften */
 .init-hero-ex {
+  --init-hero-strip-rail-slot: 4.05rem;
+  --init-hero-combat-rail-gap: 0.42rem;
   display: grid;
   grid-template-columns: var(--init-col-expand) minmax(0, 1fr);
   grid-template-rows: auto auto;
-  gap: 0.2rem var(--init-grid-gap);
+  gap: 0.14rem var(--init-grid-gap);
   align-items: end;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.04rem 0 0.02rem;
+  padding: 0 0 0.02rem;
+  margin-top: -0.05rem;
 }
 
 .init-hero-ex__lead-spacer {
@@ -555,6 +558,10 @@ body {
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+  /* Untere Reihe endet über der Rail wie G in der oberen Reihe */
+  padding-right: calc(
+    var(--init-hero-strip-rail-slot) + var(--init-hero-combat-rail-gap)
+  );
 }
 
 .init-hero-ex__attr-cols {
@@ -568,7 +575,7 @@ body {
   width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 0.1rem 0 0.03rem;
+  padding: 0.04rem 0 0.03rem;
   box-sizing: border-box;
 }
 
@@ -588,14 +595,17 @@ body {
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 0.42rem;
+  gap: var(--init-hero-combat-rail-gap);
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
 .init-hero-ex__strip-rail {
-  flex: 0 0 auto;
+  flex: 0 0 var(--init-hero-strip-rail-slot);
+  width: var(--init-hero-strip-rail-slot);
+  min-width: var(--init-hero-strip-rail-slot);
+  max-width: var(--init-hero-strip-rail-slot);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -605,7 +615,7 @@ body {
   margin: 0 0 0.02rem;
   box-sizing: border-box;
   border-left: 1px solid rgba(139, 105, 20, 0.22);
-  min-width: 0;
+  overflow: hidden;
 }
 
 /* LE + max: gemeinsamer Rahmen, „/“ nur hier, mittig, kräftigere Farbe */
@@ -796,7 +806,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 0.05rem;
-  padding-bottom: 0.04rem;
+  padding-bottom: 0.02rem;
   box-sizing: border-box;
 }
 
@@ -830,7 +840,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.09rem;
+  gap: 0.06rem;
   flex-shrink: 0;
 }
 
@@ -877,13 +887,13 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Trefferpunkte: ~4 Ziffern in Standardgröße, bis 7 mit kleinerer Schrift */
+/* Trefferpunkte: schmaler, damit G und KO (unten) rechts bündig abschließen */
 .init-hero-ex__micro--tp {
-  width: 2.82rem;
-  min-width: 2.82rem;
-  max-width: 3.35rem;
-  padding-left: 0.1rem;
-  padding-right: 0.1rem;
+  width: 2.12rem;
+  min-width: 2.12rem;
+  max-width: 2.45rem;
+  padding-left: 0.06rem;
+  padding-right: 0.06rem;
   font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0.02em;
