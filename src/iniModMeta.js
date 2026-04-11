@@ -121,14 +121,6 @@ function syncTpFontSize(tpInp) {
   tpInp.classList.toggle('init-hero-ex__micro--tp-compact', n > 4)
 }
 
-function mkSlash() {
-  const s = document.createElement('span')
-  s.className = 'init-hero-ex__slash'
-  s.textContent = '/'
-  s.setAttribute('aria-hidden', 'true')
-  return s
-}
-
 /**
  * @param {HTMLElement} container
  * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean, leadButtons?: HTMLElement[] }} opts
@@ -157,8 +149,8 @@ export function mountHeroExpandBlock(
     spacerExp.setAttribute('aria-hidden', 'true')
   }
 
-  const attrStrip = document.createElement('div')
-  attrStrip.className = 'init-hero-ex__attr-strip'
+  const attrBlock = document.createElement('div')
+  attrBlock.className = 'init-hero-ex__attr-block'
 
   const strip = document.createElement('div')
   strip.className = 'init-hero-ex__strip'
@@ -187,12 +179,11 @@ export function mountHeroExpandBlock(
     return { cell, inp }
   }
 
-  const mkAttrMicro = (abbr, fullName, idSuf, value, maxLen) => {
-    const cell = document.createElement('div')
-    cell.className =
-      'init-hero-ex__micro-cell init-hero-ex__micro-cell--attr init-hero-ex__micro-cell--attr-inline'
+  const mkAttrCol = (abbr, fullName, idSuf, value, maxLen) => {
+    const col = document.createElement('div')
+    col.className = 'init-hero-ex__attr-col'
     const ab = document.createElement('span')
-    ab.className = 'init-hero-ex__abbr init-hero-ex__abbr--attr'
+    ab.className = 'init-hero-ex__attr-abbr'
     ab.textContent = abbr
     ab.title = fullName
     const inp = document.createElement('input')
@@ -207,48 +198,84 @@ export function mountHeroExpandBlock(
     inp.maxLength = maxLen
     inp.title = fullName
     inp.setAttribute('aria-label', fullName)
-    cell.append(ab, inp)
-    return { cell, inp }
+    col.append(ab, inp)
+    return { col, inp }
   }
 
-  const mu = mkAttrMicro('MU', 'Mut (MU)', 'mu', snap.mu, 2)
-  const kl = mkAttrMicro('KL', 'Klugheit (KL)', 'kl', snap.kl, 2)
-  const inn = mkAttrMicro('IN', 'Intuition (IN)', 'inn', snap.inn, 2)
-  const ch = mkAttrMicro('CH', 'Charisma (CH)', 'ch', snap.ch, 2)
-  const ff = mkAttrMicro('FF', 'Fingerfertigkeit (FF)', 'ff', snap.ff, 2)
-  const ge = mkAttrMicro('GE', 'Gewandtheit (GE)', 'ge', snap.ge, 2)
-  const koAttr = mkAttrMicro('KO', 'Konstitution (KO)', 'ko', snap.ko, 2)
-  const kk = mkAttrMicro('KK', 'Körperkraft (KK)', 'kk', snap.kk, 2)
-  const be = mkAttrMicro('BE', 'Bewegung (BE)', 'be', snap.be, 2)
+  const mu = mkAttrCol('MU', 'Mut (MU)', 'mu', snap.mu, 2)
+  const kl = mkAttrCol('KL', 'Klugheit (KL)', 'kl', snap.kl, 2)
+  const inn = mkAttrCol('IN', 'Intuition (IN)', 'inn', snap.inn, 2)
+  const ch = mkAttrCol('CH', 'Charisma (CH)', 'ch', snap.ch, 2)
+  const ff = mkAttrCol('FF', 'Fingerfertigkeit (FF)', 'ff', snap.ff, 2)
+  const ge = mkAttrCol('GE', 'Gewandtheit (GE)', 'ge', snap.ge, 2)
+  const koAttr = mkAttrCol('KO', 'Konstitution (KO)', 'ko', snap.ko, 2)
+  const kk = mkAttrCol('KK', 'Körperkraft (KK)', 'kk', snap.kk, 2)
+  const be = mkAttrCol('BE', 'Bewegung (BE)', 'be', snap.be, 2)
 
-  const attrCells = [
-    mu.cell,
-    kl.cell,
-    inn.cell,
-    ch.cell,
-    ff.cell,
-    ge.cell,
-    koAttr.cell,
-    kk.cell,
-    be.cell,
-  ]
-  for (let i = 0; i < attrCells.length; i++) {
-    if (i > 0) attrStrip.appendChild(mkSlash())
-    attrStrip.appendChild(attrCells[i])
+  const attrCols = document.createElement('div')
+  attrCols.className = 'init-hero-ex__attr-cols'
+  for (const x of [mu, kl, inn, ch, ff, ge, koAttr, kk, be]) {
+    attrCols.appendChild(x.col)
   }
+  attrBlock.appendChild(attrCols)
 
   const at = mkMicro('AT', 'Attacke (AT)', 'at', snap.at, 2, '', true)
   const pa = mkMicro('PA', 'Parade (PA)', 'pa', snap.pa, 2, '', true)
-  const le = mkMicro('LE', 'Lebensenergie (LE)', 'le', snap.le, 2, '', true)
-  const leMax = mkMicro(
-    'max',
-    'Lebensenergie Maximum (LE max)',
-    'lemax',
-    snap.leMax,
-    3,
-    ' init-hero-ex__micro--lemax',
-    true
-  )
+
+  const lePair = document.createElement('div')
+  lePair.className = 'init-hero-ex__le-pair'
+  const lePairLabels = document.createElement('div')
+  lePairLabels.className = 'init-hero-ex__le-pair__labels'
+  const leAbbr = document.createElement('span')
+  leAbbr.className = 'init-hero-ex__abbr'
+  leAbbr.textContent = 'LE'
+  leAbbr.title = 'Lebensenergie (LE)'
+  const leLabelPad = document.createElement('span')
+  leLabelPad.className = 'init-hero-ex__le-pair__label-gap'
+  leLabelPad.setAttribute('aria-hidden', 'true')
+  const maxAbbr = document.createElement('span')
+  maxAbbr.className = 'init-hero-ex__abbr'
+  maxAbbr.textContent = 'max'
+  maxAbbr.title = 'Lebensenergie Maximum (LE max)'
+  lePairLabels.append(leAbbr, leLabelPad, maxAbbr)
+
+  const leInp = document.createElement('input')
+  leInp.type = 'text'
+  leInp.inputMode = 'numeric'
+  leInp.className = 'init-hero-ex__micro init-hero-ex__micro--le-pair-inp'
+  leInp.id = `hero-ex-${itemId}-le`
+  leInp.autocomplete = 'off'
+  leInp.spellcheck = false
+  leInp.disabled = !canEdit
+  leInp.value = snap.le
+  leInp.maxLength = 2
+  leInp.title = 'Lebensenergie (LE)'
+  leInp.setAttribute('aria-label', 'Lebensenergie (LE)')
+
+  const leSlash = document.createElement('span')
+  leSlash.className = 'init-hero-ex__slash init-hero-ex__slash--le-only'
+  leSlash.textContent = '/'
+  leSlash.setAttribute('aria-hidden', 'true')
+
+  const leMaxInp = document.createElement('input')
+  leMaxInp.type = 'text'
+  leMaxInp.inputMode = 'numeric'
+  leMaxInp.className =
+    'init-hero-ex__micro init-hero-ex__micro--le-pair-inp init-hero-ex__micro--lemax'
+  leMaxInp.id = `hero-ex-${itemId}-lemax`
+  leMaxInp.autocomplete = 'off'
+  leMaxInp.spellcheck = false
+  leMaxInp.disabled = !canEdit
+  leMaxInp.value = snap.leMax
+  leMaxInp.maxLength = 3
+  leMaxInp.title = 'Lebensenergie Maximum (LE max)'
+  leMaxInp.setAttribute('aria-label', 'Lebensenergie Maximum (LE max)')
+
+  const lePairInputs = document.createElement('div')
+  lePairInputs.className = 'init-hero-ex__le-pair__inputs'
+  lePairInputs.append(leInp, leSlash, leMaxInp)
+  lePair.append(lePairLabels, lePairInputs)
+
   const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
 
   const tpCell = document.createElement('div')
@@ -275,23 +302,18 @@ export function mountHeroExpandBlock(
   const b = mkMicro('B', 'Feld B', 'b', snap.b, 2, '', true)
   const c = mkMicro('C', 'Feld C', 'c', snap.c, 2, '', true)
 
-  const combatParts = [
+  strip.append(
     at.cell,
     pa.cell,
-    le.cell,
-    leMax.cell,
+    lePair,
     ae.cell,
     tpCell,
     a.cell,
     b.cell,
-    c.cell,
-  ]
-  for (let i = 0; i < combatParts.length; i++) {
-    if (i > 0) strip.appendChild(mkSlash())
-    strip.appendChild(combatParts[i])
-  }
+    c.cell
+  )
 
-  root.append(leadSpacer, attrStrip, spacerExp, strip)
+  root.append(leadSpacer, attrBlock, spacerExp, strip)
   container.appendChild(root)
 
   if (!canEdit) return
@@ -301,8 +323,8 @@ export function mountHeroExpandBlock(
   const gather = () => ({
     at: at.inp.value,
     pa: pa.inp.value,
-    le: le.inp.value,
-    leMax: leMax.inp.value,
+    le: leInp.value,
+    leMax: leMaxInp.value,
     ae: ae.inp.value,
     ko: koAttr.inp.value,
     tp: tpInp.value,
@@ -326,8 +348,8 @@ export function mountHeroExpandBlock(
   for (const inp of [
     at.inp,
     pa.inp,
-    le.inp,
-    leMax.inp,
+    leInp,
+    leMaxInp,
     ae.inp,
     tpInp,
     a.inp,

@@ -524,25 +524,22 @@ body {
 }
 
 .init-row-extra-panel--has-hero-ex .init-row-extra-panel__body {
-  max-height: 6.35rem;
+  max-height: 7rem;
   overflow-x: auto;
   overflow-y: hidden;
   padding-right: 0.06rem;
 }
 
-/* Ausklappbarer Heldenblock: Eigenschaftenzeile + Kampfwerte, links bündig unter Aufklapp-Spalte */
+/* Ausklappbarer Heldenblock: Eigenschaften (Beschriftung + Kästchen) + Kampfwerte */
 .init-hero-ex {
   display: grid;
   grid-template-columns: var(--init-col-expand) minmax(0, 1fr);
-  grid-template-rows: minmax(0, var(--init-hero-ex-attr-band-h)) auto;
-  gap: 0.07rem var(--init-grid-gap);
+  grid-template-rows: auto auto;
+  gap: 0.08rem var(--init-grid-gap);
   align-items: end;
   width: 100%;
   box-sizing: border-box;
   padding: 0.04rem 0 0.02rem;
-  /* Referenz: Kampfzeile (Label + Micro); Eigenschaftenband = 0.6 davon */
-  --init-hero-ex-combat-band-h: calc(0.46rem + 0.05rem + 1.22rem + 0.08rem);
-  --init-hero-ex-attr-band-h: calc(0.6 * var(--init-hero-ex-combat-band-h));
 }
 
 .init-hero-ex__lead-spacer {
@@ -552,23 +549,66 @@ body {
   min-height: 0;
 }
 
-.init-hero-ex__attr-strip {
+.init-hero-ex__attr-block {
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.init-hero-ex__attr-cols {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: flex-start;
-  gap: 0;
+  gap: 0.09rem;
   min-width: 0;
-  min-height: 0;
-  height: var(--init-hero-ex-attr-band-h);
-  max-height: var(--init-hero-ex-attr-band-h);
-  box-sizing: border-box;
+  width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.02rem 0;
+  overflow-y: visible;
+  padding: 0.02rem 0 0.04rem;
+  box-sizing: border-box;
+}
+
+.init-hero-ex__attr-col {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 1.14rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.05rem;
+}
+
+.init-hero-ex__attr-abbr {
+  font-family: var(--font-heading);
+  font-size: 0.44rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  line-height: 1;
+  cursor: default;
+  text-align: center;
+  width: 100%;
+}
+
+.init-hero-ex__micro--attr {
+  width: 100%;
+  max-width: 1.08rem;
+  aspect-ratio: 1;
+  height: auto;
+  min-height: 0.78rem;
+  max-height: 1.05rem;
+  margin: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 0.58rem;
+  font-weight: 800;
+  border-radius: 4px;
 }
 
 .init-hero-ex__lead {
@@ -578,52 +618,87 @@ body {
   min-height: 1px;
 }
 
-.init-hero-ex__slash {
-  flex-shrink: 0;
-  align-self: flex-end;
-  margin: 0 0.05rem 0.2rem;
-  font-size: 0.52rem;
-  font-weight: 300;
-  color: rgba(118, 114, 108, 0.4);
-  line-height: 1;
-  user-select: none;
-}
-
-.init-hero-ex__attr-strip .init-hero-ex__slash {
-  align-self: center;
-  margin: 0 0.04rem;
-  padding-bottom: 0;
-}
-
-.init-hero-ex__micro-cell--attr-inline {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.06rem;
+/* LE + max: gemeinsamer Rahmen, „/“ nur hier, mittig, kräftigere Farbe */
+.init-hero-ex__le-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
   flex-shrink: 0;
 }
 
-.init-hero-ex__abbr--attr {
-  font-size: 0.34rem;
-  letter-spacing: 0.04em;
-  min-width: 0.55rem;
-  text-align: right;
+.init-hero-ex__le-pair__labels {
+  display: grid;
+  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) minmax(1rem, 1.18rem);
+  width: fit-content;
+  align-items: end;
+  justify-items: center;
 }
 
-.init-hero-ex__micro--attr {
-  width: 0.78rem;
-  min-width: 0.78rem;
-  height: 0.58rem;
-  min-height: 0.58rem;
-  font-size: 0.48rem;
+.init-hero-ex__le-pair__label-gap {
+  visibility: hidden;
+  pointer-events: none;
+  width: 100%;
+  min-height: 0.1rem;
+}
+
+.init-hero-ex__le-pair__inputs {
+  display: grid;
+  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) minmax(1rem, 1.18rem);
+  width: fit-content;
+  align-items: stretch;
+  box-sizing: border-box;
+  border: 1px solid rgba(201, 162, 39, 0.5);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(201, 162, 39, 0.12);
+}
+
+.init-hero-ex__le-pair__inputs:focus-within {
+  border-color: var(--color-accent);
+  background: rgba(201, 162, 39, 0.2);
+}
+
+.init-hero-ex__micro--le-pair-inp {
+  width: 100%;
+  min-width: 0;
+  height: 1.22rem;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font-size: 0.72rem;
   font-weight: 800;
-  border-radius: 3px;
+  line-height: 1.15;
+  text-align: center;
 }
 
-.init-hero-ex__micro--lemax {
-  width: 1.02rem;
-  min-width: 1.02rem;
-  max-width: 1.15rem;
+.init-hero-ex__micro--le-pair-inp:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.init-hero-ex__slash--le-only {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  align-self: stretch;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(62, 56, 48, 0.88);
+  user-select: none;
+  border-left: 1px solid rgba(201, 162, 39, 0.48);
+  border-right: 1px solid rgba(201, 162, 39, 0.48);
+  background: rgba(201, 162, 39, 0.1);
+}
+
+.init-hero-ex__micro--lemax.init-hero-ex__micro--le-pair-inp {
+  font-size: 0.62rem;
+  letter-spacing: -0.02em;
 }
 
 /* i + Zahnrad unter Aufklapp-Chevron, bündig zur AT-Zeile */
@@ -658,7 +733,7 @@ body {
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 0;
+  gap: 0.16rem;
   min-width: 0;
   box-sizing: border-box;
 }
