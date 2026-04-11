@@ -136,6 +136,37 @@ function syncTpFontSize(tpInp) {
 }
 
 /**
+ * WdS-Trefferzonen nach Würfelergebnis (1–20).
+ * @param {string} raw
+ * @returns {string | null}
+ */
+function trefferzoneZoneLabel(raw) {
+  const n = parseInt(String(raw).trim(), 10)
+  if (!Number.isFinite(n)) return null
+  if (n === 19 || n === 20) return 'Kopf'
+  if (n === 15 || n === 16 || n === 17 || n === 18) return 'Brust'
+  if (n === 14 || n === 12 || n === 10) return 'rechter Arm'
+  if (n === 13 || n === 11 || n === 9) return 'linker Arm'
+  if (n === 8 || n === 7) return 'Bauch'
+  if (n === 2 || n === 4 || n === 6) return 'rechtes Bein'
+  if (n === 1 || n === 3 || n === 5) return 'linkes Bein'
+  return null
+}
+
+/** @param {HTMLInputElement} tzInp */
+function syncTzTooltip(tzInp) {
+  const zone = trefferzoneZoneLabel(tzInp.value)
+  const base = 'Trefferzone (TZ)'
+  if (zone) {
+    tzInp.title = `${base} — ${zone}`
+    tzInp.setAttribute('aria-label', `${base}, ${zone}`)
+  } else {
+    tzInp.title = base
+    tzInp.setAttribute('aria-label', base)
+  }
+}
+
+/**
  * @param {HTMLElement} container
  * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean, leadButtons?: HTMLElement[] }} opts
  */
@@ -339,8 +370,7 @@ export function mountHeroExpandBlock(
   tzInp.disabled = !canEdit
   tzInp.value = snap.tz
   tzInp.maxLength = 3
-  tzInp.title = 'Trefferzone (TZ)'
-  tzInp.setAttribute('aria-label', 'Trefferzone (TZ)')
+  syncTzTooltip(tzInp)
 
   const spTzInputs = document.createElement('div')
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
@@ -368,6 +398,7 @@ export function mountHeroExpandBlock(
   }
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
+  tzInp.addEventListener('input', () => syncTzTooltip(tzInp))
 
   const gather = () => ({
     at: at.inp.value,
