@@ -323,6 +323,22 @@ export function mountHeroExpandBlock(
   const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
   const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
 
+  const spTzUndo = document.createElement('button')
+  spTzUndo.type = 'button'
+  spTzUndo.className = 'init-hero-ex__sp-tz-label-btn'
+  spTzUndo.textContent = '<'
+  spTzUndo.title = 'Schadenspunkte / Trefferzone: letzte Änderung rückgängig'
+  spTzUndo.setAttribute('aria-label', 'SP und TZ: rückgängig')
+  const spTzRedo = document.createElement('button')
+  spTzRedo.type = 'button'
+  spTzRedo.className = 'init-hero-ex__sp-tz-label-btn'
+  spTzRedo.textContent = '>'
+  spTzRedo.title = 'Schadenspunkte / Trefferzone: wiederholen'
+  spTzRedo.setAttribute('aria-label', 'SP und TZ: wiederholen')
+  const spTzLabelTools = document.createElement('div')
+  spTzLabelTools.className = 'init-hero-ex__sp-tz-pair__label-tools'
+  spTzLabelTools.append(spTzUndo, spTzRedo)
+
   const spTzPair = document.createElement('div')
   spTzPair.className = 'init-hero-ex__sp-tz-pair'
   const spTzLabels = document.createElement('div')
@@ -331,14 +347,11 @@ export function mountHeroExpandBlock(
   spAbbr.className = 'init-hero-ex__abbr'
   spAbbr.textContent = 'SP'
   spAbbr.title = 'Schadenspunkte (SP)'
-  const spTzLabelPad = document.createElement('span')
-  spTzLabelPad.className = 'init-hero-ex__sp-tz-pair__label-gap'
-  spTzLabelPad.setAttribute('aria-hidden', 'true')
   const tzAbbr = document.createElement('span')
   tzAbbr.className = 'init-hero-ex__abbr'
   tzAbbr.textContent = 'TZ'
   tzAbbr.title = 'Trefferzone (TZ)'
-  spTzLabels.append(spAbbr, spTzLabelPad, tzAbbr)
+  spTzLabels.append(spAbbr, spTzLabelTools, tzAbbr)
 
   const spInp = document.createElement('input')
   spInp.type = 'text'
@@ -353,21 +366,12 @@ export function mountHeroExpandBlock(
   spInp.title = 'Schadenspunkte (SP)'
   spInp.setAttribute('aria-label', 'Schadenspunkte (SP)')
 
-  const spTzMid = document.createElement('div')
-  spTzMid.className = 'init-hero-ex__sp-tz-mid'
-  const spTzUndo = document.createElement('button')
-  spTzUndo.type = 'button'
-  spTzUndo.className = 'init-hero-ex__sp-tz-mid-btn'
-  spTzUndo.textContent = '<'
-  spTzUndo.title = 'Schadenspunkte / Trefferzone: letzte Änderung rückgängig'
-  spTzUndo.setAttribute('aria-label', 'SP und TZ: rückgängig')
-  const spTzRedo = document.createElement('button')
-  spTzRedo.type = 'button'
-  spTzRedo.className = 'init-hero-ex__sp-tz-mid-btn'
-  spTzRedo.textContent = '>'
-  spTzRedo.title = 'Schadenspunkte / Trefferzone: wiederholen'
-  spTzRedo.setAttribute('aria-label', 'SP und TZ: wiederholen')
-  spTzMid.append(spTzUndo, spTzRedo)
+  const spTzArrow = document.createElement('button')
+  spTzArrow.type = 'button'
+  spTzArrow.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-arrow'
+  spTzArrow.textContent = '>'
+  spTzArrow.title = 'Fokus auf Trefferzone (TZ)'
+  spTzArrow.setAttribute('aria-label', 'Zu Trefferzone wechseln')
 
   const tzInp = document.createElement('input')
   tzInp.type = 'text'
@@ -383,7 +387,7 @@ export function mountHeroExpandBlock(
 
   const spTzInputs = document.createElement('div')
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
-  spTzInputs.append(spInp, spTzMid, tzInp)
+  spTzInputs.append(spInp, spTzArrow, tzInp)
   spTzPair.append(spTzLabels, spTzInputs)
 
   strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell)
@@ -396,6 +400,7 @@ export function mountHeroExpandBlock(
   container.appendChild(root)
 
   if (!canEdit) {
+    spTzArrow.disabled = true
     spTzUndo.disabled = true
     spTzRedo.disabled = true
     return
@@ -476,6 +481,14 @@ export function mountHeroExpandBlock(
     spTzCheckpoint = { ...next }
     applySpTzPairToScene(next)
     syncSpTzHistoryButtons()
+  })
+
+  spTzArrow.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    void commit()
+    tzInp.focus()
+    tzInp.select()
   })
 
   syncSpTzHistoryButtons()
