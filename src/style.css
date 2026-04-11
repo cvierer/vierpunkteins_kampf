@@ -1,4 +1,7 @@
 :root {
+  /* Initiative / Heldenblock / Trefferzonen: gemeinsame Kästchengröße (0.96 × frühere 1.22rem) */
+  --init-box-scale: 0.96;
+  --init-obj-cell: calc(1.22rem * var(--init-box-scale));
   --font-heading: 'Cinzel', 'Palatino Linotype', Palatino, serif;
   --font-body: 'Crimson Pro', 'Palatino Linotype', Georgia, serif;
   --color-ink: #1a1714;
@@ -138,8 +141,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
-  /* Objektkästchen wie AT im Heldenblock; horizontaler Abstand wie AT–PA */
-  --init-obj-cell: 1.22rem;
+  /* Objektkästchen: --init-obj-cell von :root; horizontaler Abstand wie AT–PA */
   --init-obj-gap: 0.16rem;
   --init-col-expand: var(--init-obj-cell);
   /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) */
@@ -535,8 +537,8 @@ body {
 
 /* Ausklappbarer Heldenblock: Spalte 1 = Chevron/Tools, Spalte 2 = Kampfwerte + Attribute (ohne rechter Rail) */
 .init-hero-ex {
-  --init-hero-cell: 1.22rem;
-  --init-hero-strip-gap: 0.16rem;
+  --init-hero-cell: var(--init-obj-cell);
+  --init-hero-strip-gap: var(--init-obj-gap);
   /* Nur TP variabel: 6×Zelle + TP + 6 Lücken = 8×Zelle + 7 Lücken */
   --init-hero-tp-w: calc(2 * var(--init-hero-cell) + var(--init-hero-strip-gap));
   display: grid;
@@ -694,8 +696,8 @@ body {
 /* Beschriftungszeile wie einzelne .init-hero-ex__abbr-Zeile (kein visueller Zuwachs durch scale) */
 .init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-pair__labels {
   align-items: center;
-  height: 0.54rem;
-  max-height: 0.54rem;
+  height: calc(0.54rem * var(--init-box-scale));
+  max-height: calc(0.54rem * var(--init-box-scale));
   box-sizing: border-box;
 }
 
@@ -896,7 +898,7 @@ body {
 
 .init-hero-ex__abbr {
   font-family: var(--font-heading);
-  font-size: 0.54rem;
+  font-size: calc(0.54rem * var(--init-box-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -906,8 +908,8 @@ body {
 }
 
 .init-hero-ex__micro {
-  width: var(--init-hero-cell, 1.22rem);
-  height: var(--init-hero-cell, 1.22rem);
+  width: var(--init-hero-cell, var(--init-obj-cell));
+  height: var(--init-hero-cell, var(--init-obj-cell));
   box-sizing: border-box;
   padding: 0;
   margin: 0;
@@ -1131,8 +1133,8 @@ body {
 }
 
 .kampf-hit-zone-rs {
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   box-sizing: border-box;
   padding: 0;
   margin: 0;
@@ -1153,8 +1155,8 @@ body {
 
 .kampf-hit-zone-w {
   position: relative;
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-obj-cell);
+  height: var(--init-obj-cell);
   box-sizing: border-box;
   padding: 0;
   margin: 0;
@@ -2241,8 +2243,8 @@ body {
   min-width: 0;
   flex-shrink: 0;
   box-sizing: border-box;
-  height: 1.22rem;
-  min-height: 1.22rem;
+  height: var(--init-obj-cell);
+  min-height: var(--init-obj-cell);
   padding: 0 0.38rem;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.12);
