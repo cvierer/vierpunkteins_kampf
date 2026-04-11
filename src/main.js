@@ -7,7 +7,6 @@ import { setupInitiativeList } from './initiativeList.js'
 import { initCombatRoom } from './combatRoom.js'
 import { setupCombatControls } from './combatControls.js'
 import { syncActionChrome } from './actionChrome.js'
-import { setupTurnMarkerSync } from './turnMarker.js'
 import { setupSettingsPanel } from './settingsPanel.js'
 
 const appRoot = document.querySelector('#app')
@@ -85,7 +84,6 @@ if (OBR.isAvailable) {
     await initEditAccess()
     const combatRoot = document.querySelector('[data-combat-root]')
     const { refreshBar } = await setupCombatControls(combatRoot)
-    setupTurnMarkerSync()
     setupContextMenu()
     setupInitiativeList(document.querySelector('#initiative-list'), {
       onListChange: (items) => {
