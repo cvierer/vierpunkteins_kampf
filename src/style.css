@@ -530,15 +530,18 @@ body {
   padding-right: 0.06rem;
 }
 
-/* Ausklappbarer Heldenblock: oben Kampfzeile, unten Eigenschaften */
+/* Ausklappbarer Heldenblock: Spalte 2 = beide Kästchenreihen, Spalte 3 = LE/max + SP>TZ über volle Höhe */
 .init-hero-ex {
+  --init-hero-cell: 1.22rem;
+  --init-hero-strip-gap: 0.16rem;
+  /* Nur TP variabel: 6×Zelle + TP + 6 Lücken = 8×Zelle + 7 Lücken */
+  --init-hero-tp-w: calc(2 * var(--init-hero-cell) + var(--init-hero-strip-gap));
   --init-hero-strip-rail-slot: 4.05rem;
-  --init-hero-combat-rail-gap: 0.42rem;
   display: grid;
-  grid-template-columns: var(--init-col-expand) minmax(0, 1fr);
+  grid-template-columns: var(--init-col-expand) minmax(0, 1fr) var(--init-hero-strip-rail-slot);
   grid-template-rows: auto auto;
   gap: 0.14rem var(--init-grid-gap);
-  align-items: end;
+  align-items: stretch;
   width: 100%;
   box-sizing: border-box;
   padding: 0 0 0.02rem;
@@ -558,10 +561,7 @@ body {
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  /* Untere Reihe endet über der Rail wie G in der oberen Reihe */
-  padding-right: calc(
-    var(--init-hero-strip-rail-slot) + var(--init-hero-combat-rail-gap)
-  );
+  align-self: end;
 }
 
 .init-hero-ex__attr-cols {
@@ -570,7 +570,7 @@ body {
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 0.16rem;
+  gap: var(--init-hero-strip-gap);
   min-width: 0;
   width: 100%;
   overflow-x: auto;
@@ -586,33 +586,19 @@ body {
   min-height: 1px;
 }
 
-/* Obere Zeile: linke Kampf-Kästchen + rechter Bereich (LE/max, SP>TZ) */
-.init-hero-ex__combat-wrap {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--init-hero-combat-rail-gap);
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .init-hero-ex__strip-rail {
-  flex: 0 0 var(--init-hero-strip-rail-slot);
-  width: var(--init-hero-strip-rail-slot);
-  min-width: var(--init-hero-strip-rail-slot);
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
   max-width: var(--init-hero-strip-rail-slot);
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 0.3rem;
-  padding: 0 0 0.02rem 0.22rem;
-  margin: 0 0 0.02rem;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.06rem 0.06rem 0.06rem 0.22rem;
   box-sizing: border-box;
   border-left: 1px solid rgba(139, 105, 20, 0.22);
   overflow: hidden;
@@ -627,9 +613,14 @@ body {
   flex-shrink: 0;
 }
 
+.init-hero-ex__strip-rail .init-hero-ex__le-pair,
+.init-hero-ex__strip-rail .init-hero-ex__sp-tz-pair {
+  align-self: center;
+}
+
 .init-hero-ex__le-pair__labels {
   display: grid;
-  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) 1.22rem;
+  grid-template-columns: var(--init-hero-cell) minmax(0.44rem, 0.52rem) var(--init-hero-cell);
   width: fit-content;
   align-items: end;
   justify-items: center;
@@ -644,7 +635,7 @@ body {
 
 .init-hero-ex__le-pair__inputs {
   display: grid;
-  grid-template-columns: 1.22rem minmax(0.44rem, 0.52rem) 1.22rem;
+  grid-template-columns: var(--init-hero-cell) minmax(0.44rem, 0.52rem) var(--init-hero-cell);
   width: fit-content;
   align-items: stretch;
   box-sizing: border-box;
@@ -662,7 +653,7 @@ body {
 .init-hero-ex__micro--le-pair-inp {
   width: 100%;
   min-width: 0;
-  height: 1.22rem;
+  height: var(--init-hero-cell);
   box-sizing: border-box;
   margin: 0;
   border: 0 !important;
@@ -707,7 +698,7 @@ body {
 
 .init-hero-ex__sp-tz-pair__labels {
   display: grid;
-  grid-template-columns: 1.22rem 1.22rem 1.22rem;
+  grid-template-columns: var(--init-hero-cell) var(--init-hero-cell) var(--init-hero-cell);
   width: fit-content;
   align-items: end;
   justify-items: center;
@@ -722,7 +713,7 @@ body {
 
 .init-hero-ex__sp-tz-pair__inputs {
   display: grid;
-  grid-template-columns: 1.22rem 1.22rem 1.22rem;
+  grid-template-columns: var(--init-hero-cell) var(--init-hero-cell) var(--init-hero-cell);
   width: fit-content;
   align-items: stretch;
   box-sizing: border-box;
@@ -740,7 +731,7 @@ body {
 .init-hero-ex__micro--sp-tz-inp {
   width: 100%;
   min-width: 0;
-  height: 1.22rem;
+  height: var(--init-hero-cell);
   box-sizing: border-box;
   margin: 0;
   border: 0 !important;
@@ -763,7 +754,7 @@ body {
   justify-content: center;
   width: 100%;
   min-width: 0;
-  height: 1.22rem;
+  height: var(--init-hero-cell);
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -824,14 +815,17 @@ body {
 }
 
 .init-hero-ex__strip {
-  flex: 1 1 auto;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 0.16rem;
+  gap: var(--init-hero-strip-gap);
   min-width: 0;
+  width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
 }
@@ -856,8 +850,8 @@ body {
 }
 
 .init-hero-ex__micro {
-  width: 1.22rem;
-  height: 1.22rem;
+  width: var(--init-hero-cell, 1.22rem);
+  height: var(--init-hero-cell, 1.22rem);
   box-sizing: border-box;
   padding: 0;
   margin: 0;
@@ -887,11 +881,11 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Trefferpunkte: schmaler, damit G und KO (unten) rechts bündig abschließen */
+/* Trefferpunkte: Breite ist die einzige Anpassvariable für gleiche Gesamtbreite Ober-/Unterreihe */
 .init-hero-ex__micro--tp {
-  width: 2.12rem;
-  min-width: 2.12rem;
-  max-width: 2.45rem;
+  width: var(--init-hero-tp-w);
+  min-width: var(--init-hero-tp-w);
+  max-width: var(--init-hero-tp-w);
   padding-left: 0.06rem;
   padding-right: 0.06rem;
   font-size: 0.86rem;

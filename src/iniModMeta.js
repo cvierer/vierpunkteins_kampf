@@ -383,11 +383,7 @@ export function mountHeroExpandBlock(
   stripRail.className = 'init-hero-ex__strip-rail'
   stripRail.append(lePair, spTzPair)
 
-  const combatWrap = document.createElement('div')
-  combatWrap.className = 'init-hero-ex__combat-wrap'
-  combatWrap.append(strip, stripRail)
-
-  root.append(leadSpacer, combatWrap, spacerExp, attrBlock)
+  root.append(leadSpacer, strip, stripRail, spacerExp, attrBlock)
   container.appendChild(root)
 
   if (!canEdit) {
