@@ -18,8 +18,16 @@ export const HIT_ZONE_DEFS = Object.freeze([
     short: 'Brust',
     w20: '15–18',
     w20Title:
-      'Zufall W20 (Fußkampf): 15–18 = Brust/Rücken (Rumpf). WdS Trefferzonen.',
-    pos: { left: '50%', top: '22%', transform: 'translate(-50%, 0)' },
+      'Zufall W20 (Fußkampf): 15–18 = Brust/Rücken (Rumpf). WdS: hier Brust.',
+    pos: { left: '42%', top: '22%', transform: 'translate(-50%, 0)' },
+  },
+  {
+    id: 'ruecken',
+    short: 'Rücken',
+    w20: '15–18',
+    w20Title:
+      'Zufall W20 (Fußkampf): 15–18 = Brust/Rücken (Rumpf). WdS: hier Rücken.',
+    pos: { left: '58%', top: '22%', transform: 'translate(-50%, 0)' },
   },
   {
     id: 'schildarm',

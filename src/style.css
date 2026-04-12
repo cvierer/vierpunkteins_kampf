@@ -536,7 +536,7 @@ body {
 }
 
 .init-row-extra-panel--has-hero-ex .init-row-extra-panel__body {
-  max-height: calc(8.25rem * var(--init-ui-scale));
+  max-height: calc(9.75rem * var(--init-ui-scale));
   overflow-x: auto;
   overflow-y: hidden;
   padding-right: 0.06rem;
@@ -552,7 +552,7 @@ body {
   --init-hero-tp-w: calc(2 * var(--init-hero-cell) + var(--init-hero-strip-gap));
   display: grid;
   grid-template-columns: var(--init-col-expand) minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   gap: 0.14rem var(--init-grid-gap);
   align-items: stretch;
   width: 100%;
@@ -570,7 +570,7 @@ body {
 
 .init-hero-ex__attr-block {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
@@ -594,7 +594,7 @@ body {
 
 .init-hero-ex__lead {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 3;
   min-width: 0;
   min-height: 1px;
 }
@@ -895,6 +895,24 @@ body {
   width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
+}
+
+/* Trefferzonen-Zeile zwischen Kampfwerte (Zeile 1) und Eigenschaften (Zeile 3) */
+.init-hero-ex__zone-mid {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: var(--init-hero-strip-gap);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  padding-top: 0.02rem;
 }
 
 .init-hero-ex__micro-cell {

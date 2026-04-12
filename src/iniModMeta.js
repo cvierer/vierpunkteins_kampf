@@ -382,27 +382,6 @@ export function mountHeroExpandBlock(
   lePair.append(lePairLabels, lePairInputs)
   lePair.classList.add('init-hero-ex__le-pair--in-attr-row')
 
-  /** @type {ReturnType<typeof mountZoneMiniWappen>[]} */
-  const zoneUiAttr = []
-  const ZONE_ATTR_SPECS = [
-    {
-      id: 'lbein',
-      abbr: 'Lb',
-      title: 'Linkes Bein, Trefferzone (WdS)',
-    },
-    { id: 'bauch', abbr: 'Bu', title: 'Bauch, Trefferzone (WdS)' },
-    {
-      id: 'rbein',
-      abbr: 'Rb',
-      title: 'Rechtes Bein, Trefferzone (WdS)',
-    },
-  ]
-  for (const spec of ZONE_ATTR_SPECS) {
-    const zSnap = snap.hitZones.zones[spec.id] ?? { rs: '', w: 0 }
-    const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
-    zoneUiAttr.push(ui)
-    attrCols.appendChild(ui.cell)
-  }
   attrCols.appendChild(lePair)
 
   const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
@@ -430,32 +409,34 @@ export function mountHeroExpandBlock(
   const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
   const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
 
+  const zoneMidRow = document.createElement('div')
+  zoneMidRow.className = 'init-hero-ex__zone-mid'
   /** @type {ReturnType<typeof mountZoneMiniWappen>[]} */
-  const zoneUiStrip = []
-  const ZONE_STRIP_SPECS = [
+  const zoneUiMid = []
+  const ZONE_MID_SPECS = [
+    { id: 'kopf', abbr: 'KF', title: 'Kopf und Hals, Trefferzone (WdS)' },
+    { id: 'brust', abbr: 'BR', title: 'Brust, Trefferzone (WdS)' },
+    { id: 'ruecken', abbr: 'RÜ', title: 'Rücken, Trefferzone (WdS)' },
     {
       id: 'schildarm',
       abbr: 'LA',
       title: 'Linker Arm (Schildarm), Trefferzone (WdS)',
-    },
-    { id: 'kopf', abbr: 'Kf', title: 'Kopf und Hals, Trefferzone (WdS)' },
-    {
-      id: 'brust',
-      abbr: 'Br',
-      title: 'Brust und Rücken, Trefferzone (WdS)',
     },
     {
       id: 'schwertarm',
       abbr: 'RA',
       title: 'Rechter Arm (Schwertarm), Trefferzone (WdS)',
     },
+    { id: 'bauch', abbr: 'BU', title: 'Bauch, Trefferzone (WdS)' },
+    { id: 'lbein', abbr: 'LB', title: 'Linkes Bein, Trefferzone (WdS)' },
+    { id: 'rbein', abbr: 'RB', title: 'Rechtes Bein, Trefferzone (WdS)' },
   ]
-  for (const spec of ZONE_STRIP_SPECS) {
+  for (const spec of ZONE_MID_SPECS) {
     const zSnap = snap.hitZones.zones[spec.id] ?? { rs: '', w: 0 }
     const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
-    zoneUiStrip.push(ui)
+    zoneUiMid.push(ui)
+    zoneMidRow.appendChild(ui.cell)
   }
-  const [zLa, zKf, zBr, zRa] = zoneUiStrip
 
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
@@ -526,22 +507,9 @@ export function mountHeroExpandBlock(
   spTzPair.append(spTzLabels, spTzInputs)
   spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-strip')
 
-  strip.append(
-    at.cell,
-    pa.cell,
-    ausw.cell,
-    ae.cell,
-    tpCell,
-    fk.cell,
-    g.cell,
-    zLa.cell,
-    zKf.cell,
-    zBr.cell,
-    zRa.cell,
-    spTzPair
-  )
+  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell, spTzPair)
 
-  root.append(leadSpacer, strip, spacerExp, attrBlock)
+  root.append(leadSpacer, strip, zoneMidRow, spacerExp, attrBlock)
   container.appendChild(root)
 
   if (!canEdit) {
@@ -575,9 +543,7 @@ export function mountHeroExpandBlock(
   const buildHitZonesPayload = () => {
     const zones = {}
     for (const z of HIT_ZONE_DEFS) {
-      const ui =
-        zoneUiStrip.find((u) => u.zoneId === z.id) ??
-        zoneUiAttr.find((u) => u.zoneId === z.id)
+      const ui = zoneUiMid.find((u) => u.zoneId === z.id)
       if (ui) {
         zones[z.id] = { rs: ui.rsInp.value, w: ui.getWunden() }
       } else {
@@ -610,7 +576,7 @@ export function mountHeroExpandBlock(
     hitZones: buildHitZonesPayload(),
   })
 
-  const allZoneUis = [...zoneUiStrip, ...zoneUiAttr]
+  const allZoneUis = [...zoneUiMid]
   for (const ui of allZoneUis) {
     ui.dots.forEach((dot, idx) => {
       dot.addEventListener('click', (e) => {
