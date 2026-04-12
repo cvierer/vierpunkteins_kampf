@@ -958,7 +958,7 @@ body {
   align-items: flex-end;
   justify-content: center;
   gap: 0.07rem;
-  padding: 0.03rem 0.04rem 0.06rem;
+  padding: 0.02rem 0.04rem 0.12rem;
   box-sizing: border-box;
   background: rgba(90, 74, 48, 0.06);
   border-bottom: 1px solid rgba(201, 162, 39, 0.28);
@@ -1021,6 +1021,11 @@ body {
 .init-hero-ex__micro--wappen-rs:focus {
   outline: none !important;
   background: rgba(255, 255, 255, 0.55) !important;
+}
+
+.init-hero-ex__micro--wappen-rs--compact {
+  font-size: calc(0.66rem * var(--init-box-scale)) !important;
+  letter-spacing: -0.05em;
 }
 
 .init-hero-ex__abbr {

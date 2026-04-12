@@ -145,6 +145,12 @@ function syncTpFontSize(tpInp) {
   tpInp.classList.toggle('init-hero-ex__micro--tp-compact', n > 4)
 }
 
+/** @param {HTMLInputElement} el */
+function syncWappenRsFontSize(el) {
+  const n = el.value.trim().length
+  el.classList.toggle('init-hero-ex__micro--wappen-rs--compact', n >= 2)
+}
+
 /**
  * WdS-Trefferzonen nach Würfelergebnis (1–20).
  * @param {string} raw
@@ -390,6 +396,7 @@ export function mountHeroExpandBlock(
   }
   syncWappenDots()
   for (const dot of wappenDots) dot.disabled = !canEdit
+  syncWappenRsFontSize(wappenRsInp)
 
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
@@ -483,6 +490,7 @@ export function mountHeroExpandBlock(
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
   tzInp.addEventListener('input', () => syncTzTooltip(tzInp))
+  wappenRsInp.addEventListener('input', () => syncWappenRsFontSize(wappenRsInp))
 
   /** @type {{ sp: string, tz: string }} */
   let spTzCheckpoint = { sp: snap.sp, tz: snap.tz }
