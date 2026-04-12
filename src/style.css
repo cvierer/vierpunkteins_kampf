@@ -915,6 +915,9 @@ body {
 }
 
 .init-hero-ex__wappen {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
   width: 100%;
   height: var(--init-hero-cell);
   box-sizing: border-box;
@@ -926,10 +929,24 @@ body {
   border: 1px solid rgba(201, 162, 39, 0.45);
   border-radius: 4px;
   overflow: hidden;
+  background: transparent;
+}
+
+/* Fläche + Tiefe eine Ebene hinter Punkten und Inhalt */
+.init-hero-ex__wappen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
   background: rgba(201, 162, 39, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  pointer-events: none;
 }
 
 .init-hero-ex__wappen-chief {
+  position: relative;
+  z-index: 1;
   flex: 0 0 34%;
   min-height: 0;
   display: flex;
@@ -939,11 +956,13 @@ body {
   gap: 0.03rem;
   padding: 0.02rem 0.04rem 0;
   box-sizing: border-box;
-  background: rgba(255, 253, 248, 0.35);
+  background: transparent;
   border-bottom: 1px solid rgba(201, 162, 39, 0.35);
 }
 
 .init-hero-ex__wappen-dot {
+  position: relative;
+  z-index: 2;
   flex-shrink: 0;
   width: calc(0.38rem * var(--init-box-scale));
   height: calc(0.38rem * var(--init-box-scale));
@@ -982,6 +1001,8 @@ body {
 }
 
 .init-hero-ex__micro--wappen-rs {
+  position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
   width: 100% !important;
