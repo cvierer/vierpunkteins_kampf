@@ -455,6 +455,7 @@ export function mountHeroExpandBlock(
     const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
     zoneUiStrip.push(ui)
   }
+  const [zLa, zKf, zBr, zRa] = zoneUiStrip
 
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
@@ -509,8 +510,11 @@ export function mountHeroExpandBlock(
     tpCell,
     fk.cell,
     g.cell,
-    ...zoneUiStrip.map((z) => z.cell),
-    spTzPair
+    zLa.cell,
+    zKf.cell,
+    zBr.cell,
+    spTzPair,
+    zRa.cell
   )
 
   root.append(leadSpacer, strip, spacerExp, attrBlock)

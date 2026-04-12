@@ -543,7 +543,9 @@ body {
 /* Ausklappbarer Heldenblock: Spalte 1 = Chevron/Tools, Spalte 2 = Kampfwerte + Attribute (ohne rechter Rail) */
 .init-hero-ex {
   --init-hero-cell: var(--init-obj-cell);
-  --init-hero-strip-gap: var(--init-obj-gap);
+  /* Horizontaler Abstand zwischen allen Helden-Kästchen: 0,7× Listen-Objektabstand */
+  --init-grid-gap: calc(0.7 * var(--init-obj-gap));
+  --init-hero-strip-gap: calc(0.7 * var(--init-obj-gap));
   /* Nur TP variabel: 6×Zelle + TP + 6 Lücken = 8×Zelle + 7 Lücken */
   --init-hero-tp-w: calc(2 * var(--init-hero-cell) + var(--init-hero-strip-gap));
   display: grid;
@@ -704,15 +706,6 @@ body {
   height: calc(0.54rem * var(--init-box-scale));
   max-height: calc(0.54rem * var(--init-box-scale));
   box-sizing: border-box;
-  grid-template-columns: var(--init-hero-cell) minmax(0, 1fr);
-  width: 100%;
-  min-width: calc(2 * var(--init-hero-cell));
-}
-
-.init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-pair__inputs {
-  grid-template-columns: 1fr;
-  width: 100%;
-  min-width: calc(2 * var(--init-hero-cell));
 }
 
 .init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-label-btn {
