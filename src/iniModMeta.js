@@ -1,4 +1,12 @@
 ﻿import OBR from '@owlbear-rodeo/sdk'
+import {
+  clampWound,
+  HIT_ZONE_DEFS,
+  HZ_KAMPFNOTIZ,
+  hzRsKey,
+  hzWKey,
+  readHitZoneBundle,
+} from './hitZoneMeta.js'
 import { TRACKER_ITEM_META_KEY } from './participants.js'
 
 export const HERO_EX_LE = 'heroExLe'
@@ -20,9 +28,9 @@ export const HERO_EX_TZ = 'heroExTz'
 export const HERO_EX_FK = 'heroExFk'
 /** Geschosse */
 export const HERO_EX_G = 'heroExG'
-/** Rüstungsschutz im Wappenfeld (Kampfzeile neben G) */
+/** @deprecated Ersetzt durch Trefferzonen hz*; wird beim Speichern entfernt */
 export const HERO_EX_WAPPEN_RS = 'heroExWappenRs'
-/** Wundmarken 0–3 im Wappenfeld (rote Punkte) */
+/** @deprecated Ersetzt durch Trefferzonen hz*; wird beim Speichern entfernt */
 export const HERO_EX_WAPPEN_WUNDEN = 'heroExWappenW'
 export const HERO_EX_MU = 'heroExMu'
 export const HERO_EX_KL = 'heroExKl'
@@ -83,8 +91,7 @@ export function readHeroExpandSnapshot(meta) {
     ff: strOrEmpty(meta?.[HERO_EX_FF]),
     ge: strOrEmpty(meta?.[HERO_EX_GE]),
     kk: strOrEmpty(meta?.[HERO_EX_KK]),
-    wappenRs: strOrEmpty(meta?.[HERO_EX_WAPPEN_RS]),
-    wappenWunden: strOrEmpty(meta?.[HERO_EX_WAPPEN_WUNDEN]),
+    hitZones: readHitZoneBundle(meta, TRACKER_ITEM_META_KEY),
   }
 }
 
@@ -113,7 +120,6 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_KO, next.ko)
       setStr(HERO_EX_TP, next.tp)
       setStr(HERO_EX_SP, next.sp)
-      setStr(HERO_EX_TZ, next.tz)
       setStr(HERO_EX_FK, next.fk)
       setStr(HERO_EX_G, next.g)
       setStr(HERO_EX_MU, next.mu)
@@ -123,11 +129,25 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_FF, next.ff)
       setStr(HERO_EX_GE, next.ge)
       setStr(HERO_EX_KK, next.kk)
-      setStr(HERO_EX_WAPPEN_RS, next.wappenRs)
-      const wn = String(next.wappenWunden ?? '').trim()
-      if (wn === '' || wn === '0') delete m[HERO_EX_WAPPEN_WUNDEN]
-      else m[HERO_EX_WAPPEN_WUNDEN] = wn
 
+      if (next.hitZones) {
+        const nT = String(next.hitZones.notiz ?? '').trim()
+        if (nT === '') delete m[HZ_KAMPFNOTIZ]
+        else m[HZ_KAMPFNOTIZ] = nT
+        for (const z of HIT_ZONE_DEFS) {
+          const zd = next.hitZones.zones?.[z.id]
+          const rsT = String(zd?.rs ?? '').trim()
+          const w = clampWound(zd?.w ?? 0)
+          if (rsT === '') delete m[hzRsKey(z.id)]
+          else m[hzRsKey(z.id)] = rsT
+          if (w <= 0) delete m[hzWKey(z.id)]
+          else m[hzWKey(z.id)] = w
+        }
+      }
+
+      delete m[HERO_EX_TZ]
+      delete m[HERO_EX_WAPPEN_RS]
+      delete m[HERO_EX_WAPPEN_WUNDEN]
       delete m[HERO_EX_AEKE_LEGACY]
       delete m[HERO_EX_WUNDEN_LEGACY]
       delete m[HERO_EX_B]
@@ -152,33 +172,79 @@ function syncWappenRsFontSize(el) {
 }
 
 /**
- * WdS-Trefferzonen nach Würfelergebnis (1–20).
- * @param {string} raw
- * @returns {string | null}
+ * Mini-Wappen pro Trefferzone (RS + 3 Wundmarken).
+ * @param {string} itemId
+ * @param {boolean} canEdit
+ * @param {{ id: string, abbr: string, title: string }} spec
+ * @param {{ rs: string, w: number }} zSnap
  */
-function trefferzoneZoneLabel(raw) {
-  const n = parseInt(String(raw).trim(), 10)
-  if (!Number.isFinite(n)) return null
-  if (n === 19 || n === 20) return 'Kopf'
-  if (n === 15 || n === 16 || n === 17 || n === 18) return 'Brust'
-  if (n === 14 || n === 12 || n === 10) return 'rechter Arm'
-  if (n === 13 || n === 11 || n === 9) return 'linker Arm'
-  if (n === 8 || n === 7) return 'Bauch'
-  if (n === 2 || n === 4 || n === 6) return 'rechtes Bein'
-  if (n === 1 || n === 3 || n === 5) return 'linkes Bein'
-  return null
-}
+function mountZoneMiniWappen(itemId, canEdit, spec, zSnap) {
+  let wundenCount = Math.min(3, Math.max(0, Math.floor(Number(zSnap.w)) || 0))
+  const cell = document.createElement('div')
+  cell.className = 'init-hero-ex__micro-cell init-hero-ex__micro-cell--wappen'
+  const ab = document.createElement('span')
+  ab.className = 'init-hero-ex__abbr'
+  ab.textContent = spec.abbr
+  ab.title = spec.title
+  const wappen = document.createElement('div')
+  wappen.className = 'init-hero-ex__wappen'
+  wappen.setAttribute('role', 'group')
+  wappen.setAttribute(
+    'aria-label',
+    `${spec.title}: Rüstungsschutz und Wundmarken`
+  )
+  const chief = document.createElement('div')
+  chief.className = 'init-hero-ex__wappen-chief'
+  /** @type {HTMLButtonElement[]} */
+  const dots = []
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('button')
+    dot.type = 'button'
+    dot.className = 'init-hero-ex__wappen-dot'
+    dot.title = `Wundmarke ${i + 1}: antippen zum Setzen oder Absenken`
+    dot.setAttribute('aria-label', `Wundmarke ${i + 1} (${spec.title})`)
+    dots.push(dot)
+  }
+  chief.append(...dots)
+  const rsInp = document.createElement('input')
+  rsInp.type = 'text'
+  rsInp.inputMode = 'numeric'
+  rsInp.className = 'init-hero-ex__micro init-hero-ex__micro--wappen-rs'
+  rsInp.id = `hero-ex-${itemId}-hz-${spec.id}-rs`
+  rsInp.autocomplete = 'off'
+  rsInp.spellcheck = false
+  rsInp.disabled = !canEdit
+  rsInp.value = strOrEmpty(zSnap.rs)
+  rsInp.maxLength = 2
+  rsInp.title = `${spec.title} — Rüstungsschutz (bis 2 Ziffern)`
+  rsInp.setAttribute('aria-label', `${spec.title}, Rüstungsschutz`)
+  wappen.append(chief, rsInp)
+  cell.append(ab, wappen)
 
-/** @param {HTMLInputElement} tzInp */
-function syncTzTooltip(tzInp) {
-  const zone = trefferzoneZoneLabel(tzInp.value)
-  const base = 'Trefferzone (TZ)'
-  if (zone) {
-    tzInp.title = `${base} — ${zone}`
-    tzInp.setAttribute('aria-label', `${base}, ${zone}`)
-  } else {
-    tzInp.title = base
-    tzInp.setAttribute('aria-label', base)
+  const syncDots = () => {
+    dots.forEach((btn, idx) => {
+      const on = idx < wundenCount
+      btn.classList.toggle('init-hero-ex__wappen-dot--on', on)
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
+  }
+  syncDots()
+  for (const dot of dots) dot.disabled = !canEdit
+  syncWappenRsFontSize(rsInp)
+
+  return {
+    cell,
+    rsInp,
+    dots,
+    zoneId: spec.id,
+    getWunden: () => wundenCount,
+    syncDots,
+    bumpWunden(idx) {
+      const n = idx + 1
+      wundenCount = wundenCount === n ? n - 1 : n
+      wundenCount = Math.min(3, Math.max(0, wundenCount))
+      syncDots()
+    },
   }
 }
 
@@ -191,6 +257,7 @@ export function mountHeroExpandBlock(
   { itemId, meta, canEdit, leadButtons }
 ) {
   const snap = readHeroExpandSnapshot(meta)
+  const hitZoneNotizFrozen = snap.hitZones.notiz
   container.replaceChildren()
 
   const root = document.createElement('div')
@@ -314,6 +381,28 @@ export function mountHeroExpandBlock(
   lePairInputs.append(leInp, leSlash, leMaxInp)
   lePair.append(lePairLabels, lePairInputs)
   lePair.classList.add('init-hero-ex__le-pair--in-attr-row')
+
+  /** @type {ReturnType<typeof mountZoneMiniWappen>[]} */
+  const zoneUiAttr = []
+  const ZONE_ATTR_SPECS = [
+    {
+      id: 'lbein',
+      abbr: 'Lb',
+      title: 'Linkes Bein, Trefferzone (WdS)',
+    },
+    { id: 'bauch', abbr: 'Bu', title: 'Bauch, Trefferzone (WdS)' },
+    {
+      id: 'rbein',
+      abbr: 'Rb',
+      title: 'Rechtes Bein, Trefferzone (WdS)',
+    },
+  ]
+  for (const spec of ZONE_ATTR_SPECS) {
+    const zSnap = snap.hitZones.zones[spec.id] ?? { rs: '', w: 0 }
+    const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
+    zoneUiAttr.push(ui)
+    attrCols.appendChild(ui.cell)
+  }
   attrCols.appendChild(lePair)
 
   const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
@@ -341,75 +430,44 @@ export function mountHeroExpandBlock(
   const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
   const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
 
-  const wN = parseInt(String(snap.wappenWunden ?? '').trim(), 10)
-  let wappenWundenCount = Number.isFinite(wN)
-    ? Math.min(3, Math.max(0, wN))
-    : 0
-
-  const wappenCell = document.createElement('div')
-  wappenCell.className =
-    'init-hero-ex__micro-cell init-hero-ex__micro-cell--wappen'
-  const wappenAbbrSlot = document.createElement('span')
-  wappenAbbrSlot.className = 'init-hero-ex__wappen-abbr-slot'
-  wappenAbbrSlot.setAttribute('aria-hidden', 'true')
-  const wappen = document.createElement('div')
-  wappen.className = 'init-hero-ex__wappen'
-  wappen.setAttribute('role', 'group')
-  wappen.setAttribute(
-    'aria-label',
-    'Rüstungsschutz und Wundmarken (Übersicht neben Geschosse)'
-  )
-  const chief = document.createElement('div')
-  chief.className = 'init-hero-ex__wappen-chief'
-  /** @type {HTMLButtonElement[]} */
-  const wappenDots = []
-  for (let i = 0; i < 3; i++) {
-    const dot = document.createElement('button')
-    dot.type = 'button'
-    dot.className = 'init-hero-ex__wappen-dot'
-    dot.title = `Wundmarke ${i + 1}: antippen zum Setzen oder Absenken`
-    dot.setAttribute('aria-label', `Wundmarke ${i + 1}`)
-    wappenDots.push(dot)
+  /** @type {ReturnType<typeof mountZoneMiniWappen>[]} */
+  const zoneUiStrip = []
+  const ZONE_STRIP_SPECS = [
+    {
+      id: 'schildarm',
+      abbr: 'LA',
+      title: 'Linker Arm (Schildarm), Trefferzone (WdS)',
+    },
+    { id: 'kopf', abbr: 'Kf', title: 'Kopf und Hals, Trefferzone (WdS)' },
+    {
+      id: 'brust',
+      abbr: 'Br',
+      title: 'Brust und Rücken, Trefferzone (WdS)',
+    },
+    {
+      id: 'schwertarm',
+      abbr: 'RA',
+      title: 'Rechter Arm (Schwertarm), Trefferzone (WdS)',
+    },
+  ]
+  for (const spec of ZONE_STRIP_SPECS) {
+    const zSnap = snap.hitZones.zones[spec.id] ?? { rs: '', w: 0 }
+    const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
+    zoneUiStrip.push(ui)
   }
-  chief.append(...wappenDots)
-  const wappenRsInp = document.createElement('input')
-  wappenRsInp.type = 'text'
-  wappenRsInp.inputMode = 'numeric'
-  wappenRsInp.className = 'init-hero-ex__micro init-hero-ex__micro--wappen-rs'
-  wappenRsInp.id = `hero-ex-${itemId}-wappen-rs`
-  wappenRsInp.autocomplete = 'off'
-  wappenRsInp.spellcheck = false
-  wappenRsInp.disabled = !canEdit
-  wappenRsInp.value = snap.wappenRs
-  wappenRsInp.maxLength = 2
-  wappenRsInp.title = 'Rüstungsschutz (RS), bis 2 Ziffern'
-  wappenRsInp.setAttribute('aria-label', 'Rüstungsschutz (RS)')
-  wappen.append(chief, wappenRsInp)
-  wappenCell.append(wappenAbbrSlot, wappen)
-
-  const syncWappenDots = () => {
-    wappenDots.forEach((btn, idx) => {
-      const on = idx < wappenWundenCount
-      btn.classList.toggle('init-hero-ex__wappen-dot--on', on)
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false')
-    })
-  }
-  syncWappenDots()
-  for (const dot of wappenDots) dot.disabled = !canEdit
-  syncWappenRsFontSize(wappenRsInp)
 
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
   spTzUndo.className = 'init-hero-ex__sp-tz-label-btn'
   spTzUndo.textContent = '<'
-  spTzUndo.title = 'Schadenspunkte / Trefferzone: letzte Änderung rückgängig'
-  spTzUndo.setAttribute('aria-label', 'SP und TZ: rückgängig')
+  spTzUndo.title = 'Schadenspunkte: letzte Änderung rückgängig'
+  spTzUndo.setAttribute('aria-label', 'Schadenspunkte: rückgängig')
   const spTzRedo = document.createElement('button')
   spTzRedo.type = 'button'
   spTzRedo.className = 'init-hero-ex__sp-tz-label-btn'
   spTzRedo.textContent = '>'
-  spTzRedo.title = 'Schadenspunkte / Trefferzone: wiederholen'
-  spTzRedo.setAttribute('aria-label', 'SP und TZ: wiederholen')
+  spTzRedo.title = 'Schadenspunkte: wiederholen'
+  spTzRedo.setAttribute('aria-label', 'Schadenspunkte: wiederholen')
   const spTzLabelTools = document.createElement('div')
   spTzLabelTools.className = 'init-hero-ex__sp-tz-pair__label-tools'
   spTzLabelTools.append(spTzUndo, spTzRedo)
@@ -422,11 +480,7 @@ export function mountHeroExpandBlock(
   spAbbr.className = 'init-hero-ex__abbr'
   spAbbr.textContent = 'SP'
   spAbbr.title = 'Schadenspunkte (SP)'
-  const tzAbbr = document.createElement('span')
-  tzAbbr.className = 'init-hero-ex__abbr'
-  tzAbbr.textContent = 'TZ'
-  tzAbbr.title = 'Trefferzone (TZ)'
-  spTzLabels.append(spAbbr, spTzLabelTools, tzAbbr)
+  spTzLabels.append(spAbbr, spTzLabelTools)
 
   const spInp = document.createElement('input')
   spInp.type = 'text'
@@ -441,28 +495,9 @@ export function mountHeroExpandBlock(
   spInp.title = 'Schadenspunkte (SP)'
   spInp.setAttribute('aria-label', 'Schadenspunkte (SP)')
 
-  const spTzArrow = document.createElement('button')
-  spTzArrow.type = 'button'
-  spTzArrow.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-arrow'
-  spTzArrow.textContent = '>'
-  spTzArrow.title = 'Fokus auf Trefferzone (TZ)'
-  spTzArrow.setAttribute('aria-label', 'Zu Trefferzone wechseln')
-
-  const tzInp = document.createElement('input')
-  tzInp.type = 'text'
-  tzInp.inputMode = 'numeric'
-  tzInp.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-inp'
-  tzInp.id = `hero-ex-${itemId}-tz`
-  tzInp.autocomplete = 'off'
-  tzInp.spellcheck = false
-  tzInp.disabled = !canEdit
-  tzInp.value = snap.tz
-  tzInp.maxLength = 3
-  syncTzTooltip(tzInp)
-
   const spTzInputs = document.createElement('div')
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
-  spTzInputs.append(spInp, spTzArrow, tzInp)
+  spTzInputs.append(spInp)
   spTzPair.append(spTzLabels, spTzInputs)
   spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-strip')
 
@@ -474,7 +509,7 @@ export function mountHeroExpandBlock(
     tpCell,
     fk.cell,
     g.cell,
-    wappenCell,
+    ...zoneUiStrip.map((z) => z.cell),
     spTzPair
   )
 
@@ -482,26 +517,38 @@ export function mountHeroExpandBlock(
   container.appendChild(root)
 
   if (!canEdit) {
-    spTzArrow.disabled = true
     spTzUndo.disabled = true
     spTzRedo.disabled = true
     return
   }
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
-  tzInp.addEventListener('input', () => syncTzTooltip(tzInp))
-  wappenRsInp.addEventListener('input', () => syncWappenRsFontSize(wappenRsInp))
 
-  /** @type {{ sp: string, tz: string }} */
-  let spTzCheckpoint = { sp: snap.sp, tz: snap.tz }
-  /** @type {{ sp: string, tz: string }[]} */
+  /** @type {{ sp: string }} */
+  let spTzCheckpoint = { sp: snap.sp }
+  /** @type {{ sp: string }[]} */
   const spTzUndoStack = []
-  /** @type {{ sp: string, tz: string }[]} */
+  /** @type {{ sp: string }[]} */
   const spTzRedoStack = []
 
   const syncSpTzHistoryButtons = () => {
     spTzUndo.disabled = spTzUndoStack.length === 0
     spTzRedo.disabled = spTzRedoStack.length === 0
+  }
+
+  const buildHitZonesPayload = () => {
+    const zones = {}
+    for (const z of HIT_ZONE_DEFS) {
+      const ui =
+        zoneUiStrip.find((u) => u.zoneId === z.id) ??
+        zoneUiAttr.find((u) => u.zoneId === z.id)
+      if (ui) {
+        zones[z.id] = { rs: ui.rsInp.value, w: ui.getWunden() }
+      } else {
+        zones[z.id] = snap.hitZones.zones[z.id] ?? { rs: '', w: 0 }
+      }
+    }
+    return { notiz: hitZoneNotizFrozen, zones }
   }
 
   const gather = () => ({
@@ -514,7 +561,6 @@ export function mountHeroExpandBlock(
     ko: koAttr.inp.value,
     tp: tpInp.value,
     sp: spInp.value,
-    tz: tzInp.value,
     fk: fk.inp.value,
     g: g.inp.value,
     mu: mu.inp.value,
@@ -524,29 +570,27 @@ export function mountHeroExpandBlock(
     ff: ff.inp.value,
     ge: ge.inp.value,
     kk: kk.inp.value,
-    wappenRs: wappenRsInp.value,
-    wappenWunden: String(wappenWundenCount),
+    hitZones: buildHitZonesPayload(),
   })
 
-  wappenDots.forEach((dot, idx) => {
-    dot.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (!canEdit) return
-      const n = idx + 1
-      wappenWundenCount = wappenWundenCount === n ? n - 1 : n
-      wappenWundenCount = Math.min(3, Math.max(0, wappenWundenCount))
-      syncWappenDots()
-      void applyHeroExpandFields(itemId, gather())
+  const allZoneUis = [...zoneUiStrip, ...zoneUiAttr]
+  for (const ui of allZoneUis) {
+    ui.dots.forEach((dot, idx) => {
+      dot.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        ui.bumpWunden(idx)
+        void applyHeroExpandFields(itemId, gather())
+      })
     })
-  })
+  }
 
   const commit = () => {
     const g = gather()
-    if (g.sp !== spTzCheckpoint.sp || g.tz !== spTzCheckpoint.tz) {
+    if (g.sp !== spTzCheckpoint.sp) {
       spTzUndoStack.push({ ...spTzCheckpoint })
       spTzRedoStack.length = 0
-      spTzCheckpoint = { sp: g.sp, tz: g.tz }
+      spTzCheckpoint = { sp: g.sp }
     }
     syncSpTzHistoryButtons()
     void applyHeroExpandFields(itemId, g)
@@ -554,8 +598,6 @@ export function mountHeroExpandBlock(
 
   const applySpTzPairToScene = (pair) => {
     spInp.value = pair.sp
-    tzInp.value = pair.tz
-    syncTzTooltip(tzInp)
     void applyHeroExpandFields(itemId, gather())
   }
 
@@ -581,15 +623,11 @@ export function mountHeroExpandBlock(
     syncSpTzHistoryButtons()
   })
 
-  spTzArrow.addEventListener('click', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    void commit()
-    tzInp.focus()
-    tzInp.select()
-  })
-
   syncSpTzHistoryButtons()
+
+  for (const ui of allZoneUis) {
+    ui.rsInp.addEventListener('input', () => syncWappenRsFontSize(ui.rsInp))
+  }
 
   for (const inp of [
     at.inp,
@@ -602,7 +640,6 @@ export function mountHeroExpandBlock(
     fk.inp,
     g.inp,
     spInp,
-    tzInp,
     mu.inp,
     kl.inp,
     inn.inp,
@@ -611,7 +648,7 @@ export function mountHeroExpandBlock(
     ge.inp,
     kk.inp,
     koAttr.inp,
-    wappenRsInp,
+    ...allZoneUis.map((u) => u.rsInp),
   ]) {
     inp.addEventListener('blur', commit)
   }

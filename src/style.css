@@ -704,6 +704,15 @@ body {
   height: calc(0.54rem * var(--init-box-scale));
   max-height: calc(0.54rem * var(--init-box-scale));
   box-sizing: border-box;
+  grid-template-columns: var(--init-hero-cell) minmax(0, 1fr);
+  width: 100%;
+  min-width: calc(2 * var(--init-hero-cell));
+}
+
+.init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-pair__inputs {
+  grid-template-columns: 1fr;
+  width: 100%;
+  min-width: calc(2 * var(--init-hero-cell));
 }
 
 .init-hero-ex__sp-tz-pair--in-strip .init-hero-ex__sp-tz-label-btn {

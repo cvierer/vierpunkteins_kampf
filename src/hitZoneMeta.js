@@ -79,7 +79,7 @@ function strOrEmpty(v) {
   return String(v)
 }
 
-function clampWound(n) {
+export function clampWound(n) {
   const x = Math.floor(Number(n))
   if (!Number.isFinite(x)) return 0
   return Math.max(0, Math.min(4, x))
