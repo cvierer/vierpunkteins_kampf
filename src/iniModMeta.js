@@ -251,6 +251,63 @@ function mountZoneMiniWappen(itemId, canEdit, spec, zSnap) {
 }
 
 /**
+ * LE + LE max wie Mini-Wappen (RB), vertikal gespiegelt: oben LE (RS-Fläche), unten Max im Chief-Band.
+ * @param {string} itemId
+ * @param {boolean} canEdit
+ * @param {{ le: string, leMax: string }} z
+ */
+function mountLeMiniWappen(itemId, canEdit, z) {
+  const cell = document.createElement('div')
+  cell.className = 'init-hero-ex__micro-cell init-hero-ex__micro-cell--wappen'
+  const ab = document.createElement('span')
+  ab.className = 'init-hero-ex__abbr'
+  ab.textContent = 'LE'
+  ab.title = 'Lebensenergie (LE) und Maximum (LE max)'
+
+  const wappen = document.createElement('div')
+  wappen.className = 'init-hero-ex__wappen init-hero-ex__wappen--le-flip'
+  wappen.setAttribute('role', 'group')
+  wappen.setAttribute('aria-label', 'Lebensenergie und Lebensenergie Maximum')
+
+  const chiefMax = document.createElement('div')
+  chiefMax.className =
+    'init-hero-ex__wappen-chief init-hero-ex__wappen-chief--lemax-slot'
+
+  const leMaxInp = document.createElement('input')
+  leMaxInp.type = 'text'
+  leMaxInp.inputMode = 'numeric'
+  leMaxInp.className = 'init-hero-ex__micro init-hero-ex__micro--wappen-lemax'
+  leMaxInp.id = `hero-ex-${itemId}-lemax`
+  leMaxInp.autocomplete = 'off'
+  leMaxInp.spellcheck = false
+  leMaxInp.disabled = !canEdit
+  leMaxInp.value = strOrEmpty(z.leMax)
+  leMaxInp.maxLength = 3
+  leMaxInp.title = 'Lebensenergie Maximum (LE max)'
+  leMaxInp.setAttribute('aria-label', 'Lebensenergie Maximum (LE max)')
+  chiefMax.appendChild(leMaxInp)
+
+  const leInp = document.createElement('input')
+  leInp.type = 'text'
+  leInp.inputMode = 'numeric'
+  leInp.className = 'init-hero-ex__micro init-hero-ex__micro--wappen-rs'
+  leInp.id = `hero-ex-${itemId}-le`
+  leInp.autocomplete = 'off'
+  leInp.spellcheck = false
+  leInp.disabled = !canEdit
+  leInp.value = strOrEmpty(z.le)
+  leInp.maxLength = 2
+  leInp.title = 'Lebensenergie (LE)'
+  leInp.setAttribute('aria-label', 'Lebensenergie (LE)')
+
+  wappen.append(chiefMax, leInp)
+  cell.append(ab, wappen)
+  syncWappenRsFontSize(leInp)
+
+  return { cell, leInp, leMaxInp }
+}
+
+/**
  * @param {HTMLElement} container
  * @param {{ itemId: string, meta: Record<string, unknown> | undefined, canEdit: boolean, leadButtons?: HTMLElement[] }} opts
  */
@@ -383,63 +440,12 @@ export function mountHeroExpandBlock(
 
   const au = mkMicro('AU', 'Ausdauer (AU)', 'au', snap.au, 2, '', true)
   const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
+  const { cell: leCell, leInp, leMaxInp } = mountLeMiniWappen(itemId, canEdit, {
+    le: snap.le,
+    leMax: snap.leMax,
+  })
 
-  const lePair = document.createElement('div')
-  lePair.className = 'init-hero-ex__le-pair'
-  const lePairLabels = document.createElement('div')
-  lePairLabels.className = 'init-hero-ex__le-pair__labels'
-  const leAbbr = document.createElement('span')
-  leAbbr.className = 'init-hero-ex__abbr'
-  leAbbr.textContent = 'LE'
-  leAbbr.title = 'Lebensenergie (LE)'
-  const leLabelPad = document.createElement('span')
-  leLabelPad.className = 'init-hero-ex__le-pair__label-gap'
-  leLabelPad.setAttribute('aria-hidden', 'true')
-  const maxAbbr = document.createElement('span')
-  maxAbbr.className = 'init-hero-ex__abbr'
-  maxAbbr.textContent = 'max'
-  maxAbbr.title = 'Lebensenergie Maximum (LE max)'
-  lePairLabels.append(leAbbr, leLabelPad, maxAbbr)
-
-  const leInp = document.createElement('input')
-  leInp.type = 'text'
-  leInp.inputMode = 'numeric'
-  leInp.className = 'init-hero-ex__micro init-hero-ex__micro--le-pair-inp'
-  leInp.id = `hero-ex-${itemId}-le`
-  leInp.autocomplete = 'off'
-  leInp.spellcheck = false
-  leInp.disabled = !canEdit
-  leInp.value = snap.le
-  leInp.maxLength = 2
-  leInp.title = 'Lebensenergie (LE)'
-  leInp.setAttribute('aria-label', 'Lebensenergie (LE)')
-
-  const leSlash = document.createElement('span')
-  leSlash.className = 'init-hero-ex__slash init-hero-ex__slash--le-only'
-  leSlash.textContent = '/'
-  leSlash.setAttribute('aria-hidden', 'true')
-
-  const leMaxInp = document.createElement('input')
-  leMaxInp.type = 'text'
-  leMaxInp.inputMode = 'numeric'
-  leMaxInp.className =
-    'init-hero-ex__micro init-hero-ex__micro--le-pair-inp init-hero-ex__micro--lemax'
-  leMaxInp.id = `hero-ex-${itemId}-lemax`
-  leMaxInp.autocomplete = 'off'
-  leMaxInp.spellcheck = false
-  leMaxInp.disabled = !canEdit
-  leMaxInp.value = snap.leMax
-  leMaxInp.maxLength = 3
-  leMaxInp.title = 'Lebensenergie Maximum (LE max)'
-  leMaxInp.setAttribute('aria-label', 'Lebensenergie Maximum (LE max)')
-
-  const lePairInputs = document.createElement('div')
-  lePairInputs.className = 'init-hero-ex__le-pair__inputs'
-  lePairInputs.append(leInp, leSlash, leMaxInp)
-  lePair.append(lePairLabels, lePairInputs)
-  lePair.classList.add('init-hero-ex__le-pair--in-zone-mid')
-
-  zoneMidRow.append(au.cell, ae.cell, lePair)
+  zoneMidRow.append(au.cell, ae.cell, leCell)
 
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
@@ -510,7 +516,7 @@ export function mountHeroExpandBlock(
   spTzPair.append(spTzLabels, spTzInputs)
   spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-strip')
 
-  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell, spTzPair)
+  strip.append(at.cell, pa.cell, ausw.cell, tpCell, fk.cell, g.cell, spTzPair)
 
   root.append(leadSpacer, strip, zoneMidRow, spacerExp, attrBlock)
   container.appendChild(root)
@@ -636,6 +642,7 @@ export function mountHeroExpandBlock(
   for (const ui of allZoneUis) {
     ui.rsInp.addEventListener('input', () => syncWappenRsFontSize(ui.rsInp))
   }
+  leInp.addEventListener('input', () => syncWappenRsFontSize(leInp))
 
   for (const inp of [
     at.inp,
