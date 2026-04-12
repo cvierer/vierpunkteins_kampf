@@ -17,7 +17,7 @@ export const HERO_EX_PA = 'heroExPa'
 /** Konstitution (Eigenschaft), nur in der Eigenschaftenzeile */
 export const HERO_EX_KO = 'heroExKo'
 export const HERO_EX_TP = 'heroExTp'
-/** Ausweichen (A), Kampfzeile zwischen PA und LE */
+/** Ausweichen (AW), Kampfzeile */
 export const HERO_EX_A = 'heroExA'
 /** @deprecated Nicht mehr in der UI; wird beim Speichern entfernt */
 export const HERO_EX_B = 'heroExB'
@@ -47,7 +47,7 @@ export const HERO_EX_AMOD = 'heroExAMod'
 export const HERO_EX_BMOD = 'heroExBMod'
 /** @deprecated Nur Lesen/Migration */
 export const HERO_EX_CMOD = 'heroExCMod'
-/** @deprecated Nur Lesen/Migration, nicht mehr in der UI */
+/** Ausdauer (AU), Heldenblock Trefferzonen-Zeile */
 export const HERO_EX_AU = 'heroExAu'
 /** @deprecated Nur Lesen/Migration */
 export const HERO_EX_KE = 'heroExKe'
@@ -78,6 +78,7 @@ export function readHeroExpandSnapshot(meta) {
     le: strOrEmpty(meta?.[HERO_EX_LE]),
     leMax: strOrEmpty(meta?.[HERO_EX_LE_MAX]),
     ae: strOrEmpty(meta?.[HERO_EX_AE]),
+    au: strOrEmpty(meta?.[HERO_EX_AU]),
     ko: strOrEmpty(meta?.[HERO_EX_KO]),
     tp: strOrEmpty(meta?.[HERO_EX_TP]),
     sp: strOrEmpty(meta?.[HERO_EX_SP]),
@@ -117,6 +118,7 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_LE, next.le)
       setStr(HERO_EX_LE_MAX, next.leMax)
       setStr(HERO_EX_AE, next.ae)
+      setStr(HERO_EX_AU, next.au)
       setStr(HERO_EX_KO, next.ko)
       setStr(HERO_EX_TP, next.tp)
       setStr(HERO_EX_SP, next.sp)
@@ -325,7 +327,62 @@ export function mountHeroExpandBlock(
 
   const at = mkMicro('AT', 'Attacke (AT)', 'at', snap.at, 2, '', true)
   const pa = mkMicro('PA', 'Parade (PA)', 'pa', snap.pa, 2, '', true)
-  const ausw = mkMicro('A', 'Ausweichen (A)', 'a', snap.a, 2, '', true)
+  const ausw = mkMicro('AW', 'Ausweichen (AW)', 'a', snap.a, 2, '', true)
+
+  const tpCell = document.createElement('div')
+  tpCell.className = 'init-hero-ex__micro-cell'
+  const tpAbbr = document.createElement('span')
+  tpAbbr.className = 'init-hero-ex__abbr'
+  tpAbbr.textContent = 'TP'
+  tpAbbr.title = 'Trefferpunkte (TP)'
+  const tpInp = document.createElement('input')
+  tpInp.type = 'text'
+  tpInp.className = 'init-hero-ex__micro init-hero-ex__micro--tp'
+  tpInp.id = `hero-ex-${itemId}-tp`
+  tpInp.autocomplete = 'off'
+  tpInp.spellcheck = false
+  tpInp.disabled = !canEdit
+  tpInp.value = snap.tp
+  tpInp.maxLength = 7
+  tpInp.title = 'Trefferpunkte (TP), bis 7 Zeichen'
+  tpInp.setAttribute('aria-label', 'Trefferpunkte (TP)')
+  tpCell.append(tpAbbr, tpInp)
+  syncTpFontSize(tpInp)
+
+  const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
+  const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
+
+  const zoneMidRow = document.createElement('div')
+  zoneMidRow.className = 'init-hero-ex__zone-mid'
+  /** @type {ReturnType<typeof mountZoneMiniWappen>[]} */
+  const zoneUiMid = []
+  const ZONE_MID_SPECS = [
+    { id: 'kopf', abbr: 'KF', title: 'Kopf und Hals, Trefferzone (WdS)' },
+    { id: 'brust', abbr: 'BR', title: 'Brust, Trefferzone (WdS)' },
+    { id: 'ruecken', abbr: 'RÜ', title: 'Rücken, Trefferzone (WdS)' },
+    {
+      id: 'schildarm',
+      abbr: 'LA',
+      title: 'Linker Arm (Schildarm), Trefferzone (WdS)',
+    },
+    {
+      id: 'schwertarm',
+      abbr: 'RA',
+      title: 'Rechter Arm (Schwertarm), Trefferzone (WdS)',
+    },
+    { id: 'bauch', abbr: 'BU', title: 'Bauch, Trefferzone (WdS)' },
+    { id: 'lbein', abbr: 'LB', title: 'Linkes Bein, Trefferzone (WdS)' },
+    { id: 'rbein', abbr: 'RB', title: 'Rechtes Bein, Trefferzone (WdS)' },
+  ]
+  for (const spec of ZONE_MID_SPECS) {
+    const zSnap = snap.hitZones.zones[spec.id] ?? { rs: '', w: 0 }
+    const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
+    zoneUiMid.push(ui)
+    zoneMidRow.appendChild(ui.cell)
+  }
+
+  const au = mkMicro('AU', 'Ausdauer (AU)', 'au', snap.au, 2, '', true)
+  const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
 
   const lePair = document.createElement('div')
   lePair.className = 'init-hero-ex__le-pair'
@@ -380,63 +437,9 @@ export function mountHeroExpandBlock(
   lePairInputs.className = 'init-hero-ex__le-pair__inputs'
   lePairInputs.append(leInp, leSlash, leMaxInp)
   lePair.append(lePairLabels, lePairInputs)
-  lePair.classList.add('init-hero-ex__le-pair--in-attr-row')
+  lePair.classList.add('init-hero-ex__le-pair--in-zone-mid')
 
-  attrCols.appendChild(lePair)
-
-  const ae = mkMicro('AE', 'Astralenergie (AE)', 'ae', snap.ae, 2, '', true)
-
-  const tpCell = document.createElement('div')
-  tpCell.className = 'init-hero-ex__micro-cell'
-  const tpAbbr = document.createElement('span')
-  tpAbbr.className = 'init-hero-ex__abbr'
-  tpAbbr.textContent = 'TP'
-  tpAbbr.title = 'Trefferpunkte (TP)'
-  const tpInp = document.createElement('input')
-  tpInp.type = 'text'
-  tpInp.className = 'init-hero-ex__micro init-hero-ex__micro--tp'
-  tpInp.id = `hero-ex-${itemId}-tp`
-  tpInp.autocomplete = 'off'
-  tpInp.spellcheck = false
-  tpInp.disabled = !canEdit
-  tpInp.value = snap.tp
-  tpInp.maxLength = 7
-  tpInp.title = 'Trefferpunkte (TP), bis 7 Zeichen'
-  tpInp.setAttribute('aria-label', 'Trefferpunkte (TP)')
-  tpCell.append(tpAbbr, tpInp)
-  syncTpFontSize(tpInp)
-
-  const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
-  const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
-
-  const zoneMidRow = document.createElement('div')
-  zoneMidRow.className = 'init-hero-ex__zone-mid'
-  /** @type {ReturnType<typeof mountZoneMiniWappen>[]} */
-  const zoneUiMid = []
-  const ZONE_MID_SPECS = [
-    { id: 'kopf', abbr: 'KF', title: 'Kopf und Hals, Trefferzone (WdS)' },
-    { id: 'brust', abbr: 'BR', title: 'Brust, Trefferzone (WdS)' },
-    { id: 'ruecken', abbr: 'RÜ', title: 'Rücken, Trefferzone (WdS)' },
-    {
-      id: 'schildarm',
-      abbr: 'LA',
-      title: 'Linker Arm (Schildarm), Trefferzone (WdS)',
-    },
-    {
-      id: 'schwertarm',
-      abbr: 'RA',
-      title: 'Rechter Arm (Schwertarm), Trefferzone (WdS)',
-    },
-    { id: 'bauch', abbr: 'BU', title: 'Bauch, Trefferzone (WdS)' },
-    { id: 'lbein', abbr: 'LB', title: 'Linkes Bein, Trefferzone (WdS)' },
-    { id: 'rbein', abbr: 'RB', title: 'Rechtes Bein, Trefferzone (WdS)' },
-  ]
-  for (const spec of ZONE_MID_SPECS) {
-    const zSnap = snap.hitZones.zones[spec.id] ?? { rs: '', w: 0 }
-    const ui = mountZoneMiniWappen(itemId, canEdit, spec, zSnap)
-    zoneUiMid.push(ui)
-    zoneMidRow.appendChild(ui.cell)
-  }
+  zoneMidRow.append(au.cell, ae.cell, lePair)
 
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
@@ -560,6 +563,7 @@ export function mountHeroExpandBlock(
     le: leInp.value,
     leMax: leMaxInp.value,
     ae: ae.inp.value,
+    au: au.inp.value,
     ko: koAttr.inp.value,
     tp: tpInp.value,
     sp: spInp.value,
@@ -640,6 +644,7 @@ export function mountHeroExpandBlock(
     leInp,
     leMaxInp,
     ae.inp,
+    au.inp,
     tpInp,
     fk.inp,
     g.inp,

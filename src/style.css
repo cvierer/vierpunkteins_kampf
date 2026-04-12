@@ -538,7 +538,7 @@ body {
 }
 
 .init-row-extra-panel--has-hero-ex .init-row-extra-panel__body {
-  max-height: calc(9.75rem * var(--init-ui-scale));
+  max-height: calc(10.35rem * var(--init-ui-scale));
   overflow-x: auto;
   overflow-y: hidden;
   padding-right: 0.06rem;
@@ -610,7 +610,8 @@ body {
 }
 
 /* Neben KO in der Attributreihe: gleiche vertikale Rhythmik wie .init-hero-ex__micro-cell */
-.init-hero-ex__le-pair--in-attr-row {
+.init-hero-ex__le-pair--in-attr-row,
+.init-hero-ex__le-pair--in-zone-mid {
   align-self: flex-end;
   gap: 0.06rem;
 }
