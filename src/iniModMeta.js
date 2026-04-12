@@ -120,7 +120,7 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_KO, next.ko)
       setStr(HERO_EX_TP, next.tp)
       setStr(HERO_EX_SP, next.sp)
-      setStr(HERO_EX_TZ, next.tz)
+      setStr(HERO_EX_TZ, String(next.tz ?? ''))
       setStr(HERO_EX_FK, next.fk)
       setStr(HERO_EX_G, next.g)
       setStr(HERO_EX_MU, next.mu)
@@ -500,9 +500,29 @@ export function mountHeroExpandBlock(
   spInp.title = 'Schadenspunkte (SP)'
   spInp.setAttribute('aria-label', 'Schadenspunkte (SP)')
 
+  const spTzArrow = document.createElement('button')
+  spTzArrow.type = 'button'
+  spTzArrow.className =
+    'init-hero-ex__micro init-hero-ex__micro--sp-tz-arrow'
+  spTzArrow.textContent = '>'
+  spTzArrow.title = 'Trefferzone (TZ): Feld fokussieren'
+  spTzArrow.setAttribute('aria-label', 'Trefferzone: Eingabe fokussieren')
+
+  const tzInp = document.createElement('input')
+  tzInp.type = 'text'
+  tzInp.className = 'init-hero-ex__micro init-hero-ex__micro--sp-tz-inp'
+  tzInp.id = `hero-ex-${itemId}-tz`
+  tzInp.autocomplete = 'off'
+  tzInp.spellcheck = false
+  tzInp.disabled = !canEdit
+  tzInp.value = snap.tz
+  tzInp.maxLength = 12
+  tzInp.title = 'Trefferzone / Kurznotiz (TZ)'
+  tzInp.setAttribute('aria-label', 'Trefferzone (TZ)')
+
   const spTzInputs = document.createElement('div')
   spTzInputs.className = 'init-hero-ex__sp-tz-pair__inputs'
-  spTzInputs.append(spInp)
+  spTzInputs.append(spInp, spTzArrow, tzInp)
   spTzPair.append(spTzLabels, spTzInputs)
   spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-strip')
 
@@ -540,11 +560,11 @@ export function mountHeroExpandBlock(
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
 
-  /** @type {{ sp: string }} */
-  let spTzCheckpoint = { sp: snap.sp }
-  /** @type {{ sp: string }[]} */
+  /** @type {{ sp: string, tz: string }} */
+  let spTzCheckpoint = { sp: snap.sp, tz: snap.tz }
+  /** @type {{ sp: string, tz: string }[]} */
   const spTzUndoStack = []
-  /** @type {{ sp: string }[]} */
+  /** @type {{ sp: string, tz: string }[]} */
   const spTzRedoStack = []
 
   const syncSpTzHistoryButtons = () => {

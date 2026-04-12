@@ -525,7 +525,7 @@ body {
 
 /* Heldenblock: erste Kästchenreihe etwas weiter von der oberen Kante */
 .init-row-extra-panel--has-hero-ex {
-  padding-top: 0.14rem;
+  padding-top: 0.26rem;
 }
 
 .init-row-extra-panel__body {
@@ -555,8 +555,8 @@ body {
   align-items: stretch;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 0 0.02rem;
-  margin-top: -0.05rem;
+  padding: 0.06rem 0 0.02rem;
+  margin-top: 0;
 }
 
 .init-hero-ex__lead-spacer {
