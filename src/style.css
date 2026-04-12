@@ -1,6 +1,8 @@
 :root {
-  /* Initiative / Heldenblock / Trefferzonen: gemeinsame Kästchengröße (0.96 × frühere 1.22rem) */
-  --init-box-scale: 0.96;
+  /* Initiative / Heldenblock / TZ-Dialog: einheitliche UI-Skala (1 = früher, 1.25 = 125 %) */
+  --init-ui-scale: 1.25;
+  /* Kästchengröße: 0.96 × Basis × UI-Skala */
+  --init-box-scale: calc(0.96 * var(--init-ui-scale));
   --init-obj-cell: calc(1.22rem * var(--init-box-scale));
   --font-heading: 'Cinzel', 'Palatino Linotype', Palatino, serif;
   --font-body: 'Crimson Pro', 'Palatino Linotype', Georgia, serif;
@@ -52,12 +54,12 @@ body {
 }
 
 .app-header {
-  margin-bottom: 0.35rem;
+  margin-bottom: calc(0.35rem * var(--init-ui-scale));
   flex-shrink: 0;
 }
 
 .combat-bar {
-  padding: 0.38rem 0.5rem;
+  padding: calc(0.38rem * var(--init-ui-scale)) calc(0.5rem * var(--init-ui-scale));
   border-radius: var(--radius);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -67,21 +69,21 @@ body {
 .combat-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: calc(0.35rem * var(--init-ui-scale));
 }
 
 .combat-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: calc(0.35rem * var(--init-ui-scale));
 }
 
 .combat-round-label {
   flex: 1;
   text-align: center;
   font-family: var(--font-heading);
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--init-ui-scale));
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -92,11 +94,11 @@ body {
 
 .btn {
   font-family: var(--font-heading);
-  font-size: 0.65rem;
+  font-size: calc(0.65rem * var(--init-ui-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.3rem 0.45rem;
+  padding: calc(0.3rem * var(--init-ui-scale)) calc(0.45rem * var(--init-ui-scale));
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: rgba(255, 255, 255, 0.85);
@@ -129,7 +131,7 @@ body {
 }
 
 .btn--nav {
-  min-width: 4.9rem;
+  min-width: calc(4.9rem * var(--init-ui-scale));
   text-align: center;
 }
 
@@ -142,18 +144,18 @@ body {
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
   /* Objektkästchen: --init-obj-cell von :root; horizontaler Abstand wie AT–PA */
-  --init-obj-gap: 0.16rem;
+  --init-obj-gap: calc(0.16rem * var(--init-ui-scale));
   --init-col-expand: var(--init-obj-cell);
   /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) */
   --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-obj-gap));
   /* Abstand Zähler/2.A.+ → Name (halb so breit wie zuvor) */
-  --init-col-gutter: 0.36rem;
+  --init-col-gutter: calc(0.36rem * var(--init-ui-scale));
   /* INI etwas schmaler → mehr Platz für Namen */
-  --init-col-ini: calc(4.75rem * 3.4 / 9);
+  --init-col-ini: calc(4.75rem * 3.4 / 9 * var(--init-ui-scale));
   /* Tauschpfeile-Spalte halb so breit */
-  --init-col-swap: 0.3rem;
+  --init-col-swap: calc(0.3rem * var(--init-ui-scale));
   --init-grid-gap: var(--init-obj-gap);
-  --init-list-row-gap: 0.4rem;
+  --init-list-row-gap: calc(0.4rem * var(--init-ui-scale));
 }
 
 .kampf-h-spacer--expand {
@@ -168,7 +170,7 @@ body {
     var(--init-col-ini) var(--init-col-swap);
   gap: var(--init-grid-gap);
   align-items: flex-end;
-  padding: 0 0.4rem 0.12rem;
+  padding: 0 calc(0.4rem * var(--init-ui-scale)) calc(0.12rem * var(--init-ui-scale));
   margin-bottom: 0.06rem;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(127, 127, 127, 0.22);
@@ -185,7 +187,7 @@ body {
 
 .kampf-col-label {
   font-family: var(--font-heading);
-  font-size: 0.6rem;
+  font-size: calc(0.6rem * var(--init-ui-scale));
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -217,7 +219,7 @@ body {
   text-align: center;
   text-transform: none;
   letter-spacing: 0.02em;
-  font-size: 0.52rem;
+  font-size: calc(0.52rem * var(--init-ui-scale));
   box-sizing: border-box;
 }
 
@@ -424,7 +426,7 @@ body {
 
 .init-row {
   margin-bottom: 0;
-  padding: 0 0.45rem;
+  padding: 0 calc(0.45rem * var(--init-ui-scale));
   border-radius: var(--radius);
   border: 1px solid transparent;
   transition:
@@ -451,7 +453,7 @@ body {
   align-items: center;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.08rem 0;
+  padding: calc(0.08rem * var(--init-ui-scale)) 0;
   border-radius: calc(var(--radius) - 1px);
   border: 1px solid transparent;
   position: relative;
@@ -472,7 +474,7 @@ body {
   width: 100%;
   max-width: var(--init-obj-cell);
   margin: 0 auto;
-  padding: 0.1rem 0;
+  padding: calc(0.1rem * var(--init-ui-scale)) 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -495,19 +497,19 @@ body {
 
 .init-row-expand-chev {
   display: block;
-  width: 0.38rem;
-  height: 0.38rem;
+  width: calc(0.38rem * var(--init-ui-scale));
+  height: calc(0.38rem * var(--init-ui-scale));
   box-sizing: border-box;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(45deg);
-  margin-top: -0.14rem;
+  margin-top: calc(-0.14rem * var(--init-ui-scale));
   transition: transform 0.15s ease;
 }
 
 .init-row-expand-toggle--open .init-row-expand-chev {
   transform: rotate(225deg);
-  margin-top: 0.06rem;
+  margin-top: calc(0.06rem * var(--init-ui-scale));
 }
 
 .init-row-extra-panel {
@@ -534,7 +536,7 @@ body {
 }
 
 .init-row-extra-panel--has-hero-ex .init-row-extra-panel__body {
-  max-height: 8.25rem;
+  max-height: calc(8.25rem * var(--init-ui-scale));
   overflow-x: auto;
   overflow-y: hidden;
   padding-right: 0.06rem;
@@ -801,7 +803,7 @@ body {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-  font-size: 0.86rem;
+  font-size: calc(0.86rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
@@ -830,7 +832,7 @@ body {
   background: rgba(201, 162, 39, 0.1);
   color: var(--color-accent);
   font-family: var(--font-body);
-  font-size: 0.86rem;
+  font-size: calc(0.86rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -1054,7 +1056,7 @@ body {
   background: rgba(201, 162, 39, 0.12);
   color: var(--color-accent);
   font-family: var(--font-body);
-  font-size: 0.86rem;
+  font-size: calc(0.86rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
@@ -1070,7 +1072,7 @@ body {
 }
 
 .init-hero-ex__micro--dense {
-  font-size: 0.48rem;
+  font-size: calc(0.48rem * var(--init-ui-scale));
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1080,15 +1082,15 @@ body {
   width: var(--init-hero-tp-w);
   min-width: var(--init-hero-tp-w);
   max-width: var(--init-hero-tp-w);
-  padding-left: 0.06rem;
-  padding-right: 0.06rem;
-  font-size: 0.86rem;
+  padding-left: calc(0.06rem * var(--init-ui-scale));
+  padding-right: calc(0.06rem * var(--init-ui-scale));
+  font-size: calc(0.86rem * var(--init-ui-scale));
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
 .init-hero-ex__micro--tp-compact {
-  font-size: 0.5rem;
+  font-size: calc(0.5rem * var(--init-ui-scale));
   font-weight: 800;
   letter-spacing: -0.05em;
 }
@@ -1233,7 +1235,7 @@ body {
 
 .kampf-hit-zone-w20 {
   font-family: var(--font-heading);
-  font-size: 0.46rem;
+  font-size: calc(0.46rem * var(--init-ui-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--color-ink-muted);
@@ -1259,7 +1261,7 @@ body {
 
 .kampf-hit-zone-lbl {
   font-family: var(--font-heading);
-  font-size: 0.42rem;
+  font-size: calc(0.42rem * var(--init-ui-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1279,7 +1281,7 @@ body {
   background: rgba(255, 253, 248, 0.95);
   color: var(--color-ink);
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: calc(0.68rem * var(--init-ui-scale));
   font-weight: 800;
   text-align: center;
 }
@@ -1323,7 +1325,7 @@ body {
   align-items: center;
   justify-content: center;
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1;
   pointer-events: none;
@@ -1489,7 +1491,7 @@ body {
 
 .init-row-ini-swap__arr {
   display: block;
-  font-size: 0.86rem;
+  font-size: calc(0.86rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1;
   opacity: 1;
@@ -1551,17 +1553,17 @@ body {
 
 .init-phase-root-count {
   position: absolute;
-  right: -0.04rem;
-  bottom: -0.04rem;
+  right: calc(-0.04rem * var(--init-ui-scale));
+  bottom: calc(-0.04rem * var(--init-ui-scale));
   z-index: 2;
-  min-width: 0.55rem;
-  height: 0.55rem;
-  padding: 0 0.08rem;
+  min-width: calc(0.55rem * var(--init-ui-scale));
+  height: calc(0.55rem * var(--init-ui-scale));
+  padding: 0 calc(0.08rem * var(--init-ui-scale));
   box-sizing: border-box;
   font-family: var(--font-body);
-  font-size: 0.46rem;
+  font-size: calc(0.46rem * var(--init-ui-scale));
   font-weight: 700;
-  line-height: 0.55rem;
+  line-height: calc(0.55rem * var(--init-ui-scale));
   text-align: center;
   color: var(--color-bg);
   background: var(--color-accent);
@@ -1582,7 +1584,7 @@ body {
   background: rgba(201, 162, 39, 0.12);
   color: var(--color-accent);
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: calc(0.8rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -1835,7 +1837,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.68rem;
+  font-size: calc(0.68rem * var(--init-ui-scale));
   font-weight: 800;
   line-height: 1;
   color: rgba(255, 255, 255, 0.98);
@@ -1847,7 +1849,7 @@ body {
 
 .init-row-kr-counter--has-digit .init-row-kr-counter__digit {
   opacity: 1;
-  font-size: 0.54rem;
+  font-size: calc(0.54rem * var(--init-ui-scale));
   letter-spacing: -0.03em;
 }
 
@@ -1868,7 +1870,7 @@ body {
   background: rgba(201, 162, 39, 0.12);
   color: var(--color-accent);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: calc(1rem * var(--init-ui-scale));
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -1881,7 +1883,7 @@ body {
   border-color: rgba(201, 127, 127, 0.45);
   background: rgba(201, 127, 127, 0.1);
   color: rgba(255, 200, 200, 0.95);
-  font-size: 1.1rem;
+  font-size: calc(1.1rem * var(--init-ui-scale));
   font-weight: 500;
 }
 
@@ -1897,9 +1899,9 @@ body {
 }
 
 .init-row-phase-plus--small {
-  width: 1.05rem;
-  height: 1.05rem;
-  font-size: 0.76rem;
+  width: calc(1.05rem * var(--init-ui-scale));
+  height: calc(1.05rem * var(--init-ui-scale));
+  font-size: calc(0.76rem * var(--init-ui-scale));
 }
 
 .init-row-zao-remove {
@@ -1913,7 +1915,7 @@ body {
   background: rgba(201, 127, 127, 0.1);
   color: rgba(255, 200, 200, 0.95);
   font-family: var(--font-body);
-  font-size: 1.05rem;
+  font-size: calc(1.05rem * var(--init-ui-scale));
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
@@ -1964,8 +1966,8 @@ body {
 
 .init-row-zao-padlock__icon {
   display: block;
-  width: 0.78rem;
-  height: 0.78rem;
+  width: calc(0.78rem * var(--init-ui-scale));
+  height: calc(0.78rem * var(--init-ui-scale));
 }
 
 .init-phase-gutter {
@@ -1995,15 +1997,15 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 2rem;
+  width: calc(2rem * var(--init-ui-scale));
   box-sizing: border-box;
-  padding: 0.2rem 0.15rem;
+  padding: calc(0.2rem * var(--init-ui-scale)) calc(0.15rem * var(--init-ui-scale));
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: #fff;
   color: inherit;
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--init-ui-scale));
   text-align: center;
   z-index: 1;
 }
@@ -2015,7 +2017,7 @@ body {
 }
 
 .phase-offset-input--error {
-  font-size: 0.58rem;
+  font-size: calc(0.58rem * var(--init-ui-scale));
   letter-spacing: -0.02em;
   color: rgba(255, 160, 160, 0.95);
   border-color: rgba(200, 100, 100, 0.55);
@@ -2024,7 +2026,7 @@ body {
 .init-row-main--phase {
   position: relative;
   /* Phasen-Zeile: Abstand zur Namensspalte wie Token-Zeile schmaler */
-  --init-phase-gutter-inner: 1.64rem;
+  --init-phase-gutter-inner: calc(1.64rem * var(--init-ui-scale));
   --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-obj-gap));
   grid-template-columns:
     var(--init-col-expand) var(--init-col-btn) var(--init-phase-gutter-inner)
@@ -2055,7 +2057,7 @@ body {
 
 .init-phase-zao-ini-label {
   flex-shrink: 0;
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--init-ui-scale));
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--color-ink-muted);
@@ -2079,7 +2081,7 @@ body {
   border-radius: 4px;
   border: 1px solid rgba(201, 162, 39, 0.45);
   background: #ffffff;
-  font-size: 0.95rem;
+  font-size: calc(0.95rem * var(--init-ui-scale));
   font-weight: 400;
   line-height: 1;
   text-align: center;
@@ -2106,7 +2108,7 @@ body {
 }
 
 .init-row-init--error {
-  font-size: 0.62rem;
+  font-size: calc(0.62rem * var(--init-ui-scale));
   text-align: center;
   color: rgba(255, 160, 160, 0.95);
   border-color: rgba(200, 100, 100, 0.55);
@@ -2370,7 +2372,7 @@ body {
 
 .init-row--phase .init-row-name {
   color: var(--color-ink-muted);
-  font-size: 0.96rem;
+  font-size: calc(0.96rem * var(--init-ui-scale));
 }
 
 .init-row-init {
@@ -2381,13 +2383,13 @@ body {
   box-sizing: border-box;
   height: var(--init-obj-cell);
   min-height: var(--init-obj-cell);
-  padding: 0 0.38rem;
+  padding: 0 calc(0.38rem * var(--init-ui-scale));
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
   color: inherit;
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: calc(0.95rem * var(--init-ui-scale));
   text-align: right;
 }
 
