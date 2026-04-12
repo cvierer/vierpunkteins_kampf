@@ -20,6 +20,10 @@ export const HERO_EX_TZ = 'heroExTz'
 export const HERO_EX_FK = 'heroExFk'
 /** Geschosse */
 export const HERO_EX_G = 'heroExG'
+/** Rüstungsschutz im Wappenfeld (Kampfzeile neben G) */
+export const HERO_EX_WAPPEN_RS = 'heroExWappenRs'
+/** Wundmarken 0–3 im Wappenfeld (rote Punkte) */
+export const HERO_EX_WAPPEN_WUNDEN = 'heroExWappenW'
 export const HERO_EX_MU = 'heroExMu'
 export const HERO_EX_KL = 'heroExKl'
 export const HERO_EX_IN = 'heroExIn'
@@ -79,6 +83,8 @@ export function readHeroExpandSnapshot(meta) {
     ff: strOrEmpty(meta?.[HERO_EX_FF]),
     ge: strOrEmpty(meta?.[HERO_EX_GE]),
     kk: strOrEmpty(meta?.[HERO_EX_KK]),
+    wappenRs: strOrEmpty(meta?.[HERO_EX_WAPPEN_RS]),
+    wappenWunden: strOrEmpty(meta?.[HERO_EX_WAPPEN_WUNDEN]),
   }
 }
 
@@ -117,6 +123,10 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_FF, next.ff)
       setStr(HERO_EX_GE, next.ge)
       setStr(HERO_EX_KK, next.kk)
+      setStr(HERO_EX_WAPPEN_RS, next.wappenRs)
+      const wn = String(next.wappenWunden ?? '').trim()
+      if (wn === '' || wn === '0') delete m[HERO_EX_WAPPEN_WUNDEN]
+      else m[HERO_EX_WAPPEN_WUNDEN] = wn
 
       delete m[HERO_EX_AEKE_LEGACY]
       delete m[HERO_EX_WUNDEN_LEGACY]
@@ -325,6 +335,62 @@ export function mountHeroExpandBlock(
   const fk = mkMicro('FK', 'Fernkampf (FK)', 'fk', snap.fk, 2, '', true)
   const g = mkMicro('G', 'Geschosse (G)', 'g', snap.g, 2, '', true)
 
+  const wN = parseInt(String(snap.wappenWunden ?? '').trim(), 10)
+  let wappenWundenCount = Number.isFinite(wN)
+    ? Math.min(3, Math.max(0, wN))
+    : 0
+
+  const wappenCell = document.createElement('div')
+  wappenCell.className =
+    'init-hero-ex__micro-cell init-hero-ex__micro-cell--wappen'
+  const wappenAbbrSlot = document.createElement('span')
+  wappenAbbrSlot.className = 'init-hero-ex__wappen-abbr-slot'
+  wappenAbbrSlot.setAttribute('aria-hidden', 'true')
+  const wappen = document.createElement('div')
+  wappen.className = 'init-hero-ex__wappen'
+  wappen.setAttribute('role', 'group')
+  wappen.setAttribute(
+    'aria-label',
+    'Rüstungsschutz und Wundmarken (Übersicht neben Geschosse)'
+  )
+  const chief = document.createElement('div')
+  chief.className = 'init-hero-ex__wappen-chief'
+  /** @type {HTMLButtonElement[]} */
+  const wappenDots = []
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('button')
+    dot.type = 'button'
+    dot.className = 'init-hero-ex__wappen-dot'
+    dot.title = `Wundmarke ${i + 1}: antippen zum Setzen oder Absenken`
+    dot.setAttribute('aria-label', `Wundmarke ${i + 1}`)
+    wappenDots.push(dot)
+  }
+  chief.append(...wappenDots)
+  const wappenRsInp = document.createElement('input')
+  wappenRsInp.type = 'text'
+  wappenRsInp.inputMode = 'numeric'
+  wappenRsInp.className = 'init-hero-ex__micro init-hero-ex__micro--wappen-rs'
+  wappenRsInp.id = `hero-ex-${itemId}-wappen-rs`
+  wappenRsInp.autocomplete = 'off'
+  wappenRsInp.spellcheck = false
+  wappenRsInp.disabled = !canEdit
+  wappenRsInp.value = snap.wappenRs
+  wappenRsInp.maxLength = 2
+  wappenRsInp.title = 'Rüstungsschutz (RS), bis 2 Ziffern'
+  wappenRsInp.setAttribute('aria-label', 'Rüstungsschutz (RS)')
+  wappen.append(chief, wappenRsInp)
+  wappenCell.append(wappenAbbrSlot, wappen)
+
+  const syncWappenDots = () => {
+    wappenDots.forEach((btn, idx) => {
+      const on = idx < wappenWundenCount
+      btn.classList.toggle('init-hero-ex__wappen-dot--on', on)
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
+  }
+  syncWappenDots()
+  for (const dot of wappenDots) dot.disabled = !canEdit
+
   const spTzUndo = document.createElement('button')
   spTzUndo.type = 'button'
   spTzUndo.className = 'init-hero-ex__sp-tz-label-btn'
@@ -393,7 +459,17 @@ export function mountHeroExpandBlock(
   spTzPair.append(spTzLabels, spTzInputs)
   spTzPair.classList.add('init-hero-ex__sp-tz-pair--in-strip')
 
-  strip.append(at.cell, pa.cell, ausw.cell, ae.cell, tpCell, fk.cell, g.cell, spTzPair)
+  strip.append(
+    at.cell,
+    pa.cell,
+    ausw.cell,
+    ae.cell,
+    tpCell,
+    fk.cell,
+    g.cell,
+    wappenCell,
+    spTzPair
+  )
 
   root.append(leadSpacer, strip, spacerExp, attrBlock)
   container.appendChild(root)
@@ -440,6 +516,21 @@ export function mountHeroExpandBlock(
     ff: ff.inp.value,
     ge: ge.inp.value,
     kk: kk.inp.value,
+    wappenRs: wappenRsInp.value,
+    wappenWunden: String(wappenWundenCount),
+  })
+
+  wappenDots.forEach((dot, idx) => {
+    dot.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!canEdit) return
+      const n = idx + 1
+      wappenWundenCount = wappenWundenCount === n ? n - 1 : n
+      wappenWundenCount = Math.min(3, Math.max(0, wappenWundenCount))
+      syncWappenDots()
+      void applyHeroExpandFields(itemId, gather())
+    })
   })
 
   const commit = () => {
@@ -512,6 +603,7 @@ export function mountHeroExpandBlock(
     ge.inp,
     kk.inp,
     koAttr.inp,
+    wappenRsInp,
   ]) {
     inp.addEventListener('blur', commit)
   }
