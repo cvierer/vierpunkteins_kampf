@@ -938,13 +938,13 @@ body {
 }
 
 .init-hero-ex__wappen-chief {
-  flex: 0 0 44%;
+  flex: 0 0 34%;
   min-height: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
+  gap: 0.07rem;
   background: rgba(90, 74, 48, 0.06);
   border-bottom: 1px solid rgba(201, 162, 39, 0.28);
   box-sizing: border-box;
@@ -952,8 +952,8 @@ body {
 
 .init-hero-ex__wappen-dot {
   flex-shrink: 0;
-  width: calc(0.3rem * var(--init-box-scale));
-  height: calc(0.3rem * var(--init-box-scale));
+  width: calc(0.38rem * var(--init-box-scale));
+  height: calc(0.38rem * var(--init-box-scale));
   padding: 0;
   margin: 0;
   border-radius: 50%;
@@ -1000,7 +1000,8 @@ body {
   border: 0 !important;
   border-top: 1px solid rgba(201, 162, 39, 0.38) !important;
   background: rgba(255, 253, 248, 0.38) !important;
-  font-size: calc(0.8rem * var(--init-box-scale));
+  font-size: calc(0.84rem * var(--init-box-scale));
+  line-height: 1.2;
 }
 
 .init-hero-ex__micro--wappen-rs:focus {
