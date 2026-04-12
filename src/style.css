@@ -958,7 +958,8 @@ body {
   align-items: flex-end;
   justify-content: center;
   gap: 0.07rem;
-  padding: 0.02rem 0.04rem 0.12rem;
+  /* Unten kein Abstand: Kreisunterkante liegt auf der braunen Trennlinie */
+  padding: 0.02rem 0.04rem 0;
   box-sizing: border-box;
   background: rgba(90, 74, 48, 0.06);
   border-bottom: 1px solid rgba(201, 162, 39, 0.28);
