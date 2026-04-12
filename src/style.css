@@ -143,18 +143,20 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Kompaktheit ausgelegt auf ~18 Token-Zeilen im Extension-Panel ohne Listen-Scroll */
-  /* Objektkästchen: --init-obj-cell von :root; horizontaler Abstand wie AT–PA */
+  /* Objektkästchen: --init-obj-cell von :root */
   --init-obj-gap: calc(0.16rem * var(--init-ui-scale));
+  /* Horizontal zwischen Aktions-Kästchen = Heldenblock (0,7× Basisabstand) */
+  --init-strip-h-gap: calc(0.7 * var(--init-obj-gap));
   --init-col-expand: var(--init-obj-cell);
   /* Ang., Abw., S.R.A., F.A., L.H., 2.A. (+) */
-  --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-obj-gap));
+  --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-strip-h-gap));
   /* Abstand Zähler/2.A.+ → Name (halb so breit wie zuvor) */
   --init-col-gutter: calc(0.36rem * var(--init-ui-scale));
   /* INI etwas schmaler → mehr Platz für Namen */
   --init-col-ini: calc(4.75rem * 3.4 / 9 * var(--init-ui-scale));
   /* Tauschpfeile-Spalte halb so breit */
   --init-col-swap: calc(0.3rem * var(--init-ui-scale));
-  --init-grid-gap: var(--init-obj-gap);
+  --init-grid-gap: var(--init-strip-h-gap);
   --init-list-row-gap: calc(0.4rem * var(--init-ui-scale));
 }
 
@@ -208,7 +210,7 @@ body {
   flex-direction: row;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--init-obj-gap);
+  gap: var(--init-grid-gap);
   min-width: 0;
   box-sizing: border-box;
 }
@@ -545,9 +547,8 @@ body {
 /* Ausklappbarer Heldenblock: Spalte 1 = Chevron/Tools, Spalte 2 = Kampfwerte + Attribute (ohne rechter Rail) */
 .init-hero-ex {
   --init-hero-cell: var(--init-obj-cell);
-  /* Horizontaler Abstand zwischen allen Helden-Kästchen: 0,7× Listen-Objektabstand */
-  --init-grid-gap: calc(0.7 * var(--init-obj-gap));
-  --init-hero-strip-gap: calc(0.7 * var(--init-obj-gap));
+  /* Gleicher horizontaler Rhythmus wie INI-Zeile (--init-grid-gap von .kampf-list-section) */
+  --init-hero-strip-gap: var(--init-grid-gap);
   /* Nur TP variabel: 6×Zelle + TP + 6 Lücken = 8×Zelle + 7 Lücken */
   --init-hero-tp-w: calc(2 * var(--init-hero-cell) + var(--init-hero-strip-gap));
   display: grid;
@@ -1529,7 +1530,7 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--init-obj-gap);
+  gap: var(--init-grid-gap);
 }
 
 /* Ang., Abw., S.R.A., F.A., L.H., 2.A.+ in einer Zeile (1.22rem hoch). */
@@ -1549,7 +1550,7 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--init-obj-gap);
+  gap: var(--init-grid-gap);
   flex-shrink: 0;
 }
 
@@ -2045,7 +2046,7 @@ body {
   position: relative;
   /* Phasen-Zeile: Abstand zur Namensspalte wie Token-Zeile schmaler */
   --init-phase-gutter-inner: calc(1.64rem * var(--init-ui-scale));
-  --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-obj-gap));
+  --init-col-btn: calc(6 * var(--init-obj-cell) + 5 * var(--init-grid-gap));
   grid-template-columns:
     var(--init-col-expand) var(--init-col-btn) var(--init-phase-gutter-inner)
     minmax(0, 1fr) var(--init-col-ini) var(--init-col-swap);
@@ -2056,11 +2057,11 @@ body {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--init-obj-gap);
+  gap: var(--init-grid-gap);
 }
 
 .init-row-main--phase-zao {
-  --init-col-btn: calc(7 * var(--init-obj-cell) + 6 * var(--init-obj-gap));
+  --init-col-btn: calc(7 * var(--init-obj-cell) + 6 * var(--init-grid-gap));
   grid-template-columns:
     var(--init-col-expand) var(--init-col-btn) minmax(0, 1fr)
     var(--init-col-ini) var(--init-col-swap);
