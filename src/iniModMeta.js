@@ -120,6 +120,7 @@ export async function applyHeroExpandFields(itemId, next) {
       setStr(HERO_EX_KO, next.ko)
       setStr(HERO_EX_TP, next.tp)
       setStr(HERO_EX_SP, next.sp)
+      setStr(HERO_EX_TZ, next.tz)
       setStr(HERO_EX_FK, next.fk)
       setStr(HERO_EX_G, next.g)
       setStr(HERO_EX_MU, next.mu)
@@ -145,7 +146,6 @@ export async function applyHeroExpandFields(itemId, next) {
         }
       }
 
-      delete m[HERO_EX_TZ]
       delete m[HERO_EX_WAPPEN_RS]
       delete m[HERO_EX_WAPPEN_WUNDEN]
       delete m[HERO_EX_AEKE_LEGACY]
@@ -481,7 +481,11 @@ export function mountHeroExpandBlock(
   spAbbr.className = 'init-hero-ex__abbr'
   spAbbr.textContent = 'SP'
   spAbbr.title = 'Schadenspunkte (SP)'
-  spTzLabels.append(spAbbr, spTzLabelTools)
+  const tzAbbr = document.createElement('span')
+  tzAbbr.className = 'init-hero-ex__abbr'
+  tzAbbr.textContent = 'TZ'
+  tzAbbr.title = 'Trefferzone / Kurznotiz (TZ)'
+  spTzLabels.append(spAbbr, spTzLabelTools, tzAbbr)
 
   const spInp = document.createElement('input')
   spInp.type = 'text'
@@ -513,8 +517,8 @@ export function mountHeroExpandBlock(
     zLa.cell,
     zKf.cell,
     zBr.cell,
-    spTzPair,
-    zRa.cell
+    zRa.cell,
+    spTzPair
   )
 
   root.append(leadSpacer, strip, spacerExp, attrBlock)
@@ -523,8 +527,16 @@ export function mountHeroExpandBlock(
   if (!canEdit) {
     spTzUndo.disabled = true
     spTzRedo.disabled = true
+    spTzArrow.disabled = true
     return
   }
+
+  spTzArrow.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    tzInp.focus()
+    tzInp.select()
+  })
 
   tpInp.addEventListener('input', () => syncTpFontSize(tpInp))
 
@@ -565,6 +577,7 @@ export function mountHeroExpandBlock(
     ko: koAttr.inp.value,
     tp: tpInp.value,
     sp: spInp.value,
+    tz: tzInp.value,
     fk: fk.inp.value,
     g: g.inp.value,
     mu: mu.inp.value,
@@ -591,10 +604,10 @@ export function mountHeroExpandBlock(
 
   const commit = () => {
     const g = gather()
-    if (g.sp !== spTzCheckpoint.sp) {
+    if (g.sp !== spTzCheckpoint.sp || g.tz !== spTzCheckpoint.tz) {
       spTzUndoStack.push({ ...spTzCheckpoint })
       spTzRedoStack.length = 0
-      spTzCheckpoint = { sp: g.sp }
+      spTzCheckpoint = { sp: g.sp, tz: g.tz }
     }
     syncSpTzHistoryButtons()
     void applyHeroExpandFields(itemId, g)
@@ -602,6 +615,7 @@ export function mountHeroExpandBlock(
 
   const applySpTzPairToScene = (pair) => {
     spInp.value = pair.sp
+    tzInp.value = pair.tz
     void applyHeroExpandFields(itemId, gather())
   }
 
@@ -644,6 +658,7 @@ export function mountHeroExpandBlock(
     fk.inp,
     g.inp,
     spInp,
+    tzInp,
     mu.inp,
     kl.inp,
     inn.inp,
