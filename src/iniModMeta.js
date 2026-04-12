@@ -167,10 +167,14 @@ function syncTpFontSize(tpInp) {
   tpInp.classList.toggle('init-hero-ex__micro--tp-compact', n > 4)
 }
 
-/** @param {HTMLInputElement} el */
-function syncWappenRsFontSize(el) {
+/**
+ * @param {HTMLInputElement} el
+ * @param {{ compactFromDigits?: number }} [opts] — RS: ab 2 Ziffern kleiner; LE: nie kompakt (compactFromDigits weglassen oder sehr hoch).
+ */
+function syncWappenRsFontSize(el, opts = {}) {
+  const threshold = opts.compactFromDigits ?? 2
   const n = el.value.trim().length
-  el.classList.toggle('init-hero-ex__micro--wappen-rs--compact', n >= 2)
+  el.classList.toggle('init-hero-ex__micro--wappen-rs--compact', n >= threshold)
 }
 
 /**
@@ -260,8 +264,14 @@ function mountLeMiniWappen(itemId, canEdit, z) {
   const cell = document.createElement('div')
   cell.className = 'init-hero-ex__micro-cell init-hero-ex__micro-cell--wappen'
   const ab = document.createElement('span')
-  ab.className = 'init-hero-ex__abbr'
-  ab.textContent = 'LE'
+  ab.className = 'init-hero-ex__abbr init-hero-ex__abbr--le-with-max'
+  const abLe = document.createElement('span')
+  abLe.textContent = 'LE'
+  const abMax = document.createElement('span')
+  abMax.className = 'init-hero-ex__abbr-max'
+  abMax.textContent = 'max'
+  abMax.setAttribute('aria-hidden', 'true')
+  ab.append(abLe, abMax)
   ab.title = 'Lebensenergie (LE) und Maximum (LE max)'
 
   const wappen = document.createElement('div')
@@ -302,7 +312,7 @@ function mountLeMiniWappen(itemId, canEdit, z) {
 
   wappen.append(chiefMax, leInp)
   cell.append(ab, wappen)
-  syncWappenRsFontSize(leInp)
+  syncWappenRsFontSize(leInp, { compactFromDigits: 99 })
 
   return { cell, leInp, leMaxInp }
 }
@@ -642,7 +652,9 @@ export function mountHeroExpandBlock(
   for (const ui of allZoneUis) {
     ui.rsInp.addEventListener('input', () => syncWappenRsFontSize(ui.rsInp))
   }
-  leInp.addEventListener('input', () => syncWappenRsFontSize(leInp))
+  leInp.addEventListener('input', () =>
+    syncWappenRsFontSize(leInp, { compactFromDigits: 99 })
+  )
 
   for (const inp of [
     at.inp,

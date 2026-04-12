@@ -1022,6 +1022,26 @@ body {
   cursor: default;
 }
 
+/* LE-Zelle: „LE“ + kleines „max“ in der Zeile (ohne Großschreibung von max) */
+.init-hero-ex__abbr--le-with-max {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.04em;
+  max-width: 100%;
+}
+
+.init-hero-ex__abbr-max {
+  text-transform: none;
+  font-size: calc(0.34rem * var(--init-box-scale));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--color-ink-muted);
+  opacity: 0.88;
+}
+
 .init-hero-ex__micro {
   width: var(--init-hero-cell, var(--init-obj-cell));
   height: var(--init-hero-cell, var(--init-obj-cell));
